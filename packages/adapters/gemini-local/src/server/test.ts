@@ -71,7 +71,13 @@ export async function testEnvironment(
   for (const [key, value] of Object.entries(envConfig)) {
     if (typeof value === "string") env[key] = value;
   }
-  const runtimeEnv = ensurePathInEnv({ ...process.env, ...env });
+  const runtimeEnv = ensurePathInEnv({
+    ...process.env,
+    ...env,
+    GEMINI_CLI_NO_RELAUNCH: "true",
+    SANDBOX: "1",
+    TERM: process.env.TERM || "xterm-256color",
+  });
   try {
     await ensureCommandResolvable(command, cwd, runtimeEnv);
     checks.push({
@@ -135,14 +141,14 @@ export async function testEnvironment(
       const model = asString(config.model, DEFAULT_GEMINI_LOCAL_MODEL).trim();
       const approvalMode = asString(config.approvalMode, asBoolean(config.yolo, false) ? "yolo" : "default");
       const sandbox = asBoolean(config.sandbox, false);
-      const helloProbeTimeoutSec = Math.max(1, asNumber(config.helloProbeTimeoutSec, 10));
+      const helloProbeTimeoutSec = Math.max(1, asNumber(config.helloProbeTimeoutSec, 60));
       const extraArgs = (() => {
         const fromExtraArgs = asStringArray(config.extraArgs);
         if (fromExtraArgs.length > 0) return fromExtraArgs;
         return asStringArray(config.args);
       })();
 
-      const args = ["--output-format", "stream-json", "--prompt", "Respond with hello."];
+      const args = ["--prompt", "Respond with hello.", "--output-format", "stream-json"];
       if (model && model !== DEFAULT_GEMINI_LOCAL_MODEL) args.push("--model", model);
       if (approvalMode !== "default") args.push("--approval-mode", approvalMode);
       if (sandbox) {
@@ -158,7 +164,7 @@ export async function testEnvironment(
         args,
         {
           cwd,
-          env,
+          env: runtimeEnv,
           timeoutSec: helloProbeTimeoutSec,
           graceSec: 5,
           onLog: async () => { },
@@ -207,7 +213,7 @@ export async function testEnvironment(
           ...(hasHello
             ? {}
             : {
-              hint: "Try `gemini --output-format json \"Respond with hello.\"` manually to inspect full output.",
+              hint: "Try `gemini --prompt \"Respond with hello.\" --output-format json` manually to inspect full output.",
             }),
         });
       } else if (authMeta.requiresAuth) {
@@ -224,7 +230,7 @@ export async function testEnvironment(
           level: "error",
           message: "Gemini hello probe failed.",
           ...(detail ? { detail } : {}),
-          hint: "Run `gemini --output-format json \"Respond with hello.\"` manually in this working directory to debug.",
+          hint: "Run `gemini --prompt \"Respond with hello.\" --output-format json` manually in this working directory to debug.",
         });
       }
     }
