@@ -7,7 +7,7 @@ function collectMessageText(message: unknown): string[] {
   }
 
   const record = parseObject(message);
-  const direct = asString(record.text, "").trim();
+  const direct = asString(record.text, "").trim() || asString(record.content, "").trim();
   const lines: string[] = direct ? [direct] : [];
   const content = Array.isArray(record.content) ? record.content : [];
 
@@ -96,10 +96,12 @@ export function parseGeminiJsonl(stdout: string) {
     if (foundSessionId) sessionId = foundSessionId;
 
     const type = asString(event.type, "").trim();
+    const role = asString(event.role, "").trim();
 
-    if (type === "assistant") {
-      messages.push(...collectMessageText(event.message));
-      const messageObj = parseObject(event.message);
+    if (type === "assistant" || (type === "message" && role === "assistant")) {
+      const messageRaw = event.message ?? event.content ?? event;
+      messages.push(...collectMessageText(messageRaw));
+      const messageObj = parseObject(messageRaw);
       const content = Array.isArray(messageObj.content) ? messageObj.content : [];
       for (const partRaw of content) {
         const part = parseObject(partRaw);
@@ -127,7 +129,8 @@ export function parseGeminiJsonl(stdout: string) {
       const resultText =
         asString(event.result, "").trim() ||
         asString(event.text, "").trim() ||
-        asString(event.response, "").trim();
+        asString(event.response, "").trim() ||
+        asString(event.content, "").trim();
       if (resultText && messages.length === 0) messages.push(resultText);
       costUsd = asNumber(event.total_cost_usd, asNumber(event.cost_usd, asNumber(event.cost, costUsd ?? 0))) || costUsd;
       const isError = event.is_error === true || asString(event.subtype, "").toLowerCase() === "error";
