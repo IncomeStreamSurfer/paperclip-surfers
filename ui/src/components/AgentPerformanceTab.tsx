@@ -4,9 +4,6 @@ import {
   agentKpisApi,
   analyticsApi,
   experimentsApi,
-  type AgentKpi,
-  type KpiObservation,
-  type AgentExperiment,
   type ObservationCreateRequest,
   type ExperimentCreateRequest,
 } from "../api/agentKpis";
@@ -27,13 +24,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   BarChart3,
   TrendingUp,
   DollarSign,
@@ -53,12 +43,6 @@ const experimentStatusColors: Record<string, string> = {
   cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
 
-const severityColors: Record<string, string> = {
-  info: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-  warning: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
-  critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
-};
-
 interface AgentPerformanceTabProps {
   agentId: string;
   companyId: string;
@@ -69,11 +53,11 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
   const { pushToast } = useToast();
 
   const [obsDialogOpen, setObsDialogOpen] = useState(false);
-  const [obsForm, setObsForm] = useState<{ title: string; content: string; severity: "info" | "warning" | "critical" }>({ title: "", content: "", severity: "info" });
+  const [obsForm, setObsForm] = useState({ observation: "", actionNotes: "" });
   const [deleteObsConfirm, setDeleteObsConfirm] = useState<string | null>(null);
 
   const [expDialogOpen, setExpDialogOpen] = useState(false);
-  const [expForm, setExpForm] = useState({ name: "", description: "", hypothesis: "" });
+  const [expForm, setExpForm] = useState({ hypothesis: "", approachA: "", approachB: "" });
   const [deleteExpConfirm, setDeleteExpConfirm] = useState<string | null>(null);
 
   const kpisQuery = useQuery({
@@ -97,7 +81,7 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
       queryClient.invalidateQueries({ queryKey: queryKeys.observations.list(companyId) });
       pushToast({ title: "Observation created" });
       setObsDialogOpen(false);
-      setObsForm({ title: "", content: "", severity: "info" });
+      setObsForm({ observation: "", actionNotes: "" });
     },
     onError: () => pushToast({ tone: "warn", title: "Failed to create observation" }),
   });
@@ -118,7 +102,7 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
       queryClient.invalidateQueries({ queryKey: queryKeys.experiments.list(agentId) });
       pushToast({ title: "Experiment created" });
       setExpDialogOpen(false);
-      setExpForm({ name: "", description: "", hypothesis: "" });
+      setExpForm({ hypothesis: "", approachA: "", approachB: "" });
     },
     onError: () => pushToast({ tone: "warn", title: "Failed to create experiment" }),
   });
@@ -135,23 +119,22 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
 
   const kpis = kpisQuery.data ?? [];
   const observations = (observationsQuery.data ?? []).filter(
-    (o) => !o.agentId || o.agentId === agentId,
+    (o) => o.agentIds.length === 0 || o.agentIds.includes(agentId),
   );
   const experiments = experimentsQuery.data ?? [];
 
   // Compute summary values from KPIs
-  const completionRates = kpis.filter((k) => k.completionRate != null).map((k) => k.completionRate!);
-  const avgCompletion =
-    completionRates.length > 0
-      ? completionRates.reduce((a, b) => a + b, 0) / completionRates.length
-      : null;
+  const completedCount = kpis.filter((k) => k.taskCompleted === true).length;
+  const avgCompletion = kpis.length > 0 ? completedCount / kpis.length : null;
 
   const costs = kpis.filter((k) => k.costCents != null).map((k) => k.costCents!);
   const avgCost = costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : null;
 
-  const durations = kpis.filter((k) => k.durationMs != null).map((k) => k.durationMs!);
+  const durationsMs = kpis
+    .filter((k) => k.durationSeconds != null)
+    .map((k) => k.durationSeconds! * 1000);
   const avgDuration =
-    durations.length > 0 ? durations.reduce((a, b) => a + b, 0) / durations.length : null;
+    durationsMs.length > 0 ? durationsMs.reduce((a, b) => a + b, 0) / durationsMs.length : null;
 
   const totalRuns = kpis.length;
 
@@ -211,19 +194,19 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
                       {new Date(kpi.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-3 py-2">
-                      {kpi.completionRate != null
-                        ? `${Math.round(kpi.completionRate * 100)}%`
-                        : "--"}
+                      {kpi.taskCompleted == null ? "--" : kpi.taskCompleted ? "Yes" : "No"}
                     </td>
                     <td className="px-3 py-2">
                       {kpi.costCents != null ? formatCents(kpi.costCents) : "--"}
                     </td>
                     <td className="px-3 py-2">
-                      {kpi.durationMs != null ? formatDuration(kpi.durationMs) : "--"}
+                      {kpi.durationSeconds != null
+                        ? formatDuration(kpi.durationSeconds * 1000)
+                        : "--"}
                     </td>
                     <td className="px-3 py-2">
-                      {kpi.errorCount > 0 ? (
-                        <span className="text-destructive">{kpi.errorCount}</span>
+                      {kpi.errorsEncountered > 0 ? (
+                        <span className="text-destructive">{kpi.errorsEncountered}</span>
                       ) : (
                         "0"
                       )}
@@ -255,18 +238,16 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-sm font-medium truncate">{obs.title}</h4>
-                      <Badge
-                        variant="secondary"
-                        className={cn("text-[10px] px-1.5 py-0", severityColors[obs.severity])}
-                      >
-                        {obs.severity}
-                      </Badge>
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
                         {obs.observerType}
                       </Badge>
+                      {obs.actionTaken && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                          action taken
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{obs.content}</p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">{obs.observation}</p>
                   </div>
                   <Button
                     size="sm"
@@ -302,7 +283,7 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-sm font-medium truncate">{exp.name}</h4>
+                      <h4 className="text-sm font-medium truncate">{exp.hypothesis}</h4>
                       <Badge
                         variant="secondary"
                         className={cn(
@@ -313,19 +294,14 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
                         {exp.status}
                       </Badge>
                     </div>
-                    {exp.description && (
+                    {(exp.changeNotes ?? exp.approachA) && (
                       <p className="text-xs text-muted-foreground line-clamp-1">
-                        {exp.description}
+                        {exp.changeNotes ?? exp.approachA}
                       </p>
                     )}
-                    {exp.hypothesis && (
-                      <p className="text-xs text-muted-foreground/70 mt-0.5 italic line-clamp-1">
-                        Hypothesis: {exp.hypothesis}
-                      </p>
-                    )}
-                    {exp.result && (
+                    {exp.winningApproach && (
                       <p className="text-xs text-green-600 dark:text-green-400 mt-0.5 line-clamp-1">
-                        Result: {exp.result}
+                        Winner: {exp.winningApproach}
                       </p>
                     )}
                   </div>
@@ -353,39 +329,21 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Title</label>
-              <Input
-                value={obsForm.title}
-                onChange={(e) => setObsForm({ ...obsForm, title: e.target.value })}
-                placeholder="Observation title"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Content</label>
+              <label className="text-xs font-medium text-muted-foreground">Observation</label>
               <Textarea
-                value={obsForm.content}
-                onChange={(e) => setObsForm({ ...obsForm, content: e.target.value })}
+                value={obsForm.observation}
+                onChange={(e) => setObsForm({ ...obsForm, observation: e.target.value })}
                 placeholder="Describe the observation..."
                 rows={3}
               />
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Severity</label>
-              <Select
-                value={obsForm.severity}
-                onValueChange={(v) =>
-                  setObsForm({ ...obsForm, severity: v as "info" | "warning" | "critical" })
-                }
-              >
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="info">Info</SelectItem>
-                  <SelectItem value="warning">Warning</SelectItem>
-                  <SelectItem value="critical">Critical</SelectItem>
-                </SelectContent>
-              </Select>
+              <label className="text-xs font-medium text-muted-foreground">Action Notes (optional)</label>
+              <Input
+                value={obsForm.actionNotes}
+                onChange={(e) => setObsForm({ ...obsForm, actionNotes: e.target.value })}
+                placeholder="Any action taken..."
+              />
             </div>
           </div>
           <DialogFooter>
@@ -395,13 +353,14 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
             <Button
               onClick={() =>
                 createObsMutation.mutate({
-                  agentId,
-                  title: obsForm.title,
-                  content: obsForm.content,
-                  severity: obsForm.severity,
+                  observerType: "board_human",
+                  observation: obsForm.observation,
+                  agentIds: [agentId],
+                  actionTaken: obsForm.actionNotes.trim().length > 0,
+                  actionNotes: obsForm.actionNotes.trim() || undefined,
                 })
               }
-              disabled={!obsForm.title.trim() || !obsForm.content.trim() || createObsMutation.isPending}
+              disabled={!obsForm.observation.trim() || createObsMutation.isPending}
             >
               {createObsMutation.isPending ? "Creating..." : "Create"}
             </Button>
@@ -442,28 +401,29 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Name</label>
-              <Input
-                value={expForm.name}
-                onChange={(e) => setExpForm({ ...expForm, name: e.target.value })}
-                placeholder="Experiment name"
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Description</label>
-              <Textarea
-                value={expForm.description}
-                onChange={(e) => setExpForm({ ...expForm, description: e.target.value })}
-                placeholder="What are you testing?"
-                rows={2}
-              />
-            </div>
-            <div>
               <label className="text-xs font-medium text-muted-foreground">Hypothesis</label>
               <Textarea
                 value={expForm.hypothesis}
                 onChange={(e) => setExpForm({ ...expForm, hypothesis: e.target.value })}
                 placeholder="What do you expect to happen?"
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Approach A</label>
+              <Textarea
+                value={expForm.approachA}
+                onChange={(e) => setExpForm({ ...expForm, approachA: e.target.value })}
+                placeholder="Describe approach A..."
+                rows={2}
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Approach B</label>
+              <Textarea
+                value={expForm.approachB}
+                onChange={(e) => setExpForm({ ...expForm, approachB: e.target.value })}
+                placeholder="Describe approach B..."
                 rows={2}
               />
             </div>
@@ -475,12 +435,12 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
             <Button
               onClick={() =>
                 createExpMutation.mutate({
-                  name: expForm.name,
-                  description: expForm.description || null,
-                  hypothesis: expForm.hypothesis || null,
+                  hypothesis: expForm.hypothesis,
+                  approachA: expForm.approachA,
+                  approachB: expForm.approachB,
                 })
               }
-              disabled={!expForm.name.trim() || createExpMutation.isPending}
+              disabled={!expForm.hypothesis.trim() || !expForm.approachA.trim() || !expForm.approachB.trim() || createExpMutation.isPending}
             >
               {createExpMutation.isPending ? "Creating..." : "Create"}
             </Button>
