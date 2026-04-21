@@ -41,6 +41,7 @@ const experimentStatusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
   running: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   paused: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  concluded: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   completed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
@@ -102,7 +103,16 @@ export function Analytics() {
   const analytics = analyticsQuery.data;
   const observations = observationsQuery.data ?? [];
   const agents = agentsQuery.data ?? [];
-  const agentSummaries = analytics?.agentSummaries ?? [];
+  const agentSummaries = analytics?.agents ?? [];
+
+  // Derive summary card values from agent summaries
+  const totalRuns = agentSummaries.reduce((sum, a) => sum + a.totalRuns, 0);
+  const totalCostCents = agentSummaries.reduce((sum, a) => sum + a.totalCostCents, 0);
+  const completionRates = agentSummaries.map((a) => a.completionRate).filter((r): r is number => r != null);
+  const avgCompletionRate = completionRates.length > 0
+    ? completionRates.reduce((a, b) => a + b, 0) / completionRates.length
+    : null;
+  const activeAgentCount = analytics?.agentCount ?? 0;
 
   // Collect experiments for all agents
   const agentIds = agents.map((a) => a.id);
@@ -131,26 +141,22 @@ export function Analytics() {
         <SummaryCard
           icon={Activity}
           label="Total Runs"
-          value={analytics ? String(analytics.totalRuns) : "--"}
+          value={analytics ? String(totalRuns) : "--"}
         />
         <SummaryCard
           icon={TrendingUp}
           label="Avg Completion Rate"
-          value={
-            analytics?.avgCompletionRate != null
-              ? `${Math.round(analytics.avgCompletionRate * 100)}%`
-              : "--"
-          }
+          value={avgCompletionRate != null ? `${Math.round(avgCompletionRate * 100)}%` : "--"}
         />
         <SummaryCard
           icon={DollarSign}
           label="Total Cost"
-          value={analytics?.totalCostCents != null ? formatCents(analytics.totalCostCents) : "--"}
+          value={analytics ? formatCents(totalCostCents) : "--"}
         />
         <SummaryCard
           icon={Users}
           label="Active Agents"
-          value={analytics ? String(analytics.activeAgents) : "--"}
+          value={analytics ? String(activeAgentCount) : "--"}
         />
       </div>
 
@@ -182,10 +188,10 @@ export function Analytics() {
                   <tr key={trend.agentId} className="border-b border-border last:border-b-0">
                     <td className="px-3 py-2 font-medium">{trend.agentName}</td>
                     <td className="px-3 py-2">
-                      {Math.round(trend.completionRate * 100)}%
+                      {trend.completionRate != null ? `${Math.round(trend.completionRate * 100)}%` : "--"}
                     </td>
-                    <td className="px-3 py-2">{formatCents(Math.round(trend.avgCostCents))}</td>
-                    <td className="px-3 py-2">{formatDuration(trend.avgDurationSeconds * 1000)}</td>
+                    <td className="px-3 py-2">{trend.avgCostCents != null ? formatCents(Math.round(trend.avgCostCents)) : "--"}</td>
+                    <td className="px-3 py-2">{trend.avgDurationSeconds != null ? formatDuration(trend.avgDurationSeconds * 1000) : "--"}</td>
                     <td className="px-3 py-2">{trend.totalRuns}</td>
                   </tr>
                 ))}

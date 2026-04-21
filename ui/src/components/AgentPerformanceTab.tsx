@@ -39,6 +39,7 @@ const experimentStatusColors: Record<string, string> = {
   draft: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
   running: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
   paused: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  concluded: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   completed: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
   cancelled: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
 };
@@ -124,8 +125,10 @@ export function AgentPerformanceTab({ agentId, companyId }: AgentPerformanceTabP
   const experiments = experimentsQuery.data ?? [];
 
   // Compute summary values from KPIs
-  const completedCount = kpis.filter((k) => k.taskCompleted === true).length;
-  const avgCompletion = kpis.length > 0 ? completedCount / kpis.length : null;
+  const completionKpis = kpis.filter((k) => k.taskCompleted != null);
+  const completedCount = completionKpis.filter((k) => k.taskCompleted === true).length;
+  const avgCompletion =
+    completionKpis.length > 0 ? completedCount / completionKpis.length : null;
 
   const costs = kpis.filter((k) => k.costCents != null).map((k) => k.costCents!);
   const avgCost = costs.length > 0 ? costs.reduce((a, b) => a + b, 0) / costs.length : null;
