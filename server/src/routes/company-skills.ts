@@ -221,6 +221,28 @@ export function companySkillRoutes(db: Db) {
     },
   );
 
+  router.post("/companies/:companyId/skills/sync-claude-code", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    await assertCanMutateCompanySkills(req, companyId);
+    const result = await svc.syncFromClaudeCode(companyId);
+    const skills = await svc.list(companyId);
+
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "company.skills_imported",
+      entityType: "company",
+      entityId: companyId,
+      details: { source: "claude_code_sync", imported: result.imported },
+    });
+
+    res.json({ imported: result.imported, sources: result.sources, skills });
+  });
+
   router.delete("/companies/:companyId/skills/:skillId", async (req, res) => {
     const companyId = req.params.companyId as string;
     const skillId = req.params.skillId as string;

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, asc, eq } from "drizzle-orm";
@@ -2326,6 +2327,51 @@ export function companySkillService(db: Db) {
     return skill;
   }
 
+  async function syncFromClaudeCode(companyId: string): Promise<{ imported: number; sources: string[] }> {
+    const home = os.homedir();
+    const skillDirs: string[] = [];
+
+    // User-authored skills in ~/.claude/skills/
+    const userSkillsDir = path.join(home, ".claude", "skills");
+    if (await fs.access(userSkillsDir).then(() => true).catch(() => false)) {
+      skillDirs.push(userSkillsDir);
+    }
+
+    // Plugin-provided skills from ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/skills/
+    const pluginCacheDir = path.join(home, ".claude", "plugins", "cache");
+    if (await fs.access(pluginCacheDir).then(() => true).catch(() => false)) {
+      const marketplaces = await fs.readdir(pluginCacheDir).catch(() => [] as string[]);
+      for (const marketplace of marketplaces) {
+        const marketplaceDir = path.join(pluginCacheDir, marketplace);
+        const plugins = await fs.readdir(marketplaceDir).catch(() => [] as string[]);
+        for (const plugin of plugins) {
+          const pluginDir = path.join(marketplaceDir, plugin);
+          const versions = await fs.readdir(pluginDir).catch(() => [] as string[]);
+          // Use the last version directory (most recently modified)
+          const latestVersion = versions.filter((v) => !v.includes("Zone.Identifier")).sort().at(-1);
+          if (!latestVersion) continue;
+          const skillsDir = path.join(pluginDir, latestVersion, "skills");
+          if (await fs.access(skillsDir).then(() => true).catch(() => false)) {
+            skillDirs.push(skillsDir);
+          }
+        }
+      }
+    }
+
+    let totalImported = 0;
+    const importedSources: string[] = [];
+
+    for (const dir of skillDirs) {
+      const skills = await readLocalSkillImports(companyId, dir).catch(() => [] as ImportedSkill[]);
+      if (skills.length === 0) continue;
+      await upsertImportedSkills(companyId, skills);
+      totalImported += skills.length;
+      importedSources.push(dir);
+    }
+
+    return { imported: totalImported, sources: importedSources };
+  }
+
   return {
     list,
     listFull,
@@ -2342,6 +2388,7 @@ export function companySkillService(db: Db) {
     createLocalSkill,
     deleteSkill,
     importFromSource,
+    syncFromClaudeCode,
     scanProjectWorkspaces,
     importPackageFiles,
     installUpdate,
