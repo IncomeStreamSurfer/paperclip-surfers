@@ -36,8 +36,26 @@ RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" &
 
 FROM base AS production
 WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=docker:cli /usr/local/bin/docker /usr/local/bin/docker
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends imagemagick wget gnupg \
+  && wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+  && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends google-chrome-stable \
+  && rm -rf /var/lib/apt/lists/*
+# Install Python 3.12 via uv to match the host imagemagick-mcp venv (built with Python 3.12)
+RUN UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python uv python install 3.12 \
+  && PY312=$(UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python uv python find 3.12) \
+  && chmod -R a+rX /usr/local/share/uv \
+  && ln -sf "$PY312" /usr/bin/python3 \
+  && ln -sf "$PY312" /usr/bin/python
+# Add node user to docker socket group (host docker GID=1001) for filesystem MCP
+RUN groupadd -f -g 1001 dockerhost && usermod -aG dockerhost node
 COPY --chown=node:node --from=build /app /app
-RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai \
+RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai mcp-searxng \
+  && node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs" \
   && mkdir -p /paperclip \
   && chown node:node /paperclip
 

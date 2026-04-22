@@ -762,6 +762,7 @@ export async function runChildProcess(
         const startedAt = new Date().toISOString();
 
         if (opts.stdin != null && child.stdin) {
+          child.stdin.on("error", () => {});
           child.stdin.write(opts.stdin);
           child.stdin.end();
         }

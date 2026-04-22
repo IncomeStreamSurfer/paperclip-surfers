@@ -32,6 +32,11 @@ services:
       - ${HOME}/.claude:/paperclip/.claude
       - ${HOME}/.claude:/home/ccasalicchio/.claude
       - ${HOME}/.claude.json:/paperclip/.claude.json
+      - /mnt/e:/mnt/e
+      - /mnt/obsidian:/mnt/obsidian
+      - /home/ccasalicchio/twenty-crm-mcp-server:/home/ccasalicchio/twenty-crm-mcp-server
+      - /home/ccasalicchio/imagemagic-mcp:/home/ccasalicchio/imagemagic-mcp
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       db:
         condition: service_healthy
