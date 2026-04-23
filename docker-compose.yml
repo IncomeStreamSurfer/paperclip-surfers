@@ -30,8 +30,7 @@ services:
     volumes:
       - paperclip-data:/paperclip
       - ${HOME}/.claude:/paperclip/.claude
-      - ${HOME}/.claude:/home/ccasalicchio/.claude
-      - ${HOME}/.claude.json:/paperclip/.claude.json
+      - ${HOME}:/home/ccasalicchio
       - /mnt/e:/mnt/e
       - /mnt/obsidian:/mnt/obsidian
       - /home/ccasalicchio/twenty-crm-mcp-server:/home/ccasalicchio/twenty-crm-mcp-server
