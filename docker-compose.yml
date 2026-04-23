@@ -37,6 +37,9 @@ services:
       - /home/ccasalicchio/twenty-crm-mcp-server:/home/ccasalicchio/twenty-crm-mcp-server
       - /home/ccasalicchio/imagemagic-mcp:/home/ccasalicchio/imagemagic-mcp
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - default
+      - twenty_default
     depends_on:
       db:
         condition: service_healthy
@@ -44,3 +47,8 @@ services:
 volumes:
   pgdata:
   paperclip-data:
+
+networks:
+  default: {}
+  twenty_default:
+    external: true
