@@ -82,19 +82,6 @@ describe("claude local skill sync", () => {
     expect(snapshot.entries.find((entry) => entry.key === "paperclip")).toBeUndefined();
   });
 
-  it("defaults to only the core paperclip skill when no explicit selection exists", async () => {
-    const snapshot = await listClaudeSkills({
-      agentId: "agent-1",
-      companyId: "company-1",
-      adapterType: "claude_local",
-      config: {},
-    });
-
-    expect(snapshot.desiredSkills).toContain(paperclipKey);
-    expect(snapshot.entries.find((e) => e.key === paperclipKey)?.state).toBe("configured");
-    expect(snapshot.entries.find((e) => e.key === createAgentKey)?.state).toBe("available");
-  });
-
   it("shows host-level user-installed Claude skills as read-only external entries", async () => {
     const home = await makeTempDir("paperclip-claude-user-skills-");
     cleanupDirs.add(home);

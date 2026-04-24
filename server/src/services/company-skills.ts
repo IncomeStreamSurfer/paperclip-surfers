@@ -2040,6 +2040,7 @@ export function companySkillService(db: Db) {
     const skills = await listFull(companyId);
 
     const out: PaperclipSkillEntry[] = [];
+    const PAPERCLIP_CORE_KEY = "paperclipai/paperclip/paperclip";
     for (const skill of skills) {
       const sourceKind = asString(getSkillMeta(skill).sourceKind);
       let source = normalizeSkillDirectory(skill);
@@ -2050,7 +2051,6 @@ export function companySkillService(db: Db) {
       }
       if (!source) continue;
 
-      const PAPERCLIP_CORE_KEY = "paperclipai/paperclip/paperclip";
       const required = skill.key === PAPERCLIP_CORE_KEY;
       out.push({
         key: skill.key,
@@ -2058,7 +2058,7 @@ export function companySkillService(db: Db) {
         source,
         required,
         requiredReason: required
-          ? "Bundled Paperclip skills are always available for local adapters."
+          ? "The core Paperclip skill is required for all local adapters."
           : null,
       });
     }
