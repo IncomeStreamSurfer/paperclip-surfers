@@ -29,6 +29,16 @@ services:
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}"
     volumes:
       - paperclip-data:/paperclip
+      - ${HOME}/.claude:/paperclip/.claude
+      - ${HOME}:/home/ccasalicchio
+      - /mnt/e:/mnt/e
+      - /mnt/obsidian:/mnt/obsidian
+      - /home/ccasalicchio/twenty-crm-mcp-server:/home/ccasalicchio/twenty-crm-mcp-server
+      - /home/ccasalicchio/imagemagic-mcp:/home/ccasalicchio/imagemagic-mcp
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - default
+      - twenty_default
     depends_on:
       db:
         condition: service_healthy
@@ -36,3 +46,8 @@ services:
 volumes:
   pgdata:
   paperclip-data:
+
+networks:
+  default: {}
+  twenty_default:
+    external: true

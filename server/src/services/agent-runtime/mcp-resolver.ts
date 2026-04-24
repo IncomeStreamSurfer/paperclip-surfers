@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { execSync } from "node:child_process";
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { companyMcpServers, agentMcpExclusions } from "@paperclipai/db";
 
@@ -159,35 +159,11 @@ export function mcpResolverService(db: Db) {
         }
       }
 
-      // Upsert into DB
+      // Upsert into DB — unique on (companyId, name)
       for (const server of discovered) {
-        const [existing] = await db
-          .select()
-          .from(companyMcpServers)
-          .where(
-            and(
-              eq(companyMcpServers.companyId, companyId),
-              eq(companyMcpServers.name, server.name),
-              eq(companyMcpServers.source, "claude_code_discovered"),
-            ),
-          )
-          .limit(1);
-
-        if (existing) {
-          await db
-            .update(companyMcpServers)
-            .set({
-              command: server.command,
-              args: server.args,
-              env: server.env,
-              transportType: server.transportType,
-              transportUrl: server.transportUrl ?? null,
-              claudeCodeConfigPath: server.configPath,
-              updatedAt: new Date(),
-            })
-            .where(eq(companyMcpServers.id, existing.id));
-        } else {
-          await db.insert(companyMcpServers).values({
+        await db
+          .insert(companyMcpServers)
+          .values({
             companyId,
             name: server.name,
             command: server.command,
@@ -199,8 +175,19 @@ export function mcpResolverService(db: Db) {
             claudeCodeConfigPath: server.configPath,
             scope: "company",
             enabled: true,
+          })
+          .onConflictDoUpdate({
+            target: [companyMcpServers.companyId, companyMcpServers.name],
+            set: {
+              command: server.command,
+              args: server.args,
+              env: server.env,
+              transportType: server.transportType,
+              transportUrl: server.transportUrl ?? null,
+              claudeCodeConfigPath: server.configPath,
+              updatedAt: sql`now()`,
+            },
           });
-        }
       }
 
       return { discovered, message: `Discovered ${discovered.length} MCP servers from Claude Code` };

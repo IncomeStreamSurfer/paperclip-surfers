@@ -4,6 +4,8 @@ import { execFile } from "node:child_process";
 import path from "node:path";
 import { promisify } from "node:util";
 import type { Db } from "@paperclipai/db";
+import { agentMemories, heartbeatRuns } from "@paperclipai/db";
+import { and, gte, inArray } from "drizzle-orm";
 import type {
   CompanyPortabilityAgentManifestEntry,
   CompanyPortabilityCollisionStrategy,
@@ -110,6 +112,8 @@ const DEFAULT_INCLUDE: CompanyPortabilityInclude = {
   projects: false,
   issues: false,
   skills: false,
+  memories: false,
+  telemetry: false,
 };
 
 const DEFAULT_COLLISION_STRATEGY: CompanyPortabilityCollisionStrategy = "rename";
@@ -1184,6 +1188,8 @@ function normalizeInclude(input?: Partial<CompanyPortabilityInclude>): CompanyPo
     projects: input?.projects ?? DEFAULT_INCLUDE.projects,
     issues: input?.issues ?? DEFAULT_INCLUDE.issues,
     skills: input?.skills ?? DEFAULT_INCLUDE.skills,
+    memories: input?.memories ?? DEFAULT_INCLUDE.memories,
+    telemetry: input?.telemetry ?? DEFAULT_INCLUDE.telemetry,
   };
 }
 
@@ -1842,6 +1848,8 @@ function applySelectedFilesToSource(source: ResolvedSource, selectedFiles?: stri
     projects: filtered.manifest.projects.length > 0,
     issues: filtered.manifest.issues.length > 0,
     skills: filtered.manifest.skills.length > 0,
+    memories: false,
+    telemetry: false,
   };
 
   return filtered;
@@ -2297,6 +2305,8 @@ function buildManifestFromPackageFiles(
       projects: projectPaths.length > 0,
       issues: taskPaths.length > 0,
       skills: skillPaths.length > 0,
+      memories: false,
+      telemetry: false,
     },
     company: {
       path: resolvedCompanyPath,
@@ -3248,6 +3258,8 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
       projects: resolved.manifest.projects.length > 0,
       issues: resolved.manifest.issues.length > 0,
       skills: resolved.manifest.skills.length > 0,
+      memories: false,
+      telemetry: false,
     };
     resolved.manifest.envInputs = dedupeEnvInputs(envInputs);
     resolved.warnings.unshift(...warnings);
@@ -3282,9 +3294,78 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
       projects: resolved.manifest.projects.length > 0,
       issues: resolved.manifest.issues.length > 0,
       skills: resolved.manifest.skills.length > 0,
+      memories: false,
+      telemetry: false,
     };
     resolved.manifest.envInputs = dedupeEnvInputs(envInputs);
     resolved.warnings.unshift(...warnings);
+
+    // Export agent memories
+    if (include.memories) {
+      const memAgentIdList = agentRows.map((a) => a.id);
+      const memRows = memAgentIdList.length > 0
+        ? await db.select().from(agentMemories).where(inArray(agentMemories.agentId, memAgentIdList))
+        : [];
+      if (memRows.length > 0) {
+        finalFiles["memories.json"] = JSON.stringify(
+          memRows.map((row) => ({
+            agentSlug: idToSlug.get(row.agentId) ?? row.agentId,
+            scope: row.scope,
+            projectSlug: row.projectId ? (projectSlugById.get(row.projectId) ?? null) : null,
+            category: row.category,
+            title: row.title,
+            content: row.content,
+            source: row.source,
+            confidence: row.confidence,
+            createdAt: row.createdAt.toISOString(),
+            updatedAt: row.updatedAt.toISOString(),
+          })),
+          null,
+          2,
+        );
+      }
+      resolved.manifest.includes.memories = true;
+    }
+
+    // Export heartbeat telemetry (last 90 days)
+    if (include.telemetry) {
+      const telAgentIdList = agentRows.map((a) => a.id);
+      const cutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+      const runRows = telAgentIdList.length > 0
+        ? await db.select({
+            id: heartbeatRuns.id,
+            agentId: heartbeatRuns.agentId,
+            status: heartbeatRuns.status,
+            sessionIdBefore: heartbeatRuns.sessionIdBefore,
+            sessionIdAfter: heartbeatRuns.sessionIdAfter,
+            usageJson: heartbeatRuns.usageJson,
+            createdAt: heartbeatRuns.createdAt,
+            finishedAt: heartbeatRuns.finishedAt,
+          }).from(heartbeatRuns).where(
+            and(
+              inArray(heartbeatRuns.agentId, telAgentIdList),
+              gte(heartbeatRuns.createdAt, cutoff),
+            ),
+          )
+        : [];
+      if (runRows.length > 0) {
+        finalFiles["telemetry.json"] = JSON.stringify(
+          runRows.map((row) => ({
+            agentSlug: idToSlug.get(row.agentId) ?? row.agentId,
+            runId: row.id,
+            status: row.status,
+            sessionIdBefore: row.sessionIdBefore ?? null,
+            sessionIdAfter: row.sessionIdAfter ?? null,
+            usageJson: row.usageJson ?? null,
+            createdAt: row.createdAt?.toISOString() ?? null,
+            finishedAt: row.finishedAt?.toISOString() ?? null,
+          })),
+          null,
+          2,
+        );
+      }
+      resolved.manifest.includes.telemetry = true;
+    }
 
     return {
       rootPath,
@@ -3327,6 +3408,8 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
         skills: exported.manifest.skills.length,
         projects: exported.manifest.projects.length,
         issues: exported.manifest.issues.length,
+        memories: exported.files["memories.json"] ? JSON.parse(exported.files["memories.json"] as string).length : 0,
+        telemetry: exported.files["telemetry.json"] ? JSON.parse(exported.files["telemetry.json"] as string).length : 0,
       },
     };
   }
@@ -3345,6 +3428,8 @@ export function companyPortabilityService(db: Db, storage?: StorageService) {
       projects: requestedInclude.projects && manifest.projects.length > 0,
       issues: requestedInclude.issues && manifest.issues.length > 0,
       skills: requestedInclude.skills && manifest.skills.length > 0,
+      memories: requestedInclude.memories,
+      telemetry: requestedInclude.telemetry,
     };
     const collisionStrategy = input.collisionStrategy ?? DEFAULT_COLLISION_STRATEGY;
     if (mode === "agent_safe" && collisionStrategy === "replace") {

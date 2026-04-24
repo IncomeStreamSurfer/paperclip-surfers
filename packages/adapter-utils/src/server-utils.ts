@@ -378,8 +378,10 @@ export async function listPaperclipSkillEntries(
         key: `paperclipai/paperclip/${entry.name}`,
         runtimeName: entry.name,
         source: path.join(root, entry.name),
-        required: true,
-        requiredReason: "Bundled Paperclip skills are always available for local adapters.",
+        required: entry.name === "paperclip",
+        requiredReason: entry.name === "paperclip"
+          ? "The core Paperclip skill is required for all local adapters."
+          : null,
       }));
   } catch {
     return [];
@@ -606,6 +608,10 @@ export function resolvePaperclipDesiredSkillNames(
   if (!preference.explicit) {
     return Array.from(new Set(requiredSkills));
   }
+  const SKILL_WILDCARD = "*";
+  if (preference.desiredSkills.includes(SKILL_WILDCARD)) {
+    return Array.from(new Set([...requiredSkills, ...availableEntries.map((e) => e.key)]));
+  }
   const desiredSkills = preference.desiredSkills
     .map((reference) => canonicalizeDesiredPaperclipSkillReference(reference, availableEntries))
     .filter(Boolean);
@@ -762,6 +768,7 @@ export async function runChildProcess(
         const startedAt = new Date().toISOString();
 
         if (opts.stdin != null && child.stdin) {
+          child.stdin.on("error", () => {});
           child.stdin.write(opts.stdin);
           child.stdin.end();
         }

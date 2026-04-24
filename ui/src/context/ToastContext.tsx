@@ -10,6 +10,22 @@ import {
 } from "react";
 
 export type ToastTone = "info" | "success" | "warn" | "error";
+export type ToastPosition = "bottom-left" | "bottom-right" | "top-right" | "center";
+
+const POSITION_STORAGE_KEY = "paperclip:toast-position";
+const DEFAULT_POSITION: ToastPosition = "bottom-left";
+
+function readStoredPosition(): ToastPosition {
+  try {
+    const stored = localStorage.getItem(POSITION_STORAGE_KEY);
+    if (stored === "bottom-left" || stored === "bottom-right" || stored === "top-right" || stored === "center") {
+      return stored;
+    }
+  } catch {
+    // ignore
+  }
+  return DEFAULT_POSITION;
+}
 
 export interface ToastAction {
   label: string;
@@ -41,6 +57,8 @@ interface ToastContextValue {
   pushToast: (input: ToastInput) => string | null;
   dismissToast: (id: string) => void;
   clearToasts: () => void;
+  toastPosition: ToastPosition;
+  setToastPosition: (position: ToastPosition) => void;
 }
 
 const DEFAULT_TTL_BY_TONE: Record<ToastTone, number> = {
@@ -69,8 +87,18 @@ function generateToastId() {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [toastPosition, setToastPositionState] = useState<ToastPosition>(readStoredPosition);
   const timersRef = useRef(new Map<string, number>());
   const dedupeRef = useRef(new Map<string, number>());
+
+  const setToastPosition = useCallback((position: ToastPosition) => {
+    try {
+      localStorage.setItem(POSITION_STORAGE_KEY, position);
+    } catch {
+      // ignore
+    }
+    setToastPositionState(position);
+  }, []);
 
   const clearTimer = useCallback((id: string) => {
     const handle = timersRef.current.get(id);
@@ -156,8 +184,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       pushToast,
       dismissToast,
       clearToasts,
+      toastPosition,
+      setToastPosition,
     }),
-    [toasts, pushToast, dismissToast, clearToasts],
+    [toasts, pushToast, dismissToast, clearToasts, toastPosition, setToastPosition],
   );
 
   return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;
