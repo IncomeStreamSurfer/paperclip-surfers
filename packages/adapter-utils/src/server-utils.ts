@@ -378,8 +378,10 @@ export async function listPaperclipSkillEntries(
         key: `paperclipai/paperclip/${entry.name}`,
         runtimeName: entry.name,
         source: path.join(root, entry.name),
-        required: true,
-        requiredReason: "Bundled Paperclip skills are always available for local adapters.",
+        required: entry.name === "paperclip",
+        requiredReason: entry.name === "paperclip"
+          ? "The core Paperclip skill is required for all local adapters."
+          : null,
       }));
   } catch {
     return [];

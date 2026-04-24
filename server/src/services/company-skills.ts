@@ -2050,7 +2050,8 @@ export function companySkillService(db: Db) {
       }
       if (!source) continue;
 
-      const required = sourceKind === "paperclip_bundled";
+      const PAPERCLIP_CORE_KEY = "paperclipai/paperclip/paperclip";
+      const required = skill.key === PAPERCLIP_CORE_KEY;
       out.push({
         key: skill.key,
         runtimeName: buildSkillRuntimeName(skill.key, skill.slug),
