@@ -2289,6 +2289,14 @@ export function agentRoutes(db: Db) {
     if (run && run.status !== "queued" && run.status !== "running") {
       run = null;
     }
+    // Verify the run is actually working on this issue, not a different one
+    if (run) {
+      const runContext = asRecord(run.contextSnapshot);
+      const runIssueId = asNonEmptyString(runContext?.issueId);
+      if (runIssueId && runIssueId !== issue.id) {
+        run = null;
+      }
+    }
 
     if (!run && issue.assigneeAgentId && issue.status === "in_progress") {
       const candidateRun = await heartbeat.getActiveRunForAgent(issue.assigneeAgentId);
