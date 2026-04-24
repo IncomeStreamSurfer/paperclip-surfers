@@ -4,6 +4,8 @@ export interface CompanyPortabilityInclude {
   projects: boolean;
   issues: boolean;
   skills: boolean;
+  memories: boolean;
+  telemetry: boolean;
 }
 
 export interface CompanyPortabilityEnvInput {
@@ -181,6 +183,8 @@ export interface CompanyPortabilityExportPreviewResult {
     skills: number;
     projects: number;
     issues: number;
+    memories: number;
+    telemetry: number;
   };
   warnings: string[];
   paperclipExtensionPath: string;
