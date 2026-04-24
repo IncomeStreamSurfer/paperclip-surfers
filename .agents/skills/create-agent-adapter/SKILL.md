@@ -35,6 +35,18 @@ Three separate registries consume adapter modules:
 | `ui/src/adapters/registry.ts` | `UIAdapterModule` |
 | `cli/src/adapters/registry.ts` | `CLIAdapterModule` |
 
+**Existing adapters (for reference):**
+
+| adapterType | Location |
+|-------------|----------|
+| `claude_local` | `packages/adapters/claude-local` |
+| `codex_local` | `packages/adapters/codex-local` |
+| `cursor` | `packages/adapters/cursor-local` |
+| `gemini_local` | `packages/adapters/gemini-local` |
+| `openclaw_gateway` | `packages/adapters/openclaw-gateway` |
+| `opencode_local` | `packages/adapters/opencode-local` |
+| `pi_local` | `packages/adapters/pi-local` |
+
 ---
 
 ## 2. Core Types (`@paperclipai/adapter-utils`)
@@ -47,7 +59,8 @@ interface AdapterExecutionContext {
   runId: string;
   agent: AdapterAgent;     // { id, companyId, name, adapterType, adapterConfig }
   runtime: AdapterRuntime; // { sessionId, sessionParams, sessionDisplayId, taskKey }
-  config: Record<string, unknown>;   // The agent's adapterConfig blob
+  config: Record<string, unknown>;   // adapterConfig — static adapter config stored in DB
+  runtimeConfig: Record<string, unknown>; // dynamic config (merged: adapterConfig + secrets + injected values like paperclipRuntimeSkills)
   context: Record<string, unknown>;  // taskId, wakeReason, approvalId, etc.
   onLog: (stream: "stdout"|"stderr", chunk: string) => Promise<void>;
   onMeta?: (meta: AdapterInvocationMeta) => Promise<void>;
@@ -134,7 +147,7 @@ Return `AdapterEnvironmentCheck` objects with deterministic `code` values. Must 
 ### 3.4 UI Module
 
 - **`parse-stdout.ts`** — convert stdout lines to `TranscriptEntry[]` for the run viewer. Return `[{ kind: "stdout", ts, text: line }]` as fallback. See Reference: [TranscriptEntryKinds].
-- **`build-config.ts`** — convert `CreateConfigValues` to `adapterConfig`. Include `timeoutSec`, `graceSec`, `cwd`, `promptTemplate`, `model`, and adapter-specific fields.
+- **`build-config.ts`** — convert `CreateConfigValues` to `adapterConfig`. Include `timeoutSec`, `graceSec`, `cwd`, `bootstrapPromptTemplate`, `model`, and adapter-specific fields.
 - **`config-fields.tsx`** — React component (`AdapterConfigFieldsProps`) for the agent creation/edit form. Use shared primitives: `Field`, `ToggleField`, `DraftInput`, `DraftNumberInput`, `help`. Support both `create` mode (`values`/`set`) and `edit` mode (`config`/`eff`/`mark`).
 
 ### 3.5 CLI Module
@@ -187,7 +200,7 @@ Safe extraction (return typed value or fallback on bad input): `asString(val, fb
 
 **Naming:** adapter type = `snake_case`; package = `@paperclipai/adapter-<kebab-name>`; directory = `packages/adapters/<kebab-name>/`.
 
-**Prompt templates:** support `promptTemplate` in every adapter; use `renderTemplate()`. Default: `"You are agent {{agent.id}} ({{agent.name}}). Continue your Paperclip work."`
+**Prompt templates:** support `bootstrapPromptTemplate` (the config key agents set) in every adapter; use `renderTemplate()`. Default: `"You are agent {{agent.id}} ({{agent.name}}). Continue your Paperclip work."`
 
 **Error handling:** differentiate timeout vs process error vs parse failure; always populate `errorMessage`; include raw stdout/stderr in `resultJson` on parse failure; handle missing CLI gracefully.
 
