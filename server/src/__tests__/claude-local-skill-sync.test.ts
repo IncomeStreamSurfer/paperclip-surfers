@@ -110,4 +110,23 @@ describe("claude local skill sync", () => {
       detail: "Installed outside Paperclip management in the Claude skills home.",
     }));
   });
+
+  it("expands '*' wildcard to all available skills", async () => {
+    const snapshot = await listClaudeSkills({
+      agentId: "agent-5",
+      companyId: "company-1",
+      adapterType: "claude_local",
+      config: {
+        paperclipSkillSync: {
+          desiredSkills: ["*"],
+        },
+      },
+    });
+
+    expect(snapshot.desiredSkills).toContain(paperclipKey);
+    expect(snapshot.desiredSkills).toContain(createAgentKey);
+    expect(snapshot.entries.filter((e) => e.managed).every((e) => e.state === "configured" || e.state === "available")).toBe(true);
+    const managedDesiredEntries = snapshot.entries.filter((e) => e.managed && snapshot.desiredSkills.includes(e.key));
+    expect(managedDesiredEntries.length).toBeGreaterThan(1);
+  });
 });

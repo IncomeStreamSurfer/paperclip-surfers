@@ -608,6 +608,9 @@ export function resolvePaperclipDesiredSkillNames(
   if (!preference.explicit) {
     return Array.from(new Set(requiredSkills));
   }
+  if (preference.desiredSkills.includes("*")) {
+    return Array.from(new Set([...requiredSkills, ...availableEntries.map((e) => e.key)]));
+  }
   const desiredSkills = preference.desiredSkills
     .map((reference) => canonicalizeDesiredPaperclipSkillReference(reference, availableEntries))
     .filter(Boolean);
