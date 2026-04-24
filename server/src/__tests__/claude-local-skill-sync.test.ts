@@ -125,7 +125,8 @@ describe("claude local skill sync", () => {
 
     expect(snapshot.desiredSkills).toContain(paperclipKey);
     expect(snapshot.desiredSkills).toContain(createAgentKey);
-    expect(snapshot.entries.filter((e) => e.managed).every((e) => e.state === "configured" || e.state === "available")).toBe(true);
+    expect(snapshot.entries.find((e) => e.key === paperclipKey)?.state).toBe("configured");
+    expect(snapshot.entries.find((e) => e.key === createAgentKey)?.state).toBe("configured");
     const managedDesiredEntries = snapshot.entries.filter((e) => e.managed && snapshot.desiredSkills.includes(e.key));
     expect(managedDesiredEntries.length).toBeGreaterThan(1);
   });

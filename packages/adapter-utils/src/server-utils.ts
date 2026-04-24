@@ -608,7 +608,8 @@ export function resolvePaperclipDesiredSkillNames(
   if (!preference.explicit) {
     return Array.from(new Set(requiredSkills));
   }
-  if (preference.desiredSkills.includes("*")) {
+  const SKILL_WILDCARD = "*";
+  if (preference.desiredSkills.includes(SKILL_WILDCARD)) {
     return Array.from(new Set([...requiredSkills, ...availableEntries.map((e) => e.key)]));
   }
   const desiredSkills = preference.desiredSkills

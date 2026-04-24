@@ -1193,6 +1193,11 @@ function resolveRequestedSkillKeysOrThrow(
   skills: CompanySkill[],
   requestedReferences: string[],
 ) {
+  // If the list contains the wildcard, return it as-is — it is expanded at runtime by resolvePaperclipDesiredSkillNames.
+  if (requestedReferences.includes("*")) {
+    return ["*"];
+  }
+
   const missing = new Set<string>();
   const ambiguous = new Set<string>();
   const resolved = new Set<string>();
