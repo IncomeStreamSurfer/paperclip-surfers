@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomBytes } from "node:crypto";
 import type { Db } from "@paperclipai/db";
 import { messagingProviders, messagingSubscriptions } from "@paperclipai/db";
 import {
@@ -8,6 +9,10 @@ import {
 import { eq, and } from "drizzle-orm";
 import { validate } from "../middleware/validate.js";
 import { assertCompanyAccess } from "./authz.js";
+
+function generateWebhookSecret(): string {
+  return randomBytes(32).toString("hex");
+}
 
 export function messagingRoutes(db: Db) {
   const router = Router();
@@ -50,10 +55,20 @@ export function messagingRoutes(db: Db) {
           )
           .then((rows) => rows[0] ?? null);
 
+        let finalConfig = config;
+        if (provider === "telegram") {
+          const existingSecret = (existing?.config as Record<string, unknown> | undefined)?.webhookSecret as string | undefined;
+          const incomingSecret = config.webhookSecret as string | undefined;
+          finalConfig = {
+            ...config,
+            webhookSecret: incomingSecret || existingSecret || generateWebhookSecret(),
+          };
+        }
+
         if (existing) {
           const [updated] = await db
             .update(messagingProviders)
-            .set({ enabled, config, updatedAt: now })
+            .set({ enabled, config: finalConfig, updatedAt: now })
             .where(eq(messagingProviders.id, existing.id))
             .returning();
           res.json(updated);
@@ -64,7 +79,7 @@ export function messagingRoutes(db: Db) {
               companyId,
               provider,
               enabled,
-              config,
+              config: finalConfig,
               createdAt: now,
               updatedAt: now,
             } as never)

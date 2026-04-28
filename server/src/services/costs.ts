@@ -12,6 +12,43 @@ export interface CostDateRange {
 const METERED_BILLING_TYPE = "metered_api";
 const SUBSCRIPTION_BILLING_TYPES = ["subscription_included", "subscription_overage"] as const;
 
+/**
+ * Server-side model pricing floor (USD cents per million tokens).
+ * Used to detect and correct agent under-reporting of costs.
+ * Values are conservative minimums — actual pricing may be higher.
+ * Prefix matching is used so "claude-3-5-sonnet-20241022" matches "claude-3-5-sonnet".
+ */
+const MODEL_PRICE_FLOOR: Array<{ prefix: string; inputCentsPerM: number; outputCentsPerM: number }> = [
+  { prefix: "claude-opus-4",           inputCentsPerM: 1500, outputCentsPerM: 7500 },
+  { prefix: "claude-3-5-sonnet",       inputCentsPerM:  300, outputCentsPerM: 1500 },
+  { prefix: "claude-3-5-haiku",        inputCentsPerM:   80, outputCentsPerM:  400 },
+  { prefix: "claude-3-haiku",          inputCentsPerM:   25, outputCentsPerM:  125 },
+  { prefix: "claude-3-opus",           inputCentsPerM: 1500, outputCentsPerM: 7500 },
+  { prefix: "claude-3-sonnet",         inputCentsPerM:  300, outputCentsPerM: 1500 },
+  { prefix: "gpt-4o-mini",             inputCentsPerM:   15, outputCentsPerM:   60 },
+  { prefix: "gpt-4o",                  inputCentsPerM:  500, outputCentsPerM: 1500 },
+  { prefix: "gpt-4-turbo",             inputCentsPerM: 1000, outputCentsPerM: 3000 },
+  { prefix: "gpt-4",                   inputCentsPerM: 3000, outputCentsPerM: 6000 },
+  { prefix: "gpt-3.5-turbo",           inputCentsPerM:   50, outputCentsPerM:  150 },
+  { prefix: "gemini-1.5-pro",          inputCentsPerM:  125, outputCentsPerM:  500 },
+  { prefix: "gemini-1.5-flash",        inputCentsPerM:    7, outputCentsPerM:   30 },
+  { prefix: "gemini-2.0-flash",        inputCentsPerM:   10, outputCentsPerM:   40 },
+];
+
+function computeMinCostCents(
+  model: string | null | undefined,
+  inputTokens: number,
+  outputTokens: number,
+): number | null {
+  if (!model || (inputTokens <= 0 && outputTokens <= 0)) return null;
+  const lower = model.toLowerCase();
+  const rates = MODEL_PRICE_FLOOR.find((r) => lower.startsWith(r.prefix.toLowerCase()));
+  if (!rates) return null;
+  return Math.ceil(
+    (inputTokens * rates.inputCentsPerM + outputTokens * rates.outputCentsPerM) / 1_000_000,
+  );
+}
+
 function currentUtcMonthWindow(now = new Date()) {
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth();
@@ -58,10 +95,21 @@ export function costService(db: Db, budgetHooks: BudgetServiceHooks = {}) {
         throw unprocessable("Agent does not belong to company");
       }
 
+      // Server-side cost floor: if the agent-reported costCents is below the
+      // minimum calculable from known model pricing, use the server value to
+      // prevent budget-cap evasion via underreporting.
+      const minCost = computeMinCostCents(
+        data.model,
+        data.inputTokens ?? 0,
+        data.outputTokens ?? 0,
+      );
+      const costCents = minCost !== null && data.costCents < minCost ? minCost : data.costCents;
+
       const event = await db
         .insert(costEvents)
         .values({
           ...data,
+          costCents,
           companyId,
           biller: data.biller ?? data.provider,
           billingType: data.billingType ?? "unknown",

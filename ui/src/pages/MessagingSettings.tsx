@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { messagingApi } from "@/api/messaging";
 import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/utils";
-import { Send, MessageSquare, Image, Check, X, Loader2 } from "lucide-react";
+import { Send, MessageSquare, Image, Check, X, Loader2, Copy, RefreshCw } from "lucide-react";
 import type { MessagingMessageType, MessagingProvider } from "@paperclipai/shared";
 import { useCompany } from "@/context/CompanyContext";
 
@@ -58,11 +58,30 @@ function ProviderSection({
 
   const providerRow = providersQuery.data?.find((p) => p.provider === provider);
   const isEnabled = providerRow?.enabled ?? false;
+  const existingConfig = (providerRow?.config ?? {}) as Record<string, string>;
 
-  const [botToken, setBotToken] = useState("");
-  const [chatId, setChatId] = useState("");
+  const [botToken, setBotToken] = useState(existingConfig.botToken ?? "");
+  const [chatId, setChatId] = useState(existingConfig.chatId ?? "");
+
+  useEffect(() => {
+    setBotToken(existingConfig.botToken ?? "");
+    setChatId(existingConfig.chatId ?? "");
+  }, [existingConfig.botToken, existingConfig.chatId]);
 
   const isTelegram = provider === "telegram";
+  const webhookUrl = typeof window !== "undefined"
+    ? `${window.location.origin}/api/webhooks/telegram/${companyId}`
+    : "";
+  const webhookSecret = existingConfig.webhookSecret ?? "";
+
+  const copyToClipboard = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      pushToast({ title: `${label} copied`, tone: "success" });
+    } catch {
+      pushToast({ title: "Copy failed", tone: "error" });
+    }
+  };
 
   return (
     <section className="rounded-xl border border-border bg-card p-5 space-y-4">
@@ -99,6 +118,68 @@ function ProviderSection({
         <div className="space-y-4">
           {isTelegram && (
             <div className="space-y-3">
+              {webhookUrl && (
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Webhook URL</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={webhookUrl}
+                      readOnly
+                      className="flex-1 rounded-md border border-input bg-muted px-3 py-1.5 text-sm text-muted-foreground"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(webhookUrl, "Webhook URL")}
+                      className="rounded-md border border-input p-1.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Set this URL in Telegram via {" "}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">setWebhook</code>.
+                  </p>
+                </div>
+              )}
+              {webhookSecret && (
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground">Webhook Secret</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={webhookSecret}
+                      readOnly
+                      className="flex-1 rounded-md border border-input bg-muted px-3 py-1.5 text-sm text-muted-foreground font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(webhookSecret, "Webhook secret")}
+                      className="rounded-md border border-input p-1.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        upsertProvider.mutate({
+                          enabled: true,
+                          config: { ...existingConfig, botToken, chatId, webhookSecret: "" },
+                        })
+                      }
+                      disabled={upsertProvider.isPending}
+                      className="rounded-md border border-input p-1.5 text-muted-foreground hover:text-foreground"
+                    >
+                      <RefreshCw className={cn("h-3.5 w-3.5", upsertProvider.isPending && "animate-spin")} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Pass this as {" "}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">secret_token</code> in {" "}
+                    <code className="rounded bg-muted px-1 py-0.5 text-xs">setWebhook</code>.
+                  </p>
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Bot Token</label>
                 <input
