@@ -42,6 +42,7 @@ export type ProjectConfigFieldKey =
   | "description"
   | "status"
   | "goals"
+  | "targetDate"
   | "execution_workspace_enabled"
   | "execution_workspace_default_mode"
   | "execution_workspace_base_ref"
@@ -587,11 +588,14 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
         <PropertyRow label={<FieldLabel label="Updated" state="idle" />}>
           <span className="text-sm">{formatDate(project.updatedAt)}</span>
         </PropertyRow>
-        {project.targetDate && (
-          <PropertyRow label={<FieldLabel label="Target Date" state="idle" />}>
-            <span className="text-sm">{formatDate(project.targetDate)}</span>
-          </PropertyRow>
-        )}
+        <PropertyRow label={<FieldLabel label="Target Date" state={fieldState("targetDate")} />}>
+          <input
+            type="date"
+            className="text-sm bg-transparent border-none outline-none cursor-pointer hover:text-foreground text-muted-foreground [color-scheme:var(--color-scheme,light)]"
+            value={project.targetDate ? project.targetDate.slice(0, 10) : ""}
+            onChange={(e) => commitField("targetDate", { targetDate: e.target.value || null })}
+          />
+        </PropertyRow>
       </div>
 
       <Separator className="my-4" />

@@ -31,6 +31,7 @@ export const createIssueSchema = z.object({
   projectId: z.string().uuid().optional().nullable(),
   projectWorkspaceId: z.string().uuid().optional().nullable(),
   goalId: z.string().uuid().optional().nullable(),
+  sprintId: z.string().uuid().optional().nullable(),
   parentId: z.string().uuid().optional().nullable(),
   title: z.string().min(1),
   description: z.string().optional().nullable(),
@@ -62,6 +63,13 @@ export const createIssueLabelSchema = z.object({
 });
 
 export type CreateIssueLabel = z.infer<typeof createIssueLabelSchema>;
+
+export const updateIssueLabelSchema = createIssueLabelSchema.partial().refine(
+  (d) => d.name !== undefined || d.color !== undefined,
+  { message: "At least one of name or color must be provided" },
+);
+
+export type UpdateIssueLabel = z.infer<typeof updateIssueLabelSchema>;
 
 export const updateIssueSchema = createIssueSchema.partial().extend({
   comment: z.string().min(1).optional(),

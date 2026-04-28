@@ -46,10 +46,31 @@ export interface ProjectCodebase {
   origin: ProjectCodebaseOrigin;
 }
 
+export interface ProjectMetrics {
+  total: number;
+  byStatus: {
+    backlog: number;
+    todo: number;
+    in_progress: number;
+    in_review: number;
+    blocked: number;
+    done: number;
+    cancelled: number;
+  };
+  completionRate: number; // done / (total - cancelled) * 100
+  velocity: {
+    last7days: number;
+    last14days: number;
+    last30days: number;
+  };
+  avgCycleDays: number | null; // avg days from created → done
+}
+
 export interface Project {
   id: string;
   companyId: string;
   urlKey: string;
+  departmentId: string | null;
   /** @deprecated Use goalIds / goals instead */
   goalId: string | null;
   goalIds: string[];

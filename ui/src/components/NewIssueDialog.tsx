@@ -84,7 +84,7 @@ type StagedIssueFile = {
 };
 
 const ISSUE_OVERRIDE_ADAPTER_TYPES = new Set(["claude_local", "codex_local", "opencode_local"]);
-const STAGED_FILE_ACCEPT = "image/*,application/pdf,text/plain,text/markdown,application/json,text/csv,text/html,.md,.markdown";
+const STAGED_FILE_ACCEPT = "*";
 
 const ISSUE_THINKING_EFFORT_OPTIONS = {
   claude_local: [
@@ -287,6 +287,9 @@ export function NewIssueDialog() {
   const [selectedExecutionWorkspaceId, setSelectedExecutionWorkspaceId] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [dialogCompanyId, setDialogCompanyId] = useState<string | null>(null);
+  const [labelsOpen, setLabelsOpen] = useState(false);
+  const [labelSearch, setLabelSearch] = useState("");
+  const [selectedLabelIds, setSelectedLabelIds] = useState<string[]>([]);
   const [stagedFiles, setStagedFiles] = useState<StagedIssueFile[]>([]);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -391,6 +394,12 @@ export function NewIssueDialog() {
         : ["agents", "none", "adapter-models", assigneeAdapterType ?? "none"],
     queryFn: () => agentsApi.adapterModels(effectiveCompanyId!, assigneeAdapterType!),
     enabled: Boolean(effectiveCompanyId) && newIssueOpen && supportsAssigneeOverrides,
+  });
+
+  const { data: issueLabels } = useQuery({
+    queryKey: queryKeys.issues.labels(effectiveCompanyId!),
+    queryFn: () => issuesApi.listLabels(effectiveCompanyId!),
+    enabled: !!effectiveCompanyId && newIssueOpen,
   });
 
   const createIssue = useMutation({
@@ -608,6 +617,8 @@ export function NewIssueDialog() {
     setStagedFiles([]);
     setIsFileDragOver(false);
     setCompanyOpen(false);
+    setSelectedLabelIds([]);
+    setLabelSearch("");
     executionWorkspaceDefaultProjectId.current = null;
   }
 
@@ -670,6 +681,7 @@ export function NewIssueDialog() {
         ? { executionWorkspaceId: selectedExecutionWorkspaceId }
         : {}),
       ...(executionWorkspaceSettings ? { executionWorkspaceSettings } : {}),
+      ...(selectedLabelIds.length > 0 ? { labelIds: selectedLabelIds } : {}),
     });
   }
 
@@ -1388,11 +1400,54 @@ export function NewIssueDialog() {
             </PopoverContent>
           </Popover>
 
-          {/* Labels chip (placeholder) */}
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/50 transition-colors text-muted-foreground">
-            <Tag className="h-3 w-3" />
-            Labels
-          </button>
+          {/* Labels popover */}
+          <Popover open={labelsOpen} onOpenChange={(open) => { setLabelsOpen(open); if (!open) setLabelSearch(""); }}>
+            <PopoverTrigger asChild>
+              <button className="inline-flex items-center gap-1.5 rounded-md border border-border px-2 py-1 text-xs hover:bg-accent/50 transition-colors text-muted-foreground">
+                <Tag className="h-3 w-3" />
+                {selectedLabelIds.length > 0
+                  ? `${selectedLabelIds.length} label${selectedLabelIds.length !== 1 ? "s" : ""}`
+                  : "Labels"}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-1" align="start">
+              <input
+                className="w-full px-2 py-1.5 text-xs bg-transparent outline-none border-b border-border mb-1 placeholder:text-muted-foreground/50"
+                placeholder="Search labels..."
+                value={labelSearch}
+                onChange={(e) => setLabelSearch(e.target.value)}
+                autoFocus
+              />
+              <div className="max-h-44 overflow-y-auto overscroll-contain space-y-0.5">
+                {(issueLabels ?? [])
+                  .filter((l) => !labelSearch.trim() || l.name.toLowerCase().includes(labelSearch.toLowerCase()))
+                  .map((label) => {
+                    const selected = selectedLabelIds.includes(label.id);
+                    return (
+                      <button
+                        key={label.id}
+                        type="button"
+                        className={cn(
+                          "flex items-center gap-2 w-full px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-left",
+                          selected && "bg-accent",
+                        )}
+                        onClick={() =>
+                          setSelectedLabelIds((ids) =>
+                            ids.includes(label.id) ? ids.filter((id) => id !== label.id) : [...ids, label.id]
+                          )
+                        }
+                      >
+                        <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: label.color }} />
+                        <span className="truncate">{label.name}</span>
+                      </button>
+                    );
+                  })}
+                {(issueLabels ?? []).length === 0 && (
+                  <p className="px-2 py-2 text-xs text-muted-foreground">No labels yet</p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
           <input
             ref={stageFileInputRef}

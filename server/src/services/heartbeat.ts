@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
-import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import type { BillingType } from "@paperclipai/shared";
 import {
@@ -25,6 +25,7 @@ import type { AdapterExecutionResult, AdapterInvocationMeta, AdapterSessionCodec
 import { createLocalAgentJwt } from "../agent-auth-jwt.js";
 import { parseObject, asBoolean, asNumber, appendWithCap, MAX_EXCERPT_BYTES } from "../adapters/utils.js";
 import { costService } from "./costs.js";
+import { messagingDispatchService } from "./messaging/dispatch.js";
 import { companySkillService } from "./company-skills.js";
 import { budgetService, type BudgetEnforcementScope } from "./budgets.js";
 import { secretService } from "./secrets.js";
@@ -61,6 +62,8 @@ import {
 const MAX_LIVE_LOG_CHUNK_BYTES = 8 * 1024;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT = 1;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MAX = 10;
+// Default wall-clock timeout per run: 4 hours. Overridable via runtimeConfig.heartbeat.maxRuntimeMs.
+const DEFAULT_RUN_WALL_CLOCK_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 const DEFERRED_WAKE_CONTEXT_KEY = "_paperclipWakeContext";
 const DETACHED_PROCESS_ERROR_CODE = "process_detached";
 const startLocksByAgent = new Map<string, Promise<void>>();
@@ -1617,6 +1620,7 @@ export function heartbeatService(db: Db) {
       intervalSec: Math.max(0, asNumber(heartbeat.intervalSec, 0)),
       wakeOnDemand: asBoolean(heartbeat.wakeOnDemand ?? heartbeat.wakeOnAssignment ?? heartbeat.wakeOnOnDemand ?? heartbeat.wakeOnAutomation, true),
       maxConcurrentRuns: normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns),
+      maxRuntimeMs: Math.max(60_000, asNumber(heartbeat.maxRuntimeMs, DEFAULT_RUN_WALL_CLOCK_TIMEOUT_MS)),
     };
   }
 
@@ -1746,7 +1750,21 @@ export function heartbeatService(db: Db) {
     const reaped: string[] = [];
 
     for (const { run, adapterType } of activeRuns) {
-      if (runningProcesses.has(run.id) || activeRunExecutions.has(run.id)) continue;
+      // Skip runs that are legitimately executing in this process — UNLESS they
+      // have exceeded 2× the default wall-clock timeout (safety net for hung awaits).
+      const hardStaleMs = DEFAULT_RUN_WALL_CLOCK_TIMEOUT_MS * 2;
+      const runAgeMs = now.getTime() - (run.startedAt ? new Date(run.startedAt).getTime() : 0);
+      const isHardStale = runAgeMs > hardStaleMs;
+      const isActiveInProcess = runningProcesses.has(run.id) || activeRunExecutions.has(run.id);
+      if (isActiveInProcess && !isHardStale) continue;
+
+      // Notify on run hang (hard-stale and still executing in this process)
+      if (isActiveInProcess && isHardStale) {
+        const durationMinutes = Math.round(runAgeMs / 60_000);
+        messagingDispatchService(db).notifyRunHang(run.agentId, run.id, durationMinutes).catch((err) =>
+          logger.warn({ err, runId: run.id }, "failed to send run hang messaging notification"),
+        );
+      }
 
       // Apply staleness threshold to avoid false positives
       if (staleThresholdMs > 0) {
@@ -2656,19 +2674,48 @@ Keep memories concise and specific. Don't write vague platitudes.`;
         logger.warn({ err: mcpErr, agentId: agent.id, runId: run.id }, "Failed to resolve MCP config for agent run");
       }
 
-      const adapterResult = await adapter.execute({
-        runId: run.id,
-        agent,
-        runtime: runtimeForAdapter,
-        config: runtimeConfig,
-        context,
-        onLog,
-        onMeta: onAdapterMeta,
-        onSpawn: async (meta) => {
-          await persistRunProcessMetadata(run.id, meta);
-        },
-        authToken: authToken ?? undefined,
-      });
+      // Skip AI invocation when there's no actual work to do — prevents token waste on idle heartbeats
+      const hasActiveWork = issueId != null || (run.wakeupRequestId != null && context.wakeReason != null);
+      let adapterResult: AdapterExecutionResult;
+      if (!hasActiveWork) {
+        logger.info(
+          { agentId: agent.id, runId: run.id, adapterType: agent.adapterType },
+          "No active tasks — skipping adapter invocation",
+        );
+        adapterResult = {
+          exitCode: 0,
+          signal: null,
+          timedOut: false,
+          summary: "No active tasks — skipped AI invocation",
+        };
+      } else {
+        adapterResult = await ((): Promise<AdapterExecutionResult> => {
+          const policy = parseHeartbeatPolicy(agent);
+          const timeoutMs = policy.maxRuntimeMs;
+          let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => {
+              reject(new Error(`Run exceeded wall-clock timeout of ${Math.round(timeoutMs / 60_000)} minutes (run_timeout)`));
+            }, timeoutMs);
+          });
+          return Promise.race([
+            adapter.execute({
+              runId: run.id,
+              agent,
+              runtime: runtimeForAdapter,
+              config: runtimeConfig,
+              context,
+              onLog,
+              onMeta: onAdapterMeta,
+              onSpawn: async (meta) => {
+                await persistRunProcessMetadata(run.id, meta);
+              },
+              authToken: authToken ?? undefined,
+            }),
+            timeoutPromise,
+          ]).finally(() => { if (timeoutHandle !== undefined) clearTimeout(timeoutHandle); });
+        })();
+      }
 
       // Clean up temp files
       if (mcpConfigCleanup) mcpConfigCleanup();
@@ -4003,15 +4050,18 @@ Focus on **trends over time**, not single runs. Only act when you see a sustaine
   }
 
   return {
-    list: async (companyId: string, agentId?: string, limit?: number) => {
+    list: async (companyId: string, agentId?: string, limit?: number, days?: number) => {
+      const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
+      const where = and(
+        agentId
+          ? and(eq(heartbeatRuns.companyId, companyId), eq(heartbeatRuns.agentId, agentId))
+          : eq(heartbeatRuns.companyId, companyId),
+        since ? gte(heartbeatRuns.startedAt, since) : undefined,
+      );
       const query = db
         .select(heartbeatRunListColumns)
         .from(heartbeatRuns)
-        .where(
-          agentId
-            ? and(eq(heartbeatRuns.companyId, companyId), eq(heartbeatRuns.agentId, agentId))
-            : eq(heartbeatRuns.companyId, companyId),
-        )
+        .where(where)
         .orderBy(desc(heartbeatRuns.createdAt));
 
       const rows = limit ? await query.limit(limit) : await query;

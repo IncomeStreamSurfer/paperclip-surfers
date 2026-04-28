@@ -1,15 +1,18 @@
 import { Navigate, Outlet, Route, Routes, useLocation, useParams } from "@/lib/router";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Layout } from "./components/Layout";
 import { OnboardingWizard } from "./components/OnboardingWizard";
 import { authApi } from "./api/auth";
 import { healthApi } from "./api/health";
+import { instanceSettingsApi } from "./api/instanceSettings";
 import { Dashboard } from "./pages/Dashboard";
 import { Companies } from "./pages/Companies";
 import { Agents } from "./pages/Agents";
 import { AgentDetail } from "./pages/AgentDetail";
 import { Projects } from "./pages/Projects";
+import { ArchivedProjects } from "./pages/ArchivedProjects";
 import { ProjectDetail } from "./pages/ProjectDetail";
 import { Issues } from "./pages/Issues";
 import { IssueDetail } from "./pages/IssueDetail";
@@ -24,6 +27,9 @@ import { Costs } from "./pages/Costs";
 import { Activity } from "./pages/Activity";
 import { Inbox } from "./pages/Inbox";
 import { CompanySettings } from "./pages/CompanySettings";
+import { ModelSettings } from "./pages/ModelSettings";
+import { LabelSettings } from "./pages/LabelSettings";
+import { MessagingSettings } from "./pages/MessagingSettings";
 import { CompanySkills } from "./pages/CompanySkills";
 import { McpServers } from "./pages/McpServers";
 import { Analytics } from "./pages/Analytics";
@@ -33,6 +39,39 @@ import { DesignGuide } from "./pages/DesignGuide";
 import { InstanceGeneralSettings } from "./pages/InstanceGeneralSettings";
 import { InstanceSettings } from "./pages/InstanceSettings";
 import { InstanceExperimentalSettings } from "./pages/InstanceExperimentalSettings";
+import { InstanceNotificationsSettings } from "./pages/InstanceNotificationsSettings";
+import InstanceUsersPage from "./pages/InstanceUsersPage";
+import { InstanceCliAuthSettings } from "./pages/InstanceCliAuthSettings";
+import { ProfilePage } from "./pages/ProfilePage";
+import { SocialMediaOverview } from "./pages/SocialMediaOverview";
+import { SocialMediaAccounts } from "./pages/SocialMediaAccounts";
+import { SocialMediaPosts } from "./pages/SocialMediaPosts";
+import { SocialMediaPostDetail } from "./pages/SocialMediaPostDetail";
+import { SeoOverview } from "./pages/SeoOverview";
+import { SeoKeywords } from "./pages/SeoKeywords";
+import { SeoPages } from "./pages/SeoPages";
+import { CopywritingOverview } from "./pages/CopywritingOverview";
+import { CopywritingBriefs } from "./pages/CopywritingBriefs";
+import { CopywritingBriefDetail } from "./pages/CopywritingBriefDetail";
+import { CrmOverview } from "./pages/CrmOverview";
+import { CrmContacts } from "./pages/CrmContacts";
+import { CrmDeals } from "./pages/CrmDeals";
+import { DesignOverview } from "./pages/DesignOverview";
+import { DesignAssets } from "./pages/DesignAssets";
+import { Departments } from "./pages/Departments";
+import { SoftwareOverview } from "./pages/SoftwareOverview";
+import { ResearchOverview } from "./pages/ResearchOverview";
+import { ResearchProjects } from "./pages/ResearchProjects";
+import { ResearchNotes } from "./pages/ResearchNotes";
+import { ResearchLiterature } from "./pages/ResearchLiterature";
+import { MspOverview } from "./pages/MspOverview";
+import { MspClients } from "./pages/MspClients";
+import { MspTickets } from "./pages/MspTickets";
+import { Sprints } from "./pages/Sprints";
+import { CivilOverview } from "./pages/CivilOverview";
+import { CivilProjects } from "./pages/CivilProjects";
+import { CivilDrawings } from "./pages/CivilDrawings";
+import { CivilSpecs } from "./pages/CivilSpecs";
 import { PluginManager } from "./pages/PluginManager";
 import { PluginSettings } from "./pages/PluginSettings";
 import { PluginPage } from "./pages/PluginPage";
@@ -43,6 +82,7 @@ import { AuthPage } from "./pages/Auth";
 import { BoardClaimPage } from "./pages/BoardClaim";
 import { CliAuthPage } from "./pages/CliAuth";
 import { InviteLandingPage } from "./pages/InviteLanding";
+import { AcceptUserInvitePage } from "./pages/AcceptUserInvite";
 import { NotFoundPage } from "./pages/NotFound";
 import { queryKeys } from "./lib/queryKeys";
 import { useCompany } from "./context/CompanyContext";
@@ -125,11 +165,44 @@ function boardRoutes() {
       <Route path="onboarding" element={<OnboardingRoutePage />} />
       <Route path="companies" element={<Companies />} />
       <Route path="company/settings" element={<CompanySettings />} />
+      <Route path="company/settings/models" element={<ModelSettings />} />
+      <Route path="company/settings/labels" element={<LabelSettings />} />
+      <Route path="company/settings/messaging" element={<MessagingSettings />} />
       <Route path="company/export/*" element={<CompanyExport />} />
       <Route path="company/import" element={<CompanyImport />} />
       <Route path="skills/*" element={<CompanySkills />} />
       <Route path="mcp-servers" element={<McpServers />} />
-      <Route path="analytics" element={<Analytics />} />
+      <Route path="social-media" element={<SocialMediaOverview />} />
+      <Route path="social-media/accounts" element={<SocialMediaAccounts />} />
+      <Route path="social-media/posts" element={<SocialMediaPosts />} />
+      <Route path="social-media/posts/:postId" element={<SocialMediaPostDetail />} />
+      <Route path="seo" element={<SeoOverview />} />
+      <Route path="seo/keywords" element={<SeoKeywords />} />
+      <Route path="seo/pages" element={<SeoPages />} />
+      <Route path="copywriting" element={<CopywritingOverview />} />
+      <Route path="copywriting/briefs" element={<CopywritingBriefs />} />
+      <Route path="copywriting/briefs/:briefId" element={<CopywritingBriefDetail />} />
+      <Route path="crm" element={<CrmOverview />} />
+      <Route path="crm/contacts" element={<CrmContacts />} />
+      <Route path="crm/contacts/:contactId" element={<CrmContacts />} />
+      <Route path="crm/deals" element={<CrmDeals />} />
+      <Route path="design" element={<DesignOverview />} />
+      <Route path="design/assets" element={<DesignAssets />} />
+      <Route path="departments" element={<Departments />} />
+      <Route path="software" element={<SoftwareOverview />} />
+      <Route path="research" element={<ResearchOverview />} />
+      <Route path="research/projects" element={<ResearchProjects />} />
+      <Route path="research/notes" element={<ResearchNotes />} />
+      <Route path="research/literature" element={<ResearchLiterature />} />
+       <Route path="msp" element={<MspOverview />} />
+       <Route path="msp/clients" element={<MspClients />} />
+       <Route path="msp/tickets" element={<MspTickets />} />
+       <Route path="sprints" element={<Sprints />} />
+       <Route path="civil" element={<CivilOverview />} />
+       <Route path="civil/projects" element={<CivilProjects />} />
+       <Route path="civil/drawings" element={<CivilDrawings />} />
+       <Route path="civil/specs" element={<CivilSpecs />} />
+       <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<LegacySettingsRedirect />} />
       <Route path="settings/*" element={<LegacySettingsRedirect />} />
       <Route path="plugins/:pluginId" element={<PluginPage />} />
@@ -144,12 +217,14 @@ function boardRoutes() {
       <Route path="agents/:agentId/:tab" element={<AgentDetail />} />
       <Route path="agents/:agentId/runs/:runId" element={<AgentDetail />} />
       <Route path="projects" element={<Projects />} />
+      <Route path="projects/archived" element={<ArchivedProjects />} />
       <Route path="projects/:projectId" element={<ProjectDetail />} />
       <Route path="projects/:projectId/overview" element={<ProjectDetail />} />
       <Route path="projects/:projectId/issues" element={<ProjectDetail />} />
       <Route path="projects/:projectId/issues/:filter" element={<ProjectDetail />} />
       <Route path="projects/:projectId/configuration" element={<ProjectDetail />} />
       <Route path="projects/:projectId/budget" element={<ProjectDetail />} />
+      <Route path="projects/:projectId/metrics" element={<ProjectDetail />} />
       <Route path="issues" element={<Issues />} />
       <Route path="issues/all" element={<Navigate to="/issues" replace />} />
       <Route path="issues/active" element={<Navigate to="/issues" replace />} />
@@ -200,15 +275,15 @@ function OnboardingRoutePage() {
     : null;
 
   const title = matchedCompany
-    ? `Add another agent to ${matchedCompany.name}`
+    ? `Add an agent to ${matchedCompany.name}`
     : companies.length > 0
-      ? "Create another company"
-      : "Create your first company";
+      ? "Start a new company"
+      : "Welcome to Paperclip";
   const description = matchedCompany
-    ? "Run onboarding again to add an agent and a starter task for this company."
+    ? `Set up a new agent for ${matchedCompany.name} and give it a starter task.`
     : companies.length > 0
-      ? "Run onboarding again to create another company and seed its first agent."
-      : "Get started by creating a company and your first agent.";
+      ? "Create another AI company with its own agents, tasks, and projects."
+      : "Set up your first AI company, add an agent, and give it something to do.";
 
   return (
     <div className="mx-auto max-w-xl py-10">
@@ -223,7 +298,7 @@ function OnboardingRoutePage() {
                 : openOnboarding()
             }
           >
-            {matchedCompany ? "Add Agent" : "Start Onboarding"}
+            {matchedCompany ? "Add Agent" : companies.length > 0 ? "New Company" : "Get Started"}
           </Button>
         </div>
       </div>
@@ -290,26 +365,142 @@ function NoCompaniesStartPage() {
   return (
     <div className="mx-auto max-w-xl py-10">
       <div className="rounded-lg border border-border bg-card p-6">
-        <h1 className="text-xl font-semibold">Create your first company</h1>
+        <h1 className="text-xl font-semibold">Welcome to Paperclip</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Get started by creating a company.
+          Set up your first AI company, add an agent, and give it something to do.
         </p>
         <div className="mt-4">
-          <Button onClick={() => openOnboarding()}>New Company</Button>
+          <Button onClick={() => openOnboarding()}>Get Started</Button>
         </div>
       </div>
     </div>
   );
 }
 
+function BrandingInjector() {
+  const brandingQuery = useQuery({
+    queryKey: queryKeys.instance.branding,
+    queryFn: () => instanceSettingsApi.getBranding(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  useEffect(() => {
+    if (!brandingQuery.data) return;
+    const { siteTitle, faviconUrl, appIconUrl } = brandingQuery.data;
+
+    // Remember original values so we can restore them on cleanup
+    const originalTitle = document.title;
+    const originalAppleTitle = document.querySelector<HTMLMetaElement>(
+      'meta[name="apple-mobile-web-app-title"]',
+    )?.content;
+    const originalFaviconLinks = Array.from(
+      document.querySelectorAll<HTMLLinkElement>("link[rel~='icon']"),
+    ).map((el) => el.outerHTML);
+    const originalAppleLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+    const originalAppleHref = originalAppleLink?.href;
+
+    if (siteTitle) {
+      document.title = siteTitle;
+      const appleTitle = document.querySelector<HTMLMetaElement>(
+        'meta[name="apple-mobile-web-app-title"]',
+      );
+      if (appleTitle) appleTitle.content = siteTitle;
+    }
+
+    if (faviconUrl) {
+      // Replace ALL existing icon link tags so the browser doesn't prefer
+      // a leftover SVG/PNG link over our custom asset URL.
+      document.querySelectorAll<HTMLLinkElement>("link[rel~='icon']").forEach((el) => el.remove());
+      const link = document.createElement("link");
+      link.rel = "icon";
+      link.href = faviconUrl;
+      document.head.appendChild(link);
+    }
+
+    if (appIconUrl) {
+      let appleLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+      if (!appleLink) {
+        appleLink = document.createElement("link");
+        appleLink.rel = "apple-touch-icon";
+        document.head.appendChild(appleLink);
+      }
+      appleLink.href = appIconUrl;
+    }
+
+    return () => {
+      // Restore original title
+      document.title = originalTitle;
+      const appleTitle = document.querySelector<HTMLMetaElement>(
+        'meta[name="apple-mobile-web-app-title"]',
+      );
+      if (appleTitle && originalAppleTitle !== undefined) {
+        appleTitle.content = originalAppleTitle;
+      }
+
+      // Restore original favicon links if custom was injected
+      if (faviconUrl) {
+        document.querySelectorAll<HTMLLinkElement>("link[rel~='icon']").forEach((el) => el.remove());
+        originalFaviconLinks.forEach((html) => {
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = html;
+          const link = wrapper.querySelector("link");
+          if (link) document.head.appendChild(link);
+        });
+      }
+
+      // Restore original apple-touch-icon if custom was injected
+      if (appIconUrl && originalAppleHref !== undefined) {
+        const appleLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
+        if (appleLink) appleLink.href = originalAppleHref;
+      }
+    };
+  }, [brandingQuery.data]);
+
+  return null;
+}
+
+const BRAND_OVERRIDE_STYLE_ID = "paperclip-brand-override";
+
+function CompanyBrandInjector() {
+  const { selectedCompany } = useCompany();
+
+  useEffect(() => {
+    const brandColor = selectedCompany?.brandColor;
+    const brandFg = selectedCompany?.brandPrimaryForeground;
+
+    let el = document.getElementById(BRAND_OVERRIDE_STYLE_ID) as HTMLStyleElement | null;
+
+    if (!brandColor) {
+      el?.remove();
+      return;
+    }
+
+    if (!el) {
+      el = document.createElement("style");
+      el.id = BRAND_OVERRIDE_STYLE_ID;
+      document.head.appendChild(el);
+    }
+
+    // Fall back to a light foreground when no explicit value is saved
+    const fgValue = brandFg ?? "oklch(0.985 0 0)";
+    const block = `--primary: ${brandColor}; --primary-foreground: ${fgValue}; --sidebar-primary: ${brandColor}; --sidebar-primary-foreground: ${fgValue};`;
+    el.textContent = `:root { ${block} }\n:root.dark { ${block} }\n:root.light { ${block} }`;
+  }, [selectedCompany?.brandColor, selectedCompany?.brandPrimaryForeground]);
+
+  return null;
+}
+
 export function App() {
   return (
     <>
+      <BrandingInjector />
+      <CompanyBrandInjector />
       <Routes>
         <Route path="auth" element={<AuthPage />} />
         <Route path="board-claim/:token" element={<BoardClaimPage />} />
         <Route path="cli-auth/:id" element={<CliAuthPage />} />
         <Route path="invite/:token" element={<InviteLandingPage />} />
+        <Route path="accept-user-invite/:token" element={<AcceptUserInvitePage />} />
 
         <Route element={<CloudAccessGate />}>
           <Route index element={<CompanyRootRedirect />} />
@@ -320,8 +511,14 @@ export function App() {
             <Route path="general" element={<InstanceGeneralSettings />} />
             <Route path="heartbeats" element={<InstanceSettings />} />
             <Route path="experimental" element={<InstanceExperimentalSettings />} />
+            <Route path="notifications" element={<InstanceNotificationsSettings />} />
+            <Route path="users" element={<InstanceUsersPage />} />
+            <Route path="cli-auth" element={<InstanceCliAuthSettings />} />
             <Route path="plugins" element={<PluginManager />} />
             <Route path="plugins/:pluginId" element={<PluginSettings />} />
+          </Route>
+          <Route path="profile" element={<Layout />}>
+            <Route index element={<ProfilePage />} />
           </Route>
           <Route path="companies" element={<UnprefixedBoardRedirect />} />
           <Route path="issues" element={<UnprefixedBoardRedirect />} />
@@ -345,6 +542,26 @@ export function App() {
           <Route path="tests/ux/runs" element={<UnprefixedBoardRedirect />} />
           <Route path="mcp-servers" element={<UnprefixedBoardRedirect />} />
           <Route path="analytics" element={<UnprefixedBoardRedirect />} />
+          <Route path="social-media" element={<UnprefixedBoardRedirect />} />
+          <Route path="social-media/*" element={<UnprefixedBoardRedirect />} />
+          <Route path="seo" element={<UnprefixedBoardRedirect />} />
+          <Route path="seo/*" element={<UnprefixedBoardRedirect />} />
+          <Route path="copywriting" element={<UnprefixedBoardRedirect />} />
+          <Route path="copywriting/*" element={<UnprefixedBoardRedirect />} />
+          <Route path="crm" element={<UnprefixedBoardRedirect />} />
+          <Route path="crm/*" element={<UnprefixedBoardRedirect />} />
+          <Route path="design" element={<UnprefixedBoardRedirect />} />
+          <Route path="design/*" element={<UnprefixedBoardRedirect />} />
+          <Route path="departments" element={<UnprefixedBoardRedirect />} />
+          <Route path="software" element={<UnprefixedBoardRedirect />} />
+          <Route path="software/*" element={<UnprefixedBoardRedirect />} />
+          <Route path="research" element={<UnprefixedBoardRedirect />} />
+          <Route path="research/*" element={<UnprefixedBoardRedirect />} />
+           <Route path="msp" element={<UnprefixedBoardRedirect />} />
+           <Route path="msp/*" element={<UnprefixedBoardRedirect />} />
+           <Route path="sprints" element={<UnprefixedBoardRedirect />} />
+           <Route path="civil" element={<UnprefixedBoardRedirect />} />
+           <Route path="civil/*" element={<UnprefixedBoardRedirect />} />
           <Route path=":companyPrefix" element={<Layout />}>
             {boardRoutes()}
           </Route>

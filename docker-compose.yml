@@ -27,8 +27,27 @@ services:
       PAPERCLIP_DEPLOYMENT_EXPOSURE: "private"
       PAPERCLIP_PUBLIC_URL: "${PAPERCLIP_PUBLIC_URL:-http://localhost:3100}"
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}"
+      HOME: /paperclip
+      OLLAMA_HOST: "http://192.168.68.230:11434"
+      # Tell Ollama to keep models loaded indefinitely (prevents timeout on first use)
+      OLLAMA_KEEP_ALIVE: "-1"
     volumes:
       - paperclip-data:/paperclip
+      - ${HOME}/.claude:/paperclip/.claude
+      - ${HOME}:/home/ccasalicchio
+      - ${HOME}/.config/opencode:/paperclip/.config/opencode
+      - ${HOME}/.gemini:/paperclip/.gemini
+      - ${HOME}/.codex:/paperclip/.codex
+      - ${HOME}/.copilot:/paperclip/.copilot
+      - /mnt/e:/mnt/e
+      - /mnt/obsidian:/mnt/obsidian
+      - /home/ccasalicchio/twenty-crm-mcp-server:/home/ccasalicchio/twenty-crm-mcp-server
+      - /home/ccasalicchio/imagemagic-mcp:/home/ccasalicchio/imagemagic-mcp
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - default
     depends_on:
       db:
         condition: service_healthy
@@ -36,3 +55,6 @@ services:
 volumes:
   pgdata:
   paperclip-data:
+
+networks:
+  default: {}

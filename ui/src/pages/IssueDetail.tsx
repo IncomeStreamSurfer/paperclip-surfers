@@ -53,6 +53,7 @@ import {
   Repeat,
   SlidersHorizontal,
   Trash2,
+  X,
 } from "lucide-react";
 import type { ActivityEvent } from "@paperclipai/shared";
 import type { Agent, IssueAttachment } from "@paperclipai/shared";
@@ -660,7 +661,7 @@ export function IssueDetail() {
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*,application/pdf,text/plain,text/markdown,application/json,text/csv,text/html,.md,.markdown"
+        accept="*"
         className="hidden"
         onChange={handleFilePicked}
         multiple
@@ -768,7 +769,7 @@ export function IssueDetail() {
               {(issue.labels ?? []).slice(0, 4).map((label) => (
                 <span
                   key={label.id}
-                  className="inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium"
+                  className="inline-flex items-center rounded-full border pl-2 pr-1 py-0.5 text-[10px] font-medium gap-1"
                   style={{
                     borderColor: label.color,
                     color: pickTextColorForPillBg(label.color, 0.12),
@@ -776,6 +777,18 @@ export function IssueDetail() {
                   }}
                 >
                   {label.name}
+                  <button
+                    type="button"
+                    className="rounded-full hover:bg-black/10 dark:hover:bg-white/20 p-0.5 -mr-0.5 shrink-0"
+                    onClick={() =>
+                      updateIssue.mutate({
+                        labelIds: (issue.labelIds ?? []).filter((id) => id !== label.id),
+                      })
+                    }
+                    title={`Remove ${label.name}`}
+                  >
+                    <X className="h-2 w-2" />
+                  </button>
                 </span>
               ))}
               {(issue.labels ?? []).length > 4 && (

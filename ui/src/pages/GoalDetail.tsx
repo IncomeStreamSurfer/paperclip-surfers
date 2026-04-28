@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useParams } from "@/lib/router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { goalsApi } from "../api/goals";
@@ -91,6 +91,34 @@ export function GoalDetail() {
     return p.goalId === goalId;
   });
 
+  // Compute subtree metrics (self + all descendants) client-side
+  const subtreeMetrics = useMemo(() => {
+    if (!allGoals || !goalId) return null;
+    // BFS to collect all descendants
+    const ids = new Set<string>([goalId]);
+    let frontier = [goalId];
+    while (frontier.length > 0) {
+      const next: string[] = [];
+      for (const g of allGoals) {
+        if (g.parentId && ids.has(g.parentId) && !ids.has(g.id)) {
+          ids.add(g.id);
+          next.push(g.id);
+        }
+      }
+      frontier = next;
+    }
+    const subtree = allGoals.filter((g) => ids.has(g.id));
+    const byStatus = { planned: 0, active: 0, achieved: 0, cancelled: 0 };
+    const byLevel = { company: 0, team: 0, agent: 0, task: 0 };
+    for (const g of subtree) {
+      byStatus[g.status as keyof typeof byStatus] = (byStatus[g.status as keyof typeof byStatus] ?? 0) + 1;
+      byLevel[g.level as keyof typeof byLevel] = (byLevel[g.level as keyof typeof byLevel] ?? 0) + 1;
+    }
+    const countable = subtree.length - byStatus.cancelled;
+    const completionRate = countable > 0 ? Math.round((byStatus.achieved / countable) * 100) : 0;
+    return { total: subtree.length, byStatus, byLevel, completionRate };
+  }, [allGoals, goalId]);
+
   useEffect(() => {
     setBreadcrumbs([
       { label: "Goals", href: "/goals" },
@@ -153,6 +181,7 @@ export function GoalDetail() {
           <TabsTrigger value="projects">
             Projects ({linkedProjects.length})
           </TabsTrigger>
+          <TabsTrigger value="progress">Progress</TabsTrigger>
         </TabsList>
 
         <TabsContent value="children" className="mt-4 space-y-3">
@@ -188,6 +217,63 @@ export function GoalDetail() {
                 />
               ))}
             </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="progress" className="mt-4 space-y-4">
+          {subtreeMetrics ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { label: "Total (subtree)", value: subtreeMetrics.total },
+                  { label: "Active", value: subtreeMetrics.byStatus.active },
+                  { label: "Achieved", value: subtreeMetrics.byStatus.achieved },
+                  { label: "Completion", value: `${subtreeMetrics.completionRate}%` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-lg border border-border bg-card px-4 py-3">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+                    <p className="text-2xl font-semibold mt-0.5">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">By Status</p>
+                <div className="flex gap-2 flex-wrap">
+                  {(["planned", "active", "achieved", "cancelled"] as const).map((s) => (
+                    <span key={s} className="text-xs border border-border rounded px-2 py-1">
+                      {s}: {subtreeMetrics.byStatus[s]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">By Level</p>
+                <div className="flex gap-2 flex-wrap">
+                  {(["company", "team", "agent", "task"] as const).map((l) => (
+                    <span key={l} className="text-xs border border-border rounded px-2 py-1">
+                      {l}: {subtreeMetrics.byLevel[l]}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>Completion rate</span>
+                  <span>{subtreeMetrics.completionRate}%</span>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary rounded-full transition-all"
+                    style={{ width: `${subtreeMetrics.completionRate}%` }}
+                  />
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">No data available.</p>
           )}
         </TabsContent>
       </Tabs>

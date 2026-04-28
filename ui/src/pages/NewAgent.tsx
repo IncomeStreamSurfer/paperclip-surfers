@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "@/lib/router";
 import { useCompany } from "../context/CompanyContext";
@@ -14,11 +14,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Shield } from "lucide-react";
+import { ChevronDown, ChevronRight, Download, LayoutTemplate, Search, Shield, Sparkles } from "lucide-react";
 import { cn, agentUrl } from "../lib/utils";
+import { SKILL_CATALOG, SKILL_CATEGORIES } from "../lib/skill-catalog";
 import { roleLabels } from "../components/agent-config-primitives";
 import { AgentConfigForm, type CreateConfigValues } from "../components/AgentConfigForm";
 import { defaultCreateValues } from "../components/agent-config-defaults";
+import { AGENT_TEMPLATES } from "../lib/agent-templates";
 import { getUIAdapter } from "../adapters";
 import { ReportsToPicker } from "../components/ReportsToPicker";
 import {
@@ -65,15 +67,24 @@ export function NewAgent() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const presetAdapterType = searchParams.get("adapterType");
+  const presetTemplate = searchParams.get("template");
 
   const [name, setName] = useState("");
   const [title, setTitle] = useState("");
   const [role, setRole] = useState("general");
+  const [capabilities, setCapabilities] = useState<string | null>(null);
   const [reportsTo, setReportsTo] = useState<string | null>(null);
   const [configValues, setConfigValues] = useState<CreateConfigValues>(defaultCreateValues);
   const [selectedSkillKeys, setSelectedSkillKeys] = useState<string[]>([]);
   const [roleOpen, setRoleOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [catalogCategory, setCatalogCategory] = useState<string>("All");
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateName, setGenerateName] = useState("");
+  const [generateDescription, setGenerateDescription] = useState("");
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   const { data: agents } = useQuery({
     queryKey: queryKeys.agents.list(selectedCompanyId!),
@@ -129,6 +140,16 @@ export function NewAgent() {
     });
   }, [presetAdapterType]);
 
+  useEffect(() => {
+    if (!presetTemplate) return;
+    const tpl = AGENT_TEMPLATES.find((t) => t.key === presetTemplate);
+    if (!tpl) return;
+    setName(tpl.name);
+    setTitle(tpl.title);
+    setRole(tpl.role);
+    setCapabilities(tpl.capabilities);
+  }, [presetTemplate]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const createAgent = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
       agentsApi.hire(selectedCompanyId!, data),
@@ -141,6 +162,55 @@ export function NewAgent() {
       setFormError(error instanceof Error ? error.message : "Failed to create agent");
     },
   });
+
+  const importSkill = useMutation({
+    mutationFn: (source: string) =>
+      companySkillsApi.importFromSource(selectedCompanyId!, source),
+    onSuccess: (result, source) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companySkills.list(selectedCompanyId ?? "") });
+      // Auto-select the newly installed skill
+      const key = result.imported[0]?.key ?? source;
+      setSelectedSkillKeys((prev) => prev.includes(key) ? prev : [...prev, key]);
+    },
+  });
+
+  const generateSkillMutation = useMutation({
+    mutationFn: () =>
+      companySkillsApi.generateSkill(selectedCompanyId!, {
+        name: generateName.trim(),
+        description: generateDescription.trim(),
+        agentRole: effectiveRole,
+      }),
+    onSuccess: (skill) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.companySkills.list(selectedCompanyId ?? "") });
+      setSelectedSkillKeys((prev) => prev.includes(skill.key) ? prev : [...prev, skill.key]);
+      setGenerateName("");
+      setGenerateDescription("");
+      setGenerateOpen(false);
+    },
+    onError: (err) => {
+      setGenerateError(err instanceof Error ? err.message : "Skill generation failed");
+    },
+  });
+
+  const installedKeys = useMemo(
+    () => new Set((companySkills ?? []).map((s) => s.key)),
+    [companySkills],
+  );
+
+  const filteredCatalog = useMemo(() => {
+    const q = catalogSearch.trim().toLowerCase();
+    return SKILL_CATALOG.filter((entry) => {
+      const matchCat = catalogCategory === "All" || entry.category === catalogCategory;
+      if (!matchCat) return false;
+      if (!q) return true;
+      return (
+        entry.name.toLowerCase().includes(q) ||
+        entry.description.toLowerCase().includes(q) ||
+        entry.tags.some((t) => t.includes(q))
+      );
+    });
+  }, [catalogSearch, catalogCategory]);
 
   function buildAdapterConfig() {
     const adapter = getUIAdapter(configValues.adapterType);
@@ -184,6 +254,7 @@ export function NewAgent() {
       ...(title.trim() ? { title: title.trim() } : {}),
       ...(reportsTo ? { reportsTo } : {}),
       ...(selectedSkillKeys.length > 0 ? { desiredSkills: selectedSkillKeys } : {}),
+      ...(capabilities ? { capabilities } : {}),
       adapterType: configValues.adapterType,
       adapterConfig: buildAdapterConfig(),
       runtimeConfig: {
@@ -218,6 +289,13 @@ export function NewAgent() {
           Advanced agent configuration
         </p>
       </div>
+
+      {presetTemplate && (
+        <div className="flex items-center gap-2 rounded-md border border-blue-500/25 bg-blue-500/5 px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+          <LayoutTemplate className="h-3.5 w-3.5 shrink-0" />
+          Pre-filled from the <span className="font-semibold mx-0.5">{AGENT_TEMPLATES.find(t => t.key === presetTemplate)?.name ?? presetTemplate}</span> template. Adjust any fields below before saving.
+        </div>
+      )}
 
       <div className="border border-border">
         {/* Name */}
@@ -324,6 +402,182 @@ export function NewAgent() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Catalog discovery */}
+        <div className="border-t border-border">
+          <button
+            type="button"
+            onClick={() => setCatalogOpen((o) => !o)}
+            className="flex w-full items-center justify-between px-4 py-3 text-sm hover:bg-accent/30 transition-colors"
+          >
+            <span className="flex items-center gap-2 font-medium">
+              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              Discover from catalog
+              <span className="text-xs text-muted-foreground font-normal">
+                ({SKILL_CATALOG.length} skills)
+              </span>
+            </span>
+            {catalogOpen
+              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            }
+          </button>
+
+          {catalogOpen && (
+            <div className="px-4 pb-4 space-y-3">
+              {/* Search + category filter */}
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                  <input
+                    className="w-full rounded-md border border-border bg-background pl-8 pr-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+                    placeholder="Search skills…"
+                    value={catalogSearch}
+                    onChange={(e) => setCatalogSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Category pills */}
+              <div className="flex flex-wrap gap-1.5">
+                {["All", ...SKILL_CATEGORIES].map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setCatalogCategory(cat)}
+                    className={cn(
+                      "rounded-full px-2.5 py-0.5 text-xs border transition-colors",
+                      catalogCategory === cat
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border text-muted-foreground hover:border-primary/50"
+                    )}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Results */}
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {filteredCatalog.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">No skills match your search.</p>
+                ) : (
+                  filteredCatalog.map((entry) => {
+                    const isInstalled = installedKeys.has(entry.importKey);
+                    const isInstalling = importSkill.isPending && importSkill.variables === entry.importKey;
+                    return (
+                      <div
+                        key={entry.importKey}
+                        className="flex items-start justify-between gap-3 rounded-md border border-border px-3 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-medium">{entry.name}</span>
+                            <span className="rounded-sm bg-muted px-1 py-0.5 text-[10px] text-muted-foreground">
+                              {entry.category}
+                            </span>
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-muted-foreground leading-snug">
+                            {entry.description}
+                          </p>
+                          <p className="mt-1 text-[10px] text-muted-foreground/60">
+                            {entry.installs.toLocaleString()} installs
+                          </p>
+                        </div>
+                        <div className="shrink-0 pt-0.5">
+                          {isInstalled ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400">
+                              Installed
+                            </span>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-[11px]"
+                              disabled={isInstalling || !selectedCompanyId}
+                              onClick={() => importSkill.mutate(entry.importKey)}
+                            >
+                              {isInstalling ? (
+                                "Installing…"
+                              ) : (
+                                <>
+                                  <Download className="h-3 w-3 mr-1" />
+                                  Install
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Generate with AI */}
+        <div className="border-t border-border">
+          <button
+            type="button"
+            onClick={() => { setGenerateOpen((o) => !o); setGenerateError(null); }}
+            className="flex w-full items-center justify-between px-4 py-3 text-sm hover:bg-accent/30 transition-colors"
+          >
+            <span className="flex items-center gap-2 font-medium">
+              <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+              Generate skill with AI
+            </span>
+            {generateOpen
+              ? <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              : <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            }
+          </button>
+
+          {generateOpen && (
+            <div className="px-4 pb-4 space-y-3">
+              <p className="text-xs text-muted-foreground">
+                Describe the skill you need and the AI will generate a complete SKILL.md for this agent.
+              </p>
+              <div className="space-y-2">
+                <input
+                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50"
+                  placeholder="Skill name (e.g. Weekly Digest)"
+                  value={generateName}
+                  onChange={(e) => setGenerateName(e.target.value)}
+                />
+                <textarea
+                  className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none"
+                  rows={3}
+                  placeholder="What should this skill do? Be specific about inputs, steps, and outputs."
+                  value={generateDescription}
+                  onChange={(e) => setGenerateDescription(e.target.value)}
+                />
+              </div>
+              {generateError && (
+                <p className="text-xs text-destructive">{generateError}</p>
+              )}
+              <Button
+                size="sm"
+                variant="outline"
+                className="gap-1.5"
+                disabled={
+                  !generateName.trim() ||
+                  !generateDescription.trim() ||
+                  generateSkillMutation.isPending ||
+                  !selectedCompanyId
+                }
+                onClick={() => {
+                  setGenerateError(null);
+                  generateSkillMutation.mutate();
+                }}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                {generateSkillMutation.isPending ? "Generating…" : "Generate skill"}
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

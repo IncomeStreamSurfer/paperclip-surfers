@@ -41,6 +41,16 @@ export const companySkillsApi = {
       `/companies/${encodeURIComponent(companyId)}/skills/import`,
       { source },
     ),
+  generateSkill: (companyId: string, payload: { name: string; description: string; agentRole?: string }) =>
+    api.post<CompanySkill>(
+      `/companies/${encodeURIComponent(companyId)}/skills/generate`,
+      payload,
+    ),
+  syncFromClaudeCode: (companyId: string) =>
+    api.post<{ imported: number; sources: string[]; skills: CompanySkillListItem[] }>(
+      `/companies/${encodeURIComponent(companyId)}/skills/sync-claude-code`,
+      {},
+    ),
   scanProjects: (companyId: string, payload: CompanySkillProjectScanRequest = {}) =>
     api.post<CompanySkillProjectScanResult>(
       `/companies/${encodeURIComponent(companyId)}/skills/scan-projects`,

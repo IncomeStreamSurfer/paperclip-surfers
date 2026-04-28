@@ -58,17 +58,18 @@ export interface AgentExperiment {
 }
 
 export interface CompanyAnalytics {
-  totalRuns: number;
-  avgCompletionRate: number;
-  totalCostCents: number;
-  activeAgents: number;
-  agentSummaries: Array<{
+  companyId: string;
+  agentCount: number;
+  agents: Array<{
     agentId: string;
     agentName: string;
     totalRuns: number;
-    completionRate: number;
-    avgCostCents: number;
-    avgDurationSeconds: number;
+    completionRate: number | null;
+    avgCostCents: number | null;
+    totalCostCents: number;
+    avgDurationSeconds: number | null;
+    avgErrors: number | null;
+    avgSelfAssessment: number | null;
   }>;
 }
 

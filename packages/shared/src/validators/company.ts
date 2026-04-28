@@ -1,13 +1,16 @@
 import { z } from "zod";
-import { COMPANY_STATUSES } from "../constants.js";
+import { COMPANY_STATUSES, BUSINESS_TYPES } from "../constants.js";
 
 const logoAssetIdSchema = z.string().uuid().nullable().optional();
 const brandColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional();
+const brandPrimaryForegroundSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/).nullable().optional();
+const businessTypeSchema = z.enum(BUSINESS_TYPES).nullable().optional();
 
 export const createCompanySchema = z.object({
   name: z.string().min(1),
   description: z.string().optional().nullable(),
   budgetMonthlyCents: z.number().int().nonnegative().optional().default(0),
+  businessType: businessTypeSchema,
 });
 
 export type CreateCompany = z.infer<typeof createCompanySchema>;
@@ -19,7 +22,9 @@ export const updateCompanySchema = createCompanySchema
     spentMonthlyCents: z.number().int().nonnegative().optional(),
     requireBoardApprovalForNewAgents: z.boolean().optional(),
     brandColor: brandColorSchema,
+    brandPrimaryForeground: brandPrimaryForegroundSchema,
     logoAssetId: logoAssetIdSchema,
+    businessType: businessTypeSchema,
   });
 
 export type UpdateCompany = z.infer<typeof updateCompanySchema>;
@@ -29,6 +34,7 @@ export const updateCompanyBrandingSchema = z
     name: z.string().min(1).optional(),
     description: z.string().nullable().optional(),
     brandColor: brandColorSchema,
+    brandPrimaryForeground: brandPrimaryForegroundSchema,
     logoAssetId: logoAssetIdSchema,
   })
   .strict()
@@ -37,6 +43,7 @@ export const updateCompanyBrandingSchema = z
       value.name !== undefined
       || value.description !== undefined
       || value.brandColor !== undefined
+      || value.brandPrimaryForeground !== undefined
       || value.logoAssetId !== undefined,
     "At least one branding field must be provided",
   );

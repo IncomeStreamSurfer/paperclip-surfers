@@ -1,0 +1,124 @@
+- generic [ref=e3]:
+  - link "Skip to Main Content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - img [ref=e10]
+          - status [ref=e13]
+          - button "Add company" [ref=e16]:
+            - img [ref=e17]
+        - complementary [ref=e19]:
+          - generic [ref=e20]:
+            - generic [ref=e21]: Select company
+            - button [ref=e22]:
+              - img
+          - navigation [ref=e23]:
+            - generic [ref=e24]:
+              - button "New Issue" [ref=e25]:
+                - img [ref=e26]
+                - generic [ref=e29]: New Issue
+              - link "Dashboard" [ref=e30] [cursor=pointer]:
+                - /url: /SPL/dashboard
+                - img [ref=e32]
+                - generic [ref=e37]: Dashboard
+              - link "Inbox" [ref=e38] [cursor=pointer]:
+                - /url: /SPL/inbox
+                - img [ref=e40]
+                - generic [ref=e43]: Inbox
+            - generic [ref=e44]:
+              - generic [ref=e45]: Work
+              - generic [ref=e46]:
+                - link "Issues" [ref=e47] [cursor=pointer]:
+                  - /url: /SPL/issues
+                  - img [ref=e49]
+                  - generic [ref=e52]: Issues
+                - link "Routines Beta" [ref=e53] [cursor=pointer]:
+                  - /url: /SPL/routines
+                  - img [ref=e55]
+                  - generic [ref=e60]: Routines
+                  - generic [ref=e61]: Beta
+                - link "Goals" [ref=e62] [cursor=pointer]:
+                  - /url: /SPL/goals
+                  - img [ref=e64]
+                  - generic [ref=e68]: Goals
+            - generic [ref=e69]:
+              - generic [ref=e71]:
+                - button "Projects" [expanded] [ref=e72]:
+                  - img [ref=e73]
+                  - generic [ref=e75]: Projects
+                - button "New project" [ref=e76]:
+                  - img [ref=e77]
+              - status [ref=e78]
+            - generic [ref=e81]:
+              - button "Agents" [expanded] [ref=e82]:
+                - img [ref=e83]
+                - generic [ref=e85]: Agents
+              - button "New agent" [ref=e86]:
+                - img [ref=e87]
+            - generic [ref=e88]:
+              - generic [ref=e89]: Company
+              - generic [ref=e90]:
+                - link "Org" [ref=e91] [cursor=pointer]:
+                  - /url: /SPL/org
+                  - img [ref=e93]
+                  - generic [ref=e98]: Org
+                - link "Skills" [ref=e99] [cursor=pointer]:
+                  - /url: /SPL/skills
+                  - img [ref=e101]
+                  - generic [ref=e111]: Skills
+                - link "MCPs" [ref=e112] [cursor=pointer]:
+                  - /url: /mcp-servers
+                  - img [ref=e114]
+                  - generic [ref=e116]: MCPs
+                - link "Analytics" [ref=e117] [cursor=pointer]:
+                  - /url: /analytics
+                  - img [ref=e119]
+                  - generic [ref=e121]: Analytics
+                - link "Costs" [ref=e122] [cursor=pointer]:
+                  - /url: /SPL/costs
+                  - img [ref=e124]
+                  - generic [ref=e126]: Costs
+                - link "Activity" [ref=e127] [cursor=pointer]:
+                  - /url: /SPL/activity
+                  - img [ref=e129]
+                  - generic [ref=e133]: Activity
+                - link "Settings" [ref=e134] [cursor=pointer]:
+                  - /url: /SPL/company/settings
+                  - img [ref=e136]
+                  - generic [ref=e139]: Settings
+      - generic [ref=e141]:
+        - link "Documentation" [ref=e142] [cursor=pointer]:
+          - /url: https://docs.paperclip.ing/
+          - img [ref=e143]
+          - generic [ref=e145]: Documentation
+        - generic [ref=e146]: v
+        - link "Instance settings" [ref=e147] [cursor=pointer]:
+          - /url: /instance/settings/general
+          - img
+        - button "Switch to light mode" [ref=e148]:
+          - img
+    - generic [ref=e149]:
+      - heading "Skills" [level=1] [ref=e153]
+      - main [ref=e155]:
+        - complementary [ref=e157]:
+          - generic [ref=e158]:
+            - generic [ref=e159]:
+              - generic [ref=e160]:
+                - heading "Skills" [level=1] [ref=e161]
+                - paragraph [ref=e162]: 0 available
+              - generic [ref=e163]:
+                - button "Scan project workspaces for skills" [ref=e164]:
+                  - img
+                - button [ref=e165]:
+                  - img
+            - generic [ref=e166]:
+              - img [ref=e167]
+              - textbox "Filter skills" [ref=e170]
+            - generic [ref=e171]:
+              - textbox "Paste path, GitHub URL, or skills.sh command" [ref=e172]
+              - button "Add" [ref=e173]
+  - generic [ref=e207]:
+    - heading "Command Palette" [level=2] [ref=e208]
+    - paragraph [ref=e209]: Search for a command to run...

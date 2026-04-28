@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { pickTextColorForPillBg } from "@/lib/color-contrast";
 import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
+import { useFloatingIssuePanels } from "../context/FloatingIssuePanelsContext";
 import { issuesApi } from "../api/issues";
 import { authApi } from "../api/auth";
 import { queryKeys } from "../lib/queryKeys";
@@ -231,6 +232,7 @@ export function IssuesList({
 }: IssuesListProps) {
   const { selectedCompanyId } = useCompany();
   const { openNewIssue } = useDialog();
+  const { openPanel } = useFloatingIssuePanels();
   const { data: session } = useQuery({
     queryKey: queryKeys.auth.session,
     queryFn: () => authApi.getSession(),
@@ -703,6 +705,7 @@ export function IssuesList({
                   issue={issue}
                   issueLinkState={issueLinkState}
                   desktopLeadingSpacer
+                  onPopOut={openPanel}
                   mobileLeading={(
                     <span
                       onClick={(e) => {

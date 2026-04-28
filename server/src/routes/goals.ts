@@ -9,6 +9,13 @@ export function goalRoutes(db: Db) {
   const router = Router();
   const svc = goalService(db);
 
+  router.get("/companies/:companyId/goals/metrics", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const metrics = await svc.getMetrics(companyId);
+    res.json(metrics);
+  });
+
   router.get("/companies/:companyId/goals", async (req, res) => {
     const companyId = req.params.companyId as string;
     assertCompanyAccess(req, companyId);

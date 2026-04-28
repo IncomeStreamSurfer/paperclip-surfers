@@ -7,6 +7,12 @@ export {
   patchInstanceExperimentalSettingsSchema,
   type InstanceExperimentalSettings,
   type PatchInstanceExperimentalSettings,
+  EMAIL_TEMPLATE_IDS,
+  type EmailTemplateId,
+  instanceNotificationSettingsSchema,
+  patchInstanceNotificationSettingsSchema,
+  type InstanceNotificationSettings,
+  type PatchInstanceNotificationSettings,
 } from "./instance.js";
 
 export {
@@ -119,6 +125,7 @@ export {
 export {
   createIssueSchema,
   createIssueLabelSchema,
+  updateIssueLabelSchema,
   updateIssueSchema,
   issueExecutionWorkspaceSettingsSchema,
   checkoutIssueSchema,
@@ -232,6 +239,8 @@ export {
   resolveCliAuthChallengeSchema,
   updateMemberPermissionsSchema,
   updateUserCompanyAccessSchema,
+  inviteUserSchema,
+  updateUserRoleSchema,
   type CreateCompanyInvite,
   type CreateOpenClawInvitePrompt,
   type AcceptInvite,
@@ -242,6 +251,8 @@ export {
   type ResolveCliAuthChallenge,
   type UpdateMemberPermissions,
   type UpdateUserCompanyAccess,
+  type InviteUser,
+  type UpdateUserRole,
 } from "./access.js";
 
 export {
@@ -279,3 +290,127 @@ export {
   type SetPluginState,
   type ListPluginState,
 } from "./plugin.js";
+
+export {
+  createDepartmentSchema,
+  updateDepartmentSchema,
+  addDepartmentMemorySchema,
+  assignAgentToDepartmentSchema,
+  type CreateDepartment,
+  type UpdateDepartment,
+  type AddDepartmentMemory,
+  type AssignAgentToDepartment,
+  type DepartmentMemoryEntry,
+} from "./department.js";
+
+export {
+  allowedModelSchema,
+  updateAllowedModelsSchema,
+  toggleModelSchema,
+  type AllowedModel,
+  type UpdateAllowedModels,
+  type ToggleModel,
+} from "./model.js";
+
+export {
+  SOCIAL_PLATFORMS,
+  SOCIAL_ACCOUNT_STATUSES,
+  SOCIAL_POST_STATUSES,
+  createSocialAccountSchema,
+  updateSocialAccountSchema,
+  createSocialPostSchema,
+  updateSocialPostSchema,
+  type CreateSocialAccount,
+  type UpdateSocialAccount,
+  type CreateSocialPost,
+  type UpdateSocialPost,
+} from "./social-media.js";
+
+export {
+  CRM_CONTACT_STATUSES,
+  CRM_DEAL_STAGES,
+  CRM_DEAL_STAGE_LABELS,
+  createCrmContactSchema,
+  updateCrmContactSchema,
+  createCrmDealSchema,
+  updateCrmDealSchema,
+  type CreateCrmContact,
+  type UpdateCrmContact,
+  type CreateCrmDeal,
+  type UpdateCrmDeal,
+} from "./crm.js";
+
+export {
+  DESIGN_ASSET_STYLES,
+  DESIGN_ASSET_STYLE_LABELS,
+  DESIGN_ASSET_STATUSES,
+  DESIGN_ASPECT_RATIOS,
+  generateDesignAssetSchema,
+  updateDesignAssetSchema,
+  listDesignAssetsSchema,
+  type DesignAssetStyle,
+  type GenerateDesignAsset,
+  type UpdateDesignAsset,
+  type ListDesignAssetsQuery,
+} from "./design.js";
+
+export {
+  RESEARCH_PROJECT_STATUSES,
+  createResearchProjectSchema,
+  updateResearchProjectSchema,
+  createResearchNoteSchema,
+  updateResearchNoteSchema,
+  createResearchLiteratureSchema,
+  updateResearchLiteratureSchema,
+  type CreateResearchProject,
+  type UpdateResearchProject,
+  type CreateResearchNote,
+  type UpdateResearchNote,
+  type CreateResearchLiterature,
+  type UpdateResearchLiterature,
+} from "./research.js";
+
+export {
+  MSP_CLIENT_STATUSES,
+  MSP_CLIENT_TIERS,
+  MSP_TICKET_STATUSES,
+  MSP_TICKET_PRIORITIES,
+  createMspClientSchema,
+  updateMspClientSchema,
+  createMspTicketSchema,
+  updateMspTicketSchema,
+  type CreateMspClient,
+  type UpdateMspClient,
+  type CreateMspTicket,
+  type UpdateMspTicket,
+} from "./msp.js";
+
+export {
+  SPRINT_STATUSES,
+  createSprintSchema,
+  updateSprintSchema,
+  type CreateSprint,
+  type UpdateSprint,
+  type SprintVelocity,
+  type SprintAiReport,
+} from "./sprint.js";
+
+export {
+  CIVIL_PROJECT_TYPES,
+  CIVIL_PROJECT_STATUSES,
+  CIVIL_DRAWING_TYPES,
+  CIVIL_DRAWING_STATUSES,
+  CIVIL_SPEC_STATUSES,
+  createCivilProjectSchema,
+  updateCivilProjectSchema,
+  createCivilDrawingSchema,
+  updateCivilDrawingSchema,
+  createCivilSpecificationSchema,
+  updateCivilSpecificationSchema,
+  type CreateCivilProject,
+  type UpdateCivilProject,
+  type CreateCivilDrawing,
+  type UpdateCivilDrawing,
+  type CreateCivilSpecification,
+  type UpdateCivilSpecification,
+} from "./civil.js";

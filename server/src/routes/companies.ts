@@ -16,8 +16,10 @@ import {
   budgetService,
   companyPortabilityService,
   companyService,
+  issueService,
   logActivity,
 } from "../services/index.js";
+import { seedDefaultMcps } from "../services/seed-mcps.js";
 import type { StorageService } from "../storage/types.js";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 
@@ -217,6 +219,10 @@ export function companyRoutes(db: Db, storage?: StorageService) {
     }
     const company = await svc.create(req.body);
     await access.ensureMembership(company.id, "user", req.actor.userId ?? "local-board", "owner", "active");
+    // Seed default labels for every new company
+    await issueService(db).seedDefaultLabels(company.id);
+    // Seed default MCP servers for every new company
+    await seedDefaultMcps(db, company.id);
     await logActivity(db, {
       companyId: company.id,
       actorType: "user",

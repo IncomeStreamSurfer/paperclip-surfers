@@ -159,24 +159,31 @@ export function ProviderQuotaCard({
       </CardHeader>
 
       <CardContent className="px-4 pb-4 pt-3 space-y-4">
-        {hasBudget && (
-          <div className="space-y-3">
-            <QuotaBar
-              label="Period spend"
-              percentUsed={budgetPct}
-              leftLabel={formatCents(totalCostCents)}
-              rightLabel={`${Math.round(budgetPct)}% of allocation`}
-              showDeficitNotch={showDeficitNotch}
-            />
-            <QuotaBar
-              label="This week"
-              percentUsed={weekPct}
-              leftLabel={formatCents(weekSpendCents)}
-              rightLabel={`~${formatCents(Math.round(weeklyBudgetShare))} / wk`}
-              showDeficitNotch={weekPct >= 100}
-            />
-          </div>
-        )}
+        <div className="space-y-3">
+          {hasBudget ? (
+            <>
+              <QuotaBar
+                label="Period spend"
+                percentUsed={budgetPct}
+                leftLabel={formatCents(totalCostCents)}
+                rightLabel={`${Math.round(budgetPct)}% of allocation`}
+                showDeficitNotch={showDeficitNotch}
+              />
+              <QuotaBar
+                label="This week"
+                percentUsed={weekPct}
+                leftLabel={formatCents(weekSpendCents)}
+                rightLabel={`~${formatCents(Math.round(weeklyBudgetShare))} / wk`}
+                showDeficitNotch={weekPct >= 100}
+              />
+            </>
+          ) : (
+            <>
+              <SpendLabelRow label="Period spend" value={formatCents(totalCostCents)} note="No limit" />
+              <SpendLabelRow label="This week" value={formatCents(weekSpendCents)} />
+            </>
+          )}
+        </div>
 
         {/* rolling window consumption — always shown when data is available */}
         {windowRows.length > 0 && (
@@ -381,6 +388,18 @@ export function ProviderQuotaCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function SpendLabelRow({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-xs font-medium tabular-nums">{value}</span>
+        {note && <span className="text-xs text-muted-foreground">{note}</span>}
+      </div>
+    </div>
   );
 }
 

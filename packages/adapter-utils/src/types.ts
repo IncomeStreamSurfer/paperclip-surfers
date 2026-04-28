@@ -353,4 +353,8 @@ export interface CreateConfigValues {
   maxTurnsPerRun: number;
   heartbeatEnabled: boolean;
   intervalSec: number;
+  /** API key for API-based adapters (openai_api, anthropic_api, openrouter_api). */
+  apiKey?: string;
+  /** Base URL override for API-based adapters (e.g. openai_api). */
+  baseUrl?: string;
 }

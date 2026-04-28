@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import type { ReactNode, MouseEvent } from "react";
 import type { Issue } from "@paperclipai/shared";
 import { Link } from "@/lib/router";
-import { X } from "lucide-react";
+import { ExternalLink, X } from "lucide-react";
 import { cn } from "../lib/utils";
 import { StatusIcon } from "./StatusIcon";
 
@@ -21,6 +21,7 @@ interface IssueRowProps {
   onArchive?: () => void;
   archiveDisabled?: boolean;
   className?: string;
+  onPopOut?: (issueId: string) => void;
 }
 
 export function IssueRow({
@@ -37,6 +38,7 @@ export function IssueRow({
   onArchive,
   archiveDisabled,
   className,
+  onPopOut,
 }: IssueRowProps) {
   const issuePathId = issue.identifier ?? issue.id;
   const identifier = issue.identifier ?? issue.id.slice(0, 8);
@@ -47,6 +49,12 @@ export function IssueRow({
     <Link
       to={`/issues/${issuePathId}`}
       state={issueLinkState}
+      onClick={onPopOut ? (e: MouseEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault();
+          onPopOut(issue.id);
+        }
+      } : undefined}
       className={cn(
         "group flex items-start gap-2 border-b border-border py-2.5 pl-2 pr-3 text-sm no-underline text-inherit transition-colors hover:bg-accent/50 last:border-b-0 sm:items-center sm:py-2 sm:pl-1",
         className,
@@ -91,6 +99,21 @@ export function IssueRow({
           ) : null}
         </span>
       ) : null}
+      {onPopOut && (
+        <button
+          type="button"
+          title="Pop out (Ctrl+click)"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onPopOut(issue.id);
+          }}
+          className="hidden h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 sm:inline-flex"
+          aria-label="Open in floating panel"
+        >
+          <ExternalLink className="h-3 w-3" />
+        </button>
+      )}
       {showUnreadSlot ? (
         <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center self-center">
           {showUnreadDot ? (

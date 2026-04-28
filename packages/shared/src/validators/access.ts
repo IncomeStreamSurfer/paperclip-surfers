@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   AGENT_ADAPTER_TYPES,
+  COMPANY_USER_ROLES,
   INVITE_JOIN_TYPES,
   JOIN_REQUEST_STATUSES,
   JOIN_REQUEST_TYPES,
@@ -90,3 +91,14 @@ export const updateUserCompanyAccessSchema = z.object({
 });
 
 export type UpdateUserCompanyAccess = z.infer<typeof updateUserCompanyAccessSchema>;
+
+export const inviteUserSchema = z.object({
+  email: z.string().email().max(320),
+  role: z.enum(COMPANY_USER_ROLES),
+});
+export type InviteUser = z.infer<typeof inviteUserSchema>;
+
+export const updateUserRoleSchema = z.object({
+  role: z.enum(COMPANY_USER_ROLES),
+});
+export type UpdateUserRole = z.infer<typeof updateUserRoleSchema>;

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { PROJECT_COLORS, isUuidLike, type BudgetPolicySummary } from "@paperclipai/shared";
 import { budgetsApi } from "../api/budgets";
 import { projectsApi } from "../api/projects";
+import { departmentsApi } from "../api/departments";
 import { issuesApi } from "../api/issues";
 import { agentsApi } from "../api/agents";
 import { heartbeatsApi } from "../api/heartbeats";
@@ -24,10 +25,11 @@ import { projectRouteRef, cn } from "../lib/utils";
 import { Tabs } from "@/components/ui/tabs";
 import { PluginLauncherOutlet } from "@/plugins/launchers";
 import { PluginSlotMount, PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
+import { ColorPicker } from "@/components/ColorPicker";
 
 /* ── Top-level tab types ── */
 
-type ProjectBaseTab = "overview" | "list" | "configuration" | "budget";
+type ProjectBaseTab = "overview" | "list" | "configuration" | "budget" | "metrics";
 type ProjectPluginTab = `plugin:${string}`;
 type ProjectTab = ProjectBaseTab | ProjectPluginTab;
 
@@ -43,6 +45,7 @@ function resolveProjectTab(pathname: string, projectId: string): ProjectTab | nu
   if (tab === "overview") return "overview";
   if (tab === "configuration") return "configuration";
   if (tab === "budget") return "budget";
+  if (tab === "metrics") return "metrics";
   if (tab === "issues") return "list";
   return null;
 }
@@ -88,9 +91,97 @@ function OverviewContent({
   );
 }
 
+/* ── Metrics tab ── */
+
+function MetricsTab({ projectId }: { projectId: string }) {
+  const { data: metrics, isLoading } = useQuery({
+    queryKey: queryKeys.projects.metrics(projectId),
+    queryFn: () => projectsApi.getMetrics(projectId),
+  });
+
+  if (isLoading) return <PageSkeleton variant="list" />;
+  if (!metrics) return null;
+
+  const statusRows: Array<{ label: string; key: keyof typeof metrics.byStatus; color: string }> = [
+    { label: "Done", key: "done", color: "bg-green-500" },
+    { label: "In Progress", key: "in_progress", color: "bg-blue-500" },
+    { label: "In Review", key: "in_review", color: "bg-purple-500" },
+    { label: "Blocked", key: "blocked", color: "bg-red-500" },
+    { label: "Todo", key: "todo", color: "bg-yellow-500" },
+    { label: "Backlog", key: "backlog", color: "bg-muted-foreground" },
+    { label: "Cancelled", key: "cancelled", color: "bg-muted" },
+  ];
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {/* Summary cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total Issues", value: metrics.total },
+          { label: "Completion", value: `${metrics.completionRate}%` },
+          { label: "Done (30d)", value: metrics.velocity.last30days },
+          { label: "Avg Cycle", value: metrics.avgCycleDays != null ? `${metrics.avgCycleDays}d` : "—" },
+        ].map(({ label, value }) => (
+          <div key={label} className="rounded-lg border border-border bg-card px-4 py-3">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+            <p className="text-2xl font-semibold mt-0.5">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Completion progress bar */}
+      <div className="space-y-1">
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span>Completion rate</span>
+          <span>{metrics.completionRate}%</span>
+        </div>
+        <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full bg-primary rounded-full transition-all"
+            style={{ width: `${metrics.completionRate}%` }}
+          />
+        </div>
+      </div>
+
+      {/* By-status breakdown */}
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Issues by Status</p>
+        <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
+          {statusRows.map(({ label, key, color }) => (
+            <div key={key} className="flex items-center justify-between px-4 py-2 text-sm">
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${color}`} />
+                <span>{label}</span>
+              </div>
+              <span className="tabular-nums font-medium">{metrics.byStatus[key]}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Velocity */}
+      <div className="space-y-2">
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Velocity (Issues Completed)</p>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Last 7 days", value: metrics.velocity.last7days },
+            { label: "Last 14 days", value: metrics.velocity.last14days },
+            { label: "Last 30 days", value: metrics.velocity.last30days },
+          ].map(({ label, value }) => (
+            <div key={label} className="rounded-lg border border-border bg-card px-4 py-3 text-center">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <p className="text-xl font-semibold mt-0.5">{value}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Color picker popover ── */
 
-function ColorPicker({
+function ProjectColorPicker({
   currentColor,
   onSelect,
 }: {
@@ -138,6 +229,9 @@ function ColorPicker({
                 aria-label={`Select color ${color}`}
               />
             ))}
+          </div>
+          <div className="mt-2 flex items-center gap-1.5">
+            <ColorPicker value={currentColor} onChange={onSelect} />
           </div>
         </div>
       )}
@@ -197,6 +291,56 @@ function ProjectIssuesList({ projectId, companyId }: { projectId: string; compan
       viewStateKey={`paperclip:project-view:${projectId}`}
       onUpdateIssue={(id, data) => updateIssue.mutate({ id, data })}
     />
+  );
+}
+
+/* ── Department selector ── */
+
+function DepartmentSelector({
+  companyId,
+  departmentId,
+  onSelect,
+}: {
+  companyId: string;
+  departmentId: string | null;
+  onSelect: (id: string | null) => void;
+}) {
+  const { data } = useQuery({
+    queryKey: queryKeys.departments.list(companyId),
+    queryFn: () => departmentsApi.list(companyId),
+  });
+  const departments = data?.departments ?? [];
+  const current = departments.find((d) => d.id === departmentId);
+
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-3">
+      <div>
+        <p className="text-xs text-muted-foreground uppercase tracking-wide">Department</p>
+        <p className="text-sm font-medium mt-0.5">
+          {current ? (
+            <span className="flex items-center gap-1.5">
+              <span
+                className="inline-block w-2.5 h-2.5 rounded-full"
+                style={{ backgroundColor: current.color ?? "var(--muted)" }}
+              />
+              {current.name}
+            </span>
+          ) : (
+            <span className="text-muted-foreground">None</span>
+          )}
+        </p>
+      </div>
+      <select
+        className="text-sm px-2 py-1 border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+        value={departmentId ?? ""}
+        onChange={(e) => onSelect(e.target.value || null)}
+      >
+        <option value="">None</option>
+        {departments.map((d) => (
+          <option key={d.id} value={d.id}>{d.name}</option>
+        ))}
+      </select>
+    </div>
   );
 }
 
@@ -470,6 +614,9 @@ export function ProjectDetail() {
     if (cachedTab === "budget") {
       return <Navigate to={`/projects/${canonicalProjectRef}/budget`} replace />;
     }
+    if (cachedTab === "metrics") {
+      return <Navigate to={`/projects/${canonicalProjectRef}/metrics`} replace />;
+    }
     if (isProjectPluginTab(cachedTab)) {
       return <Navigate to={`/projects/${canonicalProjectRef}?tab=${encodeURIComponent(cachedTab)}`} replace />;
     }
@@ -495,6 +642,8 @@ export function ProjectDetail() {
       navigate(`/projects/${canonicalProjectRef}/budget`);
     } else if (tab === "configuration") {
       navigate(`/projects/${canonicalProjectRef}/configuration`);
+    } else if (tab === "metrics") {
+      navigate(`/projects/${canonicalProjectRef}/metrics`);
     } else {
       navigate(`/projects/${canonicalProjectRef}/issues`);
     }
@@ -504,7 +653,7 @@ export function ProjectDetail() {
     <div className="space-y-6">
       <div className="flex items-start gap-3">
         <div className="h-7 flex items-center">
-          <ColorPicker
+          <ProjectColorPicker
             currentColor={project.color ?? "#6366f1"}
             onSelect={(color) => updateProject.mutate({ color })}
           />
@@ -561,6 +710,7 @@ export function ProjectDetail() {
           items={[
             { value: "list", label: "Issues" },
             { value: "overview", label: "Overview" },
+            { value: "metrics", label: "Metrics" },
             { value: "configuration", label: "Configuration" },
             { value: "budget", label: "Budget" },
             ...pluginTabItems.map((item) => ({
@@ -589,8 +739,14 @@ export function ProjectDetail() {
         <ProjectIssuesList projectId={project.id} companyId={resolvedCompanyId} />
       )}
 
-      {activeTab === "configuration" && (
-        <div className="max-w-4xl">
+      {activeTab === "configuration" && resolvedCompanyId && (
+        <div className="max-w-4xl space-y-4">
+          {/* Department selector */}
+          <DepartmentSelector
+            companyId={resolvedCompanyId}
+            departmentId={project.departmentId ?? null}
+            onSelect={(departmentId) => updateProject.mutate({ departmentId })}
+          />
           <ProjectProperties
             project={project}
             onUpdate={(data) => updateProject.mutate(data)}
@@ -612,6 +768,10 @@ export function ProjectDetail() {
           />
         </div>
       ) : null}
+
+      {activeTab === "metrics" && project?.id && (
+        <MetricsTab projectId={project.id} />
+      )}
 
       {activePluginTab && (
         <PluginSlotMount

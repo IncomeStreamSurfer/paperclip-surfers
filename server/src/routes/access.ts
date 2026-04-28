@@ -2819,7 +2819,7 @@ export function accessRoutes(
   router.get("/companies/:companyId/members", async (req, res) => {
     const companyId = req.params.companyId as string;
     await assertCompanyPermission(req, companyId, "users:manage_permissions");
-    const members = await access.listMembers(companyId);
+    const members = await access.listMembersWithDetails(companyId);
     res.json(members);
   });
 
@@ -2840,6 +2840,12 @@ export function accessRoutes(
       res.json(updated);
     }
   );
+
+  router.get("/admin/users", async (req, res) => {
+    await assertInstanceAdmin(req);
+    const users = await access.listAllUsers();
+    res.json(users);
+  });
 
   router.post(
     "/admin/users/:userId/promote-instance-admin",
@@ -2882,6 +2888,22 @@ export function accessRoutes(
       res.json(memberships);
     }
   );
+
+  router.post("/admin/users/:userId/ban", async (req, res) => {
+    await assertInstanceAdmin(req);
+    const userId = req.params.userId as string;
+    const updated = await access.banUser(userId);
+    if (!updated) throw notFound("User not found");
+    res.json(updated);
+  });
+
+  router.post("/admin/users/:userId/unban", async (req, res) => {
+    await assertInstanceAdmin(req);
+    const userId = req.params.userId as string;
+    const updated = await access.unbanUser(userId);
+    if (!updated) throw notFound("User not found");
+    res.json(updated);
+  });
 
   return router;
 }

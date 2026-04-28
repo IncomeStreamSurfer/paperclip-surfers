@@ -2,6 +2,7 @@ import { NavLink } from "@/lib/router";
 import { cn } from "../lib/utils";
 import { useSidebar } from "../context/SidebarContext";
 import type { LucideIcon } from "lucide-react";
+import { Star } from "lucide-react";
 
 interface SidebarNavItemProps {
   to: string;
@@ -15,6 +16,7 @@ interface SidebarNavItemProps {
   textBadgeTone?: "default" | "amber";
   alert?: boolean;
   liveCount?: number;
+  favoriteId?: string;
 }
 
 export function SidebarNavItem({
@@ -29,64 +31,84 @@ export function SidebarNavItem({
   textBadgeTone = "default",
   alert = false,
   liveCount,
+  favoriteId,
 }: SidebarNavItemProps) {
-  const { isMobile, setSidebarOpen } = useSidebar();
+  const { isMobile, setSidebarOpen, favorites, toggleFavorite } = useSidebar();
+  const id = favoriteId ?? to;
+  const isFav = favorites.includes(id);
 
   return (
-    <NavLink
-      to={to}
-      end={end}
-      onClick={() => { if (isMobile) setSidebarOpen(false); }}
-      className={({ isActive }) =>
-        cn(
-          "flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium transition-colors",
-          isActive
-            ? "bg-accent text-foreground"
-            : "text-foreground/80 hover:bg-accent/50 hover:text-foreground",
-          className,
-        )
-      }
-    >
-      <span className="relative shrink-0">
-        <Icon className="h-4 w-4" />
-        {alert && (
-          <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 shadow-[0_0_0_2px_hsl(var(--background))]" />
-        )}
-      </span>
-      <span className="flex-1 truncate">{label}</span>
-      {textBadge && (
-        <span
-          className={cn(
-            "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
-            textBadgeTone === "amber"
-              ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-              : "bg-muted text-muted-foreground",
+    <div className="group relative">
+      <NavLink
+        to={to}
+        end={end}
+        onClick={() => { if (isMobile) setSidebarOpen(false); }}
+        className={({ isActive }) =>
+          cn(
+            "flex items-center gap-2.5 px-3 py-2 pr-7 text-[13px] font-medium transition-colors",
+            isActive
+              ? "bg-accent text-foreground"
+              : "text-foreground/80 hover:bg-accent/50 hover:text-foreground",
+            className,
+          )
+        }
+      >
+        <span className="relative shrink-0">
+          <Icon className="h-4 w-4" />
+          {alert && (
+            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 shadow-[0_0_0_2px_hsl(var(--background))]" />
           )}
-        >
-          {textBadge}
         </span>
-      )}
-      {liveCount != null && liveCount > 0 && (
-        <span className="ml-auto flex items-center gap-1.5">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+        <span className="flex-1 truncate">{label}</span>
+        {textBadge && (
+          <span
+            className={cn(
+              "ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-medium leading-none",
+              textBadgeTone === "amber"
+                ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                : "bg-muted text-muted-foreground",
+            )}
+          >
+            {textBadge}
           </span>
-          <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{liveCount} live</span>
-        </span>
-      )}
-      {badge != null && badge > 0 && (
-        <span
-          className={cn(
-            "ml-auto rounded-full px-1.5 py-0.5 text-xs leading-none",
-            badgeTone === "danger"
-              ? "bg-red-600/90 text-red-50"
-              : "bg-primary text-primary-foreground",
-          )}
-        >
-          {badge}
-        </span>
-      )}
-    </NavLink>
+        )}
+        {liveCount != null && liveCount > 0 && (
+          <span className="ml-auto flex items-center gap-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+            </span>
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">{liveCount} live</span>
+          </span>
+        )}
+        {badge != null && badge > 0 && (
+          <span
+            className={cn(
+              "ml-auto rounded-full px-1.5 py-0.5 text-xs leading-none",
+              badgeTone === "danger"
+                ? "bg-red-600/90 text-red-50"
+                : "bg-primary text-primary-foreground",
+            )}
+          >
+            {badge}
+          </span>
+        )}
+      </NavLink>
+      {/* Favorite star - appears on hover */}
+      <button
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleFavorite(id);
+        }}
+        className={cn(
+          "absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity",
+          isFav ? "opacity-100" : "",
+        )}
+        title={isFav ? "Remove from favorites" : "Add to favorites"}
+      >
+        <Star className={cn("h-3 w-3", isFav ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground hover:text-yellow-500")} />
+      </button>
+    </div>
   );
 }

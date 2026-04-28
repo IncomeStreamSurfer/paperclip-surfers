@@ -1345,6 +1345,36 @@ export function issueService(db: Db) {
       return created;
     },
 
+    updateLabel: async (
+      id: string,
+      data: Partial<Pick<typeof labels.$inferInsert, "name" | "color">>,
+    ) => {
+      const updates: Partial<typeof labels.$inferInsert> = { updatedAt: new Date() };
+      if (data.name !== undefined) updates.name = data.name.trim();
+      if (data.color !== undefined) updates.color = data.color;
+      const [updated] = await db
+        .update(labels)
+        .set(updates)
+        .where(eq(labels.id, id))
+        .returning();
+      return updated ?? null;
+    },
+
+    seedDefaultLabels: async (companyId: string) => {
+      const defaults = [
+        { name: "Bug",     color: "#ef4444" },
+        { name: "Feature", color: "#3b82f6" },
+        { name: "QA",      color: "#22c55e" },
+        { name: "Testing", color: "#f59e0b" },
+      ];
+      for (const d of defaults) {
+        await db
+          .insert(labels)
+          .values({ companyId, name: d.name, color: d.color })
+          .onConflictDoNothing();
+      }
+    },
+
     deleteLabel: async (id: string) =>
       db
         .delete(labels)

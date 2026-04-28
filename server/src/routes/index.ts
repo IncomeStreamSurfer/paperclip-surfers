@@ -20,3 +20,7 @@ export { mcpServerRoutes } from "./mcp-servers.js";
 export { agentKpiRoutes } from "./agent-kpis.js";
 export { agentExperimentRoutes } from "./agent-experiments.js";
 export { skillChangeRoutes } from "./skill-changes.js";
+export { seoRoutes } from "./seo.js";
+export { copywritingRoutes } from "./copywriting.js";
+export { researchRoutes } from "./research.js";
+export { mspRoutes } from "./msp.js";

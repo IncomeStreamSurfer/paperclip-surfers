@@ -1,4 +1,4 @@
-import type { Project, ProjectWorkspace } from "@paperclipai/shared";
+import type { Project, ProjectMetrics, ProjectWorkspace } from "@paperclipai/shared";
 import { api } from "./client";
 
 function withCompanyScope(path: string, companyId?: string) {
@@ -14,6 +14,7 @@ function projectPath(id: string, companyId?: string, suffix = "") {
 export const projectsApi = {
   list: (companyId: string) => api.get<Project[]>(`/companies/${companyId}/projects`),
   get: (id: string, companyId?: string) => api.get<Project>(projectPath(id, companyId)),
+  getMetrics: (id: string) => api.get<ProjectMetrics>(`/projects/${encodeURIComponent(id)}/metrics`),
   create: (companyId: string, data: Record<string, unknown>) =>
     api.post<Project>(`/companies/${companyId}/projects`, data),
   update: (id: string, data: Record<string, unknown>, companyId?: string) =>
@@ -30,4 +31,6 @@ export const projectsApi = {
   removeWorkspace: (projectId: string, workspaceId: string, companyId?: string) =>
     api.delete<ProjectWorkspace>(projectPath(projectId, companyId, `/workspaces/${encodeURIComponent(workspaceId)}`)),
   remove: (id: string, companyId?: string) => api.delete<Project>(projectPath(id, companyId)),
+  downloadSprintReport: (companyId: string) =>
+    fetch(`/api/companies/${companyId}/reports/sprint`, { headers: { Accept: "text/markdown" } }),
 };

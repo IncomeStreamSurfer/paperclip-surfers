@@ -57,6 +57,15 @@ import {
   X
 } from "lucide-react";
 import { HermesIcon } from "./HermesIcon";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BUSINESS_TYPES, BUSINESS_TYPE_LABELS } from "@paperclipai/shared";
+import type { BusinessType } from "@paperclipai/shared";
 
 type Step = 1 | 2 | 3 | 4;
 type AdapterType =
@@ -111,6 +120,7 @@ export function OnboardingWizard() {
   // Step 1
   const [companyName, setCompanyName] = useState("");
   const [companyGoal, setCompanyGoal] = useState("");
+  const [onboardingBusinessType, setOnboardingBusinessType] = useState<BusinessType | "">("");
 
   // Step 2
   const [agentName, setAgentName] = useState("CEO");
@@ -288,6 +298,7 @@ export function OnboardingWizard() {
     setError(null);
     setCompanyName("");
     setCompanyGoal("");
+    setOnboardingBusinessType("");
     setAgentName("CEO");
     setAdapterType("claude_local");
     setModel("");
@@ -385,7 +396,10 @@ export function OnboardingWizard() {
     setLoading(true);
     setError(null);
     try {
-      const company = await companiesApi.create({ name: companyName.trim() });
+      const company = await companiesApi.create({
+        name: companyName.trim(),
+        businessType: onboardingBusinessType || undefined,
+      });
       setCreatedCompanyId(company.id);
       setCreatedCompanyPrefix(company.issuePrefix);
       setSelectedCompanyId(company.id);
@@ -568,7 +582,7 @@ export function OnboardingWizard() {
       }
 
       let issueRef = createdIssueRef;
-      if (!issueRef) {
+      if (!issueRef && taskTitle.trim()) {
         const issue = await issuesApi.create(
           createdCompanyId,
           buildOnboardingIssuePayload({
@@ -589,11 +603,15 @@ export function OnboardingWizard() {
       setSelectedCompanyId(createdCompanyId);
       reset();
       closeOnboarding();
-      navigate(
-        createdCompanyPrefix
-          ? `/${createdCompanyPrefix}/issues/${issueRef}`
-          : `/issues/${issueRef}`
-      );
+      if (issueRef) {
+        navigate(
+          createdCompanyPrefix
+            ? `/${createdCompanyPrefix}/issues/${issueRef}`
+            : `/issues/${issueRef}`
+        );
+      } else {
+        navigate(createdCompanyPrefix ? `/${createdCompanyPrefix}` : "/");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create task");
     } finally {
@@ -606,7 +624,7 @@ export function OnboardingWizard() {
       e.preventDefault();
       if (step === 1 && companyName.trim()) handleStep1Next();
       else if (step === 2 && agentName.trim()) handleStep2Next();
-      else if (step === 3 && taskTitle.trim()) handleStep3Next();
+      else if (step === 3) handleStep3Next();
       else if (step === 4) handleLaunch();
     }
   }
@@ -681,9 +699,9 @@ export function OnboardingWizard() {
                       <Building2 className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Name your company</h3>
+                      <h3 className="font-medium">Set up your company</h3>
                       <p className="text-xs text-muted-foreground">
-                        This is the organization your agents will work for.
+                        Give your AI business a name and describe what it does.
                       </p>
                     </div>
                   </div>
@@ -719,10 +737,36 @@ export function OnboardingWizard() {
                     </label>
                     <textarea
                       className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/50 resize-none min-h-[60px]"
-                      placeholder="What is this company trying to achieve?"
+                      placeholder="e.g. Build a SaaS product, run a marketing agency, manage software development…"
                       value={companyGoal}
                       onChange={(e) => setCompanyGoal(e.target.value)}
                     />
+                  </div>
+                  <div className="group">
+                    <label className="text-xs mb-1 block text-muted-foreground group-focus-within:text-foreground">
+                      Business type (optional)
+                    </label>
+                    <Select
+                      value={onboardingBusinessType || "__none__"}
+                      onValueChange={(v) =>
+                        setOnboardingBusinessType(v === "__none__" ? "" : v as BusinessType)
+                      }
+                    >
+                      <SelectTrigger className="w-full text-sm">
+                        <SelectValue placeholder="Select industry…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">General</SelectItem>
+                        {BUSINESS_TYPES.filter((bt) => bt !== "general").map((bt) => (
+                          <SelectItem key={bt} value={bt}>
+                            {BUSINESS_TYPE_LABELS[bt]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[11px] text-muted-foreground/70 mt-1">
+                      Unlocks industry modules and tool suggestions.
+                    </p>
                   </div>
                 </div>
               )}
@@ -734,9 +778,9 @@ export function OnboardingWizard() {
                       <Bot className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Create your first agent</h3>
+                      <h3 className="font-medium">Set up your first agent</h3>
                       <p className="text-xs text-muted-foreground">
-                        Choose how this agent will run tasks.
+                        Pick an AI engine — this is how your agent runs tasks on your machine.
                       </p>
                     </div>
                   </div>
@@ -756,7 +800,7 @@ export function OnboardingWizard() {
                   {/* Adapter type radio cards */}
                   <div>
                     <label className="text-xs text-muted-foreground mb-2 block">
-                      Adapter type
+                      Agent engine
                     </label>
                     <div className="grid grid-cols-2 gap-2">
                       {[
@@ -1023,11 +1067,10 @@ export function OnboardingWizard() {
                       <div className="flex items-center justify-between gap-2">
                         <div>
                           <p className="text-xs font-medium">
-                            Adapter environment check
+                            Check your setup
                           </p>
                           <p className="text-[11px] text-muted-foreground">
-                            Runs a live probe that asks the adapter CLI to
-                            respond with hello.
+                            Verify the agent engine is installed and working on your machine.
                           </p>
                         </div>
                         <Button
@@ -1166,10 +1209,9 @@ export function OnboardingWizard() {
                       <ListTodo className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
-                      <h3 className="font-medium">Give it something to do</h3>
+                      <h3 className="font-medium">Create a starter task</h3>
                       <p className="text-xs text-muted-foreground">
-                        Give your agent a small task to start with — a bug fix,
-                        a research question, writing a script.
+                        Give your agent its first job. You can always add more tasks later — or skip this step.
                       </p>
                     </div>
                   </div>
@@ -1209,8 +1251,9 @@ export function OnboardingWizard() {
                     <div>
                       <h3 className="font-medium">Ready to launch</h3>
                       <p className="text-xs text-muted-foreground">
-                        Everything is set up. Launching now will create the
-                        starter task, wake the agent, and open the issue.
+                        {taskTitle.trim()
+                          ? "Everything is set up. Launching will create your starter task and open it."
+                          : "Everything is set up. Launching will open your new company dashboard."}
                       </p>
                     </div>
                   </div>
@@ -1240,12 +1283,15 @@ export function OnboardingWizard() {
                     <div className="flex items-center gap-3 px-3 py-2.5">
                       <ListTodo className="h-4 w-4 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {taskTitle}
+                        <p className={cn("text-sm font-medium truncate", !taskTitle.trim() && "text-muted-foreground italic")}>
+                          {taskTitle.trim() || "No starter task"}
                         </p>
                         <p className="text-xs text-muted-foreground">Task</p>
                       </div>
-                      <Check className="h-4 w-4 text-green-500 shrink-0" />
+                      {taskTitle.trim()
+                        ? <Check className="h-4 w-4 text-green-500 shrink-0" />
+                        : <span className="text-xs text-muted-foreground">skipped</span>
+                      }
                     </div>
                   </div>
                 </div>
@@ -1305,27 +1351,40 @@ export function OnboardingWizard() {
                     </Button>
                   )}
                   {step === 3 && (
-                    <Button
-                      size="sm"
-                      disabled={!taskTitle.trim() || loading}
-                      onClick={handleStep3Next}
-                    >
-                      {loading ? (
-                        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                      ) : (
-                        <ArrowRight className="h-3.5 w-3.5 mr-1" />
+                    <>
+                      {!taskTitle.trim() && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-muted-foreground"
+                          disabled={loading}
+                          onClick={handleStep3Next}
+                        >
+                          Skip
+                        </Button>
                       )}
-                      {loading ? "Creating..." : "Next"}
-                    </Button>
+                      <Button
+                        size="sm"
+                        disabled={!taskTitle.trim() || loading}
+                        onClick={handleStep3Next}
+                      >
+                        {loading ? (
+                          <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                        ) : (
+                          <ArrowRight className="h-3.5 w-3.5 mr-1" />
+                        )}
+                        {loading ? "Saving..." : "Next"}
+                      </Button>
+                    </>
                   )}
                   {step === 4 && (
                     <Button size="sm" disabled={loading} onClick={handleLaunch}>
                       {loading ? (
                         <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
                       ) : (
-                        <ArrowRight className="h-3.5 w-3.5 mr-1" />
+                        <Rocket className="h-3.5 w-3.5 mr-1" />
                       )}
-                      {loading ? "Creating..." : "Create & Open Issue"}
+                      {loading ? "Launching..." : "Launch"}
                     </Button>
                   )}
                 </div>

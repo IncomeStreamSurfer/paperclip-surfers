@@ -273,41 +273,8 @@ export function CompanyRail() {
         <Paperclip className="h-5 w-5 text-foreground" />
       </div>
 
-      {/* Company list */}
-      <div className="flex-1 flex flex-col items-center gap-2 py-3 w-full overflow-y-auto overflow-x-hidden scrollbar-none">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={orderedCompanies.map((c) => c.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {orderedCompanies.map((company) => (
-              <SortableCompanyItem
-                key={company.id}
-                company={company}
-                isSelected={company.id === highlightedCompanyId}
-                hasLiveAgents={hasLiveAgentsByCompanyId.get(company.id) ?? false}
-                hasUnreadInbox={hasUnreadInboxByCompanyId.get(company.id) ?? false}
-                onSelect={() => {
-                  setSelectedCompanyId(company.id);
-                  if (isInstanceRoute) {
-                    navigate(`/${company.issuePrefix}/dashboard`);
-                  }
-                }}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
-      </div>
-
-      {/* Separator before add button */}
-      <div className="w-8 h-px bg-border mx-auto shrink-0" />
-
       {/* Add company button */}
-      <div className="flex items-center justify-center py-2 shrink-0">
+      <div className="flex items-center justify-center py-3 mt-auto shrink-0">
         <Tooltip delayDuration={300}>
           <TooltipTrigger asChild>
             <button

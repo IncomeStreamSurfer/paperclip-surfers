@@ -12,7 +12,8 @@ import { PanelProvider } from "./context/PanelContext";
 import { SidebarProvider } from "./context/SidebarContext";
 import { DialogProvider } from "./context/DialogContext";
 import { ToastProvider } from "./context/ToastContext";
-import { ThemeProvider } from "./context/ThemeContext";
+import { ColorSchemaProvider } from "./context/ColorSchemaContext";
+import { FloatingIssuePanelsProvider } from "./context/FloatingIssuePanelsContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { initPluginBridge } from "./plugins/bridge-init";
 import { PluginLauncherProvider } from "./plugins/launchers";
@@ -39,7 +40,7 @@ const queryClient = new QueryClient({
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
+      <ColorSchemaProvider>
         <BrowserRouter>
           <CompanyProvider>
             <ToastProvider>
@@ -50,7 +51,9 @@ createRoot(document.getElementById("root")!).render(
                       <PanelProvider>
                         <PluginLauncherProvider>
                           <DialogProvider>
-                            <App />
+                            <FloatingIssuePanelsProvider>
+                              <App />
+                            </FloatingIssuePanelsProvider>
                           </DialogProvider>
                         </PluginLauncherProvider>
                       </PanelProvider>
@@ -61,7 +64,7 @@ createRoot(document.getElementById("root")!).render(
             </ToastProvider>
           </CompanyProvider>
         </BrowserRouter>
-      </ThemeProvider>
+      </ColorSchemaProvider>
     </QueryClientProvider>
   </StrictMode>
 );

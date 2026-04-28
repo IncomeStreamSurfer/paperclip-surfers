@@ -156,4 +156,57 @@ export const accessApi = {
 
   cancelCliAuthChallenge: (id: string, token: string) =>
     api.post<{ cancelled: boolean; status: string }>(`/cli-auth/challenges/${id}/cancel`, { token }),
+
+  // Company member permissions
+  listCompanyMembers: (companyId: string) =>
+    api.get<CompanyMember[]>(`/companies/${companyId}/members`),
+
+  updateMemberPermissions: (
+    companyId: string,
+    memberId: string,
+    grants: { permissionKey: string }[],
+  ) =>
+    api.patch<CompanyMember>(`/companies/${companyId}/members/${memberId}/permissions`, {
+      grants,
+    }),
+
+  // Instance user management
+  listAdminUsers: () =>
+    api.get<AdminUser[]>("/admin/users"),
+
+  promoteInstanceAdmin: (userId: string) =>
+    api.post<{ userId: string; role: string }>(`/admin/users/${userId}/promote-instance-admin`, {}),
+
+  demoteInstanceAdmin: (userId: string) =>
+    api.post<{ userId: string }>(`/admin/users/${userId}/demote-instance-admin`, {}),
+
+  banUser: (userId: string) =>
+    api.post<AdminUser>(`/admin/users/${userId}/ban`, {}),
+
+  unbanUser: (userId: string) =>
+    api.post<AdminUser>(`/admin/users/${userId}/unban`, {}),
+};
+
+export type AdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  banned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  isInstanceAdmin: boolean;
+};
+
+export type CompanyMember = {
+  id: string; // companyMemberships.id
+  companyId: string;
+  principalType: string;
+  principalId: string;
+  membershipRole: string | null;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  userName: string | null;
+  userEmail: string | null;
+  permissions: string[];
 };

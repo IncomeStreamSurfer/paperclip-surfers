@@ -56,6 +56,7 @@ import {
 } from "@paperclipai/adapter-codex-local";
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
+import { DEFAULT_OPENCODE_MODEL } from "@paperclipai/adapter-opencode-local";
 import { ensureOpenCodeModelConfiguredAndAvailable } from "@paperclipai/adapter-opencode-local/server";
 import {
   loadDefaultAgentInstructionsBundle,
@@ -398,7 +399,11 @@ export function agentRoutes(db: Db) {
       next.model = DEFAULT_GEMINI_LOCAL_MODEL;
       return ensureGatewayDeviceKey(adapterType, next);
     }
-    // OpenCode requires explicit model selection — no default
+    // OpenCode defaults to local Ollama model to avoid hosted API bugs
+    if (adapterType === "opencode_local" && !asNonEmptyString(next.model)) {
+      next.model = DEFAULT_OPENCODE_MODEL;
+    }
+    // Cursor defaults
     if (adapterType === "cursor" && !asNonEmptyString(next.model)) {
       next.model = DEFAULT_CURSOR_LOCAL_MODEL;
     }
@@ -678,6 +683,30 @@ export function agentRoutes(db: Db) {
 
     const detected = await detectAdapterModel(type);
     res.json(detected);
+  });
+
+  router.get("/models/suggestions", async (req, res) => {
+    const useCase = req.query.useCase as string | undefined;
+    const { getModelSuggestions } = await import("../services/model-discovery.js");
+    const suggestions = await getModelSuggestions(useCase as "code" | "reasoning" | "fast" | "general" | undefined);
+    res.json(suggestions);
+  });
+
+  router.get("/models/available", async (req, res) => {
+    const { getAvailableOllamaModels } = await import("../services/model-discovery.js");
+    const models = await getAvailableOllamaModels();
+    res.json(models);
+  });
+
+  router.post("/models/install", async (req, res) => {
+    const { modelName } = req.body;
+    if (!modelName) {
+      res.status(400).json({ error: "modelName is required" });
+      return;
+    }
+    const { installOllamaModel } = await import("../services/model-discovery.js");
+    const result = await installOllamaModel(modelName);
+    res.json(result);
   });
 
   router.post(
@@ -2070,7 +2099,9 @@ export function agentRoutes(db: Db) {
     const agentId = req.query.agentId as string | undefined;
     const limitParam = req.query.limit as string | undefined;
     const limit = limitParam ? Math.max(1, Math.min(1000, parseInt(limitParam, 10) || 200)) : undefined;
-    const runs = await heartbeat.list(companyId, agentId, limit);
+    const daysParam = req.query.days as string | undefined;
+    const days = daysParam ? Math.min(Math.max(1, parseInt(daysParam, 10) || 30), 90) : undefined;
+    const runs = await heartbeat.list(companyId, agentId, limit, days);
     res.json(runs);
   });
 
@@ -2288,6 +2319,14 @@ export function agentRoutes(db: Db) {
     let run = issue.executionRunId ? await heartbeat.getRun(issue.executionRunId) : null;
     if (run && run.status !== "queued" && run.status !== "running") {
       run = null;
+    }
+    // Verify the run is actually working on this issue, not a different one
+    if (run) {
+      const runContext = asRecord(run.contextSnapshot);
+      const runIssueId = asNonEmptyString(runContext?.issueId);
+      if (runIssueId && runIssueId !== issue.id) {
+        run = null;
+      }
     }
 
     if (!run && issue.assigneeAgentId && issue.status === "in_progress") {

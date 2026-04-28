@@ -5,6 +5,7 @@ import { useDialog } from "../context/DialogContext";
 import { useCompany } from "../context/CompanyContext";
 import { agentsApi } from "../api/agents";
 import { queryKeys } from "../lib/queryKeys";
+import { AGENT_TEMPLATES } from "../lib/agent-templates";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +16,7 @@ import {
   Bot,
   Code,
   Gem,
+  LayoutTemplate,
   MousePointer2,
   Sparkles,
   Terminal,
@@ -92,11 +94,13 @@ const ADVANCED_ADAPTER_OPTIONS: Array<{
   },
 ];
 
+type ViewMode = "main" | "templates" | "advanced";
+
 export function NewAgentDialog() {
   const { newAgentOpen, closeNewAgent, openNewIssue } = useDialog();
   const { selectedCompanyId } = useCompany();
   const navigate = useNavigate();
-  const [showAdvancedCards, setShowAdvancedCards] = useState(false);
+  const [view, setView] = useState<ViewMode>("main");
 
   const { data: agents } = useQuery({
     queryKey: queryKeys.agents.list(selectedCompanyId!),
@@ -116,13 +120,19 @@ export function NewAgentDialog() {
   }
 
   function handleAdvancedConfig() {
-    setShowAdvancedCards(true);
+    setView("advanced");
   }
 
   function handleAdvancedAdapterPick(adapterType: AdvancedAdapterType) {
     closeNewAgent();
-    setShowAdvancedCards(false);
+    setView("main");
     navigate(`/agents/new?adapterType=${encodeURIComponent(adapterType)}`);
+  }
+
+  function handleTemplatePick(templateKey: string) {
+    closeNewAgent();
+    setView("main");
+    navigate(`/agents/new?template=${encodeURIComponent(templateKey)}`);
   }
 
   return (
@@ -130,7 +140,7 @@ export function NewAgentDialog() {
       open={newAgentOpen}
       onOpenChange={(open) => {
         if (!open) {
-          setShowAdvancedCards(false);
+          setView("main");
           closeNewAgent();
         }
       }}
@@ -147,7 +157,7 @@ export function NewAgentDialog() {
             size="icon-xs"
             className="text-muted-foreground"
             onClick={() => {
-              setShowAdvancedCards(false);
+              setView("main");
               closeNewAgent();
             }}
           >
@@ -156,7 +166,7 @@ export function NewAgentDialog() {
         </div>
 
         <div className="p-6 space-y-6">
-          {!showAdvancedCards ? (
+          {view === "main" && (
             <>
               {/* Recommendation */}
               <div className="text-center space-y-3">
@@ -175,22 +185,66 @@ export function NewAgentDialog() {
                 Ask the CEO to create a new agent
               </Button>
 
-              {/* Advanced link */}
-              <div className="text-center">
+              {/* Secondary options */}
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
+                  onClick={() => setView("templates")}
+                >
+                  <LayoutTemplate className="inline h-3 w-3 mr-1" />
+                  Use a template
+                </button>
+                <span className="text-muted-foreground/40 text-xs">·</span>
                 <button
                   className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors"
                   onClick={handleAdvancedConfig}
                 >
-                  I want advanced configuration myself
+                  Advanced config
                 </button>
               </div>
             </>
-          ) : (
+          )}
+
+          {view === "templates" && (
             <>
               <div className="space-y-2">
                 <button
                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setShowAdvancedCards(false)}
+                  onClick={() => setView("main")}
+                >
+                  <ArrowLeft className="h-3.5 w-3.5" />
+                  Back
+                </button>
+                <p className="text-sm text-muted-foreground">
+                  Pick a role template to pre-fill the agent form.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 max-h-72 overflow-y-auto pr-1">
+                {AGENT_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.key}
+                    className="flex flex-col items-center gap-1 rounded-md border border-border p-2.5 text-xs transition-colors hover:bg-accent/50 text-center"
+                    onClick={() => handleTemplatePick(tpl.key)}
+                    title={tpl.description}
+                  >
+                    <span className="text-xl leading-none">{tpl.emoji}</span>
+                    <span className="font-medium leading-tight">{tpl.name}</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight line-clamp-2">
+                      {tpl.description}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {view === "advanced" && (
+            <>
+              <div className="space-y-2">
+                <button
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={() => setView("main")}
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back

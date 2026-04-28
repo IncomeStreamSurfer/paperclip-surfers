@@ -100,6 +100,7 @@ export interface Issue {
   projectId: string | null;
   projectWorkspaceId: string | null;
   goalId: string | null;
+  sprintId: string | null;
   parentId: string | null;
   ancestors?: IssueAncestor[];
   title: string;

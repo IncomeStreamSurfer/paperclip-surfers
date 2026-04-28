@@ -4,17 +4,31 @@ import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useToast } from "../context/ToastContext";
 import { companiesApi } from "../api/companies";
+import { TeamMembers } from "./TeamMembers";
+import { Departments } from "./Departments";
+import { AgentModels } from "./AgentModels";
+import { CompanyMemberPermissions } from "../components/CompanyMemberPermissions";
 import { accessApi } from "../api/access";
 import { assetsApi } from "../api/assets";
 import { queryKeys } from "../lib/queryKeys";
 import { Button } from "@/components/ui/button";
-import { Settings, Check, Download, Upload } from "lucide-react";
+import { Settings, Check, Download, Upload, ArrowLeft, Cpu, Tag, MessageSquare } from "lucide-react";
 import { CompanyPatternIcon } from "../components/CompanyPatternIcon";
+import { Link } from "@/lib/router";
 import {
   Field,
   ToggleField,
   HintIcon
 } from "../components/agent-config-primitives";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { BUSINESS_TYPES, BUSINESS_TYPE_LABELS } from "@paperclipai/shared";
+import type { BusinessType } from "@paperclipai/shared";
 
 type AgentSnippetInput = {
   onboardingTextUrl: string;
@@ -36,8 +50,10 @@ export function CompanySettings() {
   const [companyName, setCompanyName] = useState("");
   const [description, setDescription] = useState("");
   const [brandColor, setBrandColor] = useState("");
+  const [brandPrimaryForeground, setBrandPrimaryForeground] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [logoUploadError, setLogoUploadError] = useState<string | null>(null);
+  const [businessType, setBusinessType] = useState<BusinessType | "">("");
 
   // Sync local state from selected company
   useEffect(() => {
@@ -45,7 +61,9 @@ export function CompanySettings() {
     setCompanyName(selectedCompany.name);
     setDescription(selectedCompany.description ?? "");
     setBrandColor(selectedCompany.brandColor ?? "");
+    setBrandPrimaryForeground(selectedCompany.brandPrimaryForeground ?? "");
     setLogoUrl(selectedCompany.logoUrl ?? "");
+    setBusinessType((selectedCompany.businessType as BusinessType | null) ?? "");
   }, [selectedCompany]);
 
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -57,13 +75,17 @@ export function CompanySettings() {
     !!selectedCompany &&
     (companyName !== selectedCompany.name ||
       description !== (selectedCompany.description ?? "") ||
-      brandColor !== (selectedCompany.brandColor ?? ""));
+      brandColor !== (selectedCompany.brandColor ?? "") ||
+      brandPrimaryForeground !== (selectedCompany.brandPrimaryForeground ?? "") ||
+      businessType !== ((selectedCompany.businessType as BusinessType | null) ?? ""));
 
   const generalMutation = useMutation({
     mutationFn: (data: {
       name: string;
       description: string | null;
       brandColor: string | null;
+      brandPrimaryForeground: string | null;
+      businessType: string | null;
     }) => companiesApi.update(selectedCompanyId!, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.companies.all });
@@ -216,15 +238,26 @@ export function CompanySettings() {
     generalMutation.mutate({
       name: companyName.trim(),
       description: description.trim() || null,
-      brandColor: brandColor || null
+      brandColor: brandColor || null,
+      brandPrimaryForeground: brandPrimaryForeground || null,
+      businessType: businessType || null,
     });
   }
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-2">
-        <Settings className="h-5 w-5 text-muted-foreground" />
-        <h1 className="text-lg font-semibold">Company Settings</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Settings className="h-5 w-5 text-muted-foreground" />
+          <h1 className="text-lg font-semibold">Company Settings</h1>
+        </div>
+        <Link
+          to="/dashboard"
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Return to Business
+        </Link>
       </div>
 
       {/* General */}
@@ -252,6 +285,27 @@ export function CompanySettings() {
               placeholder="Optional company description"
               onChange={(e) => setDescription(e.target.value)}
             />
+          </Field>
+          <Field
+            label="Business Type"
+            hint="Unlocks industry-specific modules and tool suggestions."
+          >
+            <Select
+              value={businessType || "__none__"}
+              onValueChange={(v) => setBusinessType(v === "__none__" ? "" : v as BusinessType)}
+            >
+              <SelectTrigger className="w-full text-sm">
+                <SelectValue placeholder="Select business type…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">General (no industry modules)</SelectItem>
+                {BUSINESS_TYPES.filter((bt) => bt !== "general").map((bt) => (
+                  <SelectItem key={bt} value={bt}>
+                    {BUSINESS_TYPE_LABELS[bt]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </div>
       </div>
@@ -315,7 +369,7 @@ export function CompanySettings() {
               </Field>
               <Field
                 label="Brand color"
-                hint="Sets the hue for the company icon. Leave empty for auto-generated color."
+                hint="Primary background color used for buttons and accents."
               >
                 <div className="flex items-center gap-2">
                   <input
@@ -341,6 +395,52 @@ export function CompanySettings() {
                       size="sm"
                       variant="ghost"
                       onClick={() => setBrandColor("")}
+                      className="text-xs text-muted-foreground"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </Field>
+              <Field
+                label="Text on brand color"
+                hint="Color of text and icons placed on top of the brand color background. Auto-defaults to white."
+              >
+                <div className="flex items-center gap-2">
+                  {/* Live preview swatch */}
+                  <div
+                    className="h-8 w-8 rounded border border-border shrink-0 flex items-center justify-center text-[10px] font-bold select-none"
+                    style={{
+                      backgroundColor: brandColor || "#6366f1",
+                      color: brandPrimaryForeground || "#ffffff",
+                    }}
+                    title="Preview"
+                  >
+                    Aa
+                  </div>
+                  <input
+                    type="color"
+                    value={brandPrimaryForeground || "#ffffff"}
+                    onChange={(e) => setBrandPrimaryForeground(e.target.value)}
+                    className="h-8 w-8 cursor-pointer rounded border border-border bg-transparent p-0"
+                  />
+                  <input
+                    type="text"
+                    value={brandPrimaryForeground}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === "" || /^#[0-9a-fA-F]{0,6}$/.test(v)) {
+                        setBrandPrimaryForeground(v);
+                      }
+                    }}
+                    placeholder="Auto (#ffffff)"
+                    className="w-32 rounded-md border border-border bg-transparent px-2.5 py-1.5 text-sm font-mono outline-none"
+                  />
+                  {brandPrimaryForeground && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setBrandPrimaryForeground("")}
                       className="text-xs text-muted-foreground"
                     >
                       Clear
@@ -461,6 +561,103 @@ export function CompanySettings() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Team Members */}
+      <div className="space-y-4">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Team Members
+        </div>
+        <div className="rounded-md border border-border px-4 py-4">
+          <TeamMembers />
+        </div>
+      </div>
+
+      {/* Member Permissions */}
+      <div className="space-y-4">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Member Permissions
+        </div>
+        <div className="rounded-md border border-border px-4 py-4">
+          <CompanyMemberPermissions />
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+          Agent Models
+        </div>
+        <AgentModels />
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+          Model Management
+        </div>
+        <div className="rounded-md border border-border px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium">AI Model Settings</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage which AI models are available to your team.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/company/settings/models">
+                <Cpu className="mr-1.5 h-3.5 w-3.5" />
+                Manage Models
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+          Labels
+        </div>
+        <div className="rounded-md border border-border px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium">Issue Labels</h3>
+              <p className="text-sm text-muted-foreground">
+                Create, edit, and delete labels used to categorize issues.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/company/settings/labels">
+                <Tag className="mr-1.5 h-3.5 w-3.5" />
+                Manage Labels
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-4">
+          Messaging
+        </div>
+        <div className="rounded-md border border-border px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-medium">Messaging Integrations</h3>
+              <p className="text-sm text-muted-foreground">
+                Configure Telegram and WhatsApp notifications for your team.
+              </p>
+            </div>
+            <Button size="sm" variant="outline" asChild>
+              <Link to="/company/settings/messaging">
+                <MessageSquare className="mr-1.5 h-3.5 w-3.5" />
+                Configure
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-6">
+        <Departments />
       </div>
 
       {/* Import / Export */}

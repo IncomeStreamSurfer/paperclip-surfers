@@ -1,5 +1,6 @@
 export const type = "opencode_local";
 export const label = "OpenCode (local)";
+export const DEFAULT_OPENCODE_MODEL = "ollama/dagbs/deepseek-coder-v2-lite-instruct:latest";
 
 export const models: Array<{ id: string; label: string }> = [];
 

@@ -1,0 +1,75 @@
+[     231ms] [WARNING] <meta name="apple-mobile-web-app-capable" content="yes"> is deprecated. Please include <meta name="mobile-web-app-capable" content="yes"> @ http://localhost:3100/SPL/skills:0
+[   39436ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[   41438ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[   42852ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   43854ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   45439ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[   45857ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   47886ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   48888ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   49859ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   50890ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   53441ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[   54893ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   59862ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   60865ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   62868ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   68617ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   70189ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[   71642ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   72644ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   74647ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   78620ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   78649ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   79622ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   81625ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   85191ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[   85627ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   93652ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   94654ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   95630ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   96632ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[   96656ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[   99846ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  101404ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[  101870ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  103848ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  113852ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  114855ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  116406ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[  116858ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  116873ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  117876ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  119879ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  120860ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  123881ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  131584ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  132128ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[  132586ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  134589ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  138591ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  139604ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  140607ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  142609ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  146611ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  147130ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[  148594ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  149596ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  151599ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  155602ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  162889ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  163407ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[  163891ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  165893ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  166880ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  167882ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  169885ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  169895ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  173887ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  178409ms] [ERROR] WebSocket connection to 'ws://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/events/ws' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/assets/index-Cw_Zio5Y.js:1204
+[  183890ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  184893ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  184898ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  185901ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0
+[  186896ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/live-runs:0
+[  187903ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_RESET @ http://localhost:3100/api/companies/801b4864-f9fa-47ba-8379-908dbdf45c8e/sidebar-badges:0

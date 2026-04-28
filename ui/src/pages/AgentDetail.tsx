@@ -73,11 +73,13 @@ import {
   ArrowLeft,
   HelpCircle,
   FolderOpen,
+  Camera,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { AgentIcon, AgentIconPicker } from "../components/AgentIconPicker";
+import { AvatarGeneratorPanel } from "../components/AvatarGeneratorPanel";
 import { RunTranscriptView, type TranscriptMode } from "../components/transcript/RunTranscriptView";
 import {
   isUuidLike,
@@ -735,6 +737,34 @@ export function AgentDetail() {
     },
   });
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const updateAvatar = useMutation({
+    mutationFn: async (file: File) => {
+      if (!resolvedCompanyId) throw new Error("No company selected");
+      const asset = await assetsApi.uploadImage(resolvedCompanyId, file, `agents/${agentLookupRef}/avatar`);
+      return agentsApi.update(agentLookupRef, { avatarUrl: asset.contentPath }, resolvedCompanyId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(routeAgentRef) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agentLookupRef) });
+      if (resolvedCompanyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+      }
+    },
+  });
+
+  const clearAvatar = useMutation({
+    mutationFn: () => agentsApi.update(agentLookupRef, { avatarUrl: null }, resolvedCompanyId ?? undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(routeAgentRef) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agentLookupRef) });
+      if (resolvedCompanyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+      }
+    },
+  });
+
   const resetTaskSession = useMutation({
     mutationFn: (taskKey: string | null) =>
       agentsApi.resetSession(agentLookupRef, taskKey, resolvedCompanyId ?? undefined),
@@ -819,15 +849,88 @@ export function AgentDetail() {
     <div className={cn("space-y-6", isMobile && showConfigActionBar && "pb-24")}>
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <AgentIconPicker
-            value={agent.icon}
-            onChange={(icon) => updateIcon.mutate(icon)}
-          >
-            <button className="shrink-0 flex items-center justify-center h-12 w-12 rounded-lg bg-accent hover:bg-accent/80 transition-colors">
-              <AgentIcon icon={agent.icon} className="h-6 w-6" />
-            </button>
-          </AgentIconPicker>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="flex flex-col gap-1.5 shrink-0">
+          <div className="relative group">
+            {/* Hidden file input for avatar upload */}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) updateAvatar.mutate(file);
+                e.target.value = "";
+              }}
+            />
+            {agent.avatarUrl ? (
+              /* When avatar is set: show image with camera overlay on hover */
+              <button
+                className="shrink-0 h-12 w-12 rounded-lg overflow-hidden relative"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Change avatar"
+              >
+                <AgentIcon
+                  icon={agent.icon}
+                  avatarUrl={agent.avatarUrl}
+                  className="h-12 w-12"
+                />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                  <Camera className="h-4 w-4 text-white" />
+                </span>
+              </button>
+            ) : (
+              /* When no avatar: icon picker with camera overlay */
+              <AgentIconPicker
+                value={agent.icon}
+                onChange={(icon) => updateIcon.mutate(icon)}
+              >
+                <button
+                  className="shrink-0 flex items-center justify-center h-12 w-12 rounded-lg bg-accent hover:bg-accent/80 transition-colors relative"
+                  title="Change icon"
+                >
+                  <AgentIcon icon={agent.icon} className="h-6 w-6" />
+                  <span className="absolute -bottom-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="h-3 w-3 text-muted-foreground" />
+                  </span>
+                </button>
+              </AgentIconPicker>
+            )}
+            {/* Upload photo button (always visible as small overlay) */}
+            {!agent.avatarUrl && (
+              <button
+                className="absolute -bottom-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-background border border-border hover:bg-accent transition-colors"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Upload avatar photo"
+              >
+                <Camera className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
+            {/* Remove avatar button */}
+            {agent.avatarUrl && (
+              <button
+                className="absolute -bottom-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-background border border-border hover:bg-destructive/10 transition-colors"
+                onClick={() => clearAvatar.mutate()}
+                title="Remove avatar"
+              >
+                <XCircle className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+          {/* AI avatar generator */}
+          <AvatarGeneratorPanel
+            agentId={agent.id}
+            companyId={resolvedCompanyId ?? undefined}
+            onGenerated={() => {
+              queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(routeAgentRef) });
+              queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agentLookupRef) });
+              if (resolvedCompanyId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+              }
+            }}
+          />
+          </div>
           <div className="min-w-0">
             <h2 className="text-2xl font-bold truncate">{agent.name}</h2>
             <p className="text-sm text-muted-foreground truncate">
