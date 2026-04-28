@@ -37,6 +37,7 @@ export async function hydrateMemPalace(
   issueId: string | undefined,
   projectId: string | undefined,
   queryText: string,
+  existingMemoryTitles: string[] = [],
 ): Promise<string> {
   try {
     const bindings = await db
@@ -102,8 +103,11 @@ export async function hydrateMemPalace(
         latencyMs,
       });
 
+      const normalizedTitles = existingMemoryTitles.map((t) => t.toLowerCase());
       for (const snippet of result.snippets) {
-        if (snippet.score && snippet.score < 0.3) continue;
+        if (snippet.score && snippet.score < 0.6) continue;
+        const normalizedSnippet = snippet.text.toLowerCase();
+        if (normalizedTitles.some((title) => normalizedSnippet.includes(title))) continue;
         snippets.push(snippet.text);
       }
     }

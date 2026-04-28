@@ -2,13 +2,18 @@ import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import { agentMemories } from "@paperclipai/db";
 
+const MEMORY_INJECTION_LIMIT = 20;
+const MEMORY_MIN_CONFIDENCE = 0.5;
+
 export function memoryLoaderService(db: Db) {
   return {
     async loadMemories(
       agentId: string,
       projectId?: string | null,
-      opts?: { scope?: "global" | "project"; category?: string },
+      opts?: { scope?: "global" | "project"; category?: string; limit?: number; minConfidence?: number },
     ) {
+      const limit = opts?.limit ?? MEMORY_INJECTION_LIMIT;
+      const minConfidence = opts?.minConfidence ?? MEMORY_MIN_CONFIDENCE;
       const conditions = [eq(agentMemories.agentId, agentId)];
 
       if (opts?.scope) {
@@ -28,12 +33,12 @@ export function memoryLoaderService(db: Db) {
         conditions.push(eq(agentMemories.projectId, projectId));
       }
 
-      // Return global + project-scoped memories
+      // Return global + project-scoped memories, sorted by confidence then recency
       const memories = await db
         .select()
         .from(agentMemories)
         .where(and(...conditions))
-        .orderBy(desc(agentMemories.createdAt));
+        .orderBy(desc(agentMemories.confidence), desc(agentMemories.createdAt));
 
       // If projectId specified and no scope filter, also include global memories
       if (projectId && !opts?.scope) {
@@ -43,7 +48,7 @@ export function memoryLoaderService(db: Db) {
           .where(
             and(eq(agentMemories.agentId, agentId), eq(agentMemories.scope, "global")),
           )
-          .orderBy(desc(agentMemories.createdAt));
+          .orderBy(desc(agentMemories.confidence), desc(agentMemories.createdAt));
 
         // Deduplicate by id
         const seen = new Set(memories.map((m) => m.id));
@@ -54,7 +59,10 @@ export function memoryLoaderService(db: Db) {
         }
       }
 
-      return memories;
+      // Apply confidence floor and injection cap
+      return memories
+        .filter((m) => (m.confidence ?? 0) >= minConfidence)
+        .slice(0, limit);
     },
 
     async saveMemory(data: {

@@ -974,22 +974,33 @@ export function heartbeatService(db: Db) {
       };
     }
 
-    const latestSummary = summarizeHeartbeatRunResultJson(latestRun.resultJson);
-    const latestTextSummary =
-      readNonEmptyString(latestSummary?.summary) ??
-      readNonEmptyString(latestSummary?.result) ??
-      readNonEmptyString(latestSummary?.message) ??
-      readNonEmptyString(latestRun.error);
+    const recentRuns = runs.slice(0, 3);
+    const recentSummaries = recentRuns
+      .map((r) => {
+        const s = summarizeHeartbeatRunResultJson(r.resultJson);
+        return (
+          readNonEmptyString(s?.summary) ??
+          readNonEmptyString(s?.result) ??
+          readNonEmptyString(s?.message) ??
+          readNonEmptyString(r.error)
+        );
+      })
+      .filter((s): s is string => s !== null);
 
     const handoffMarkdown = [
-      "Paperclip session handoff:",
-      `- Previous session: ${sessionId}`,
-      issueId ? `- Issue: ${issueId}` : "",
-      `- Rotation reason: ${reason}`,
-      latestTextSummary ? `- Last run summary: ${latestTextSummary}` : "",
-      "Continue from the current task state. Rebuild only the minimum context you need.",
+      "## Paperclip Session Handoff",
+      "",
+      `**Previous session:** ${sessionId}`,
+      issueId ? `**Issue:** ${issueId}` : "",
+      `**Rotation reason:** ${reason}`,
+      "",
+      recentSummaries.length > 0
+        ? `### Recent run summaries (newest first)\n${recentSummaries.map((s, i) => `${i + 1}. ${s}`).join("\n")}`
+        : "",
+      "",
+      "Continue from the current task state. The summaries above capture what was done — pick up where the last run left off without re-discovering context already established.",
     ]
-      .filter(Boolean)
+      .filter((line) => line !== null)
       .join("\n");
 
     return {
@@ -2553,10 +2564,12 @@ export function heartbeatService(db: Db) {
       }
       // V2: Load agent memories and inject as system prompt appendix
       let memoryCleanup: (() => void) | null = null;
+      let loadedMemoryTitles: string[] = [];
       try {
         const { memoryLoaderService } = await import("./agent-runtime/memory-loader.js");
         const memoryLoader = memoryLoaderService(db);
         const memories = await memoryLoader.loadMemories(agent.id, executionProjectId ?? undefined);
+        loadedMemoryTitles = memories.map((m) => m.title);
         const os = await import("node:os");
         const fsSync = await import("node:fs");
         const pathMod = await import("node:path");
@@ -2570,9 +2583,9 @@ export function heartbeatService(db: Db) {
             }\n\n`
           : "";
 
-        // Self-reflection instructions — always injected so agent can write memories
+        // Self-reflection instructions — only injected for issue-driven runs where learnings are likely
         const apiUrl = process.env.PAPERCLIP_API_URL ?? `http://localhost:${process.env.PORT ?? 3100}`;
-        const reflectionInstructions = `# Self-Improvement Instructions
+        const reflectionInstructions = issueId ? `# Self-Improvement Instructions
 
 At the end of your work on this task, write 1-3 memory entries about what you learned. Be specific and actionable.
 
@@ -2599,7 +2612,7 @@ Write memories for:
 - **Learnings** from failures or surprises
 - **Feedback** you received (implicit or explicit)
 
-Keep memories concise and specific. Don't write vague platitudes.`;
+Keep memories concise and specific. Don't write vague platitudes.` : "";
 
         const experimentSection = typeof context.v2ExperimentInstruction === "string"
           ? `\n\n${context.v2ExperimentInstruction}`
@@ -2632,6 +2645,7 @@ Keep memories concise and specific. Don't write vague platitudes.`;
           issueRef?.id,
           executionProjectId ?? undefined,
           `${issueTitle} ${issueDescription}`.slice(0, 1000),
+          loadedMemoryTitles,
         );
         if (memPalaceSection) {
           // Append to memory file if it exists, otherwise inject into context directly
