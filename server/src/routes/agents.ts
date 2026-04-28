@@ -699,6 +699,7 @@ export function agentRoutes(db: Db) {
   });
 
   router.post("/models/install", async (req, res) => {
+    assertBoard(req);
     const { modelName } = req.body;
     if (!modelName) {
       res.status(400).json({ error: "modelName is required" });
@@ -1839,6 +1840,12 @@ export function agentRoutes(db: Db) {
   router.post("/agents/:id/pause", async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const agent = await svc.pause(id);
     if (!agent) {
       res.status(404).json({ error: "Agent not found" });
@@ -1862,6 +1869,12 @@ export function agentRoutes(db: Db) {
   router.post("/agents/:id/resume", async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const agent = await svc.resume(id);
     if (!agent) {
       res.status(404).json({ error: "Agent not found" });
@@ -1883,6 +1896,12 @@ export function agentRoutes(db: Db) {
   router.post("/agents/:id/terminate", async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const agent = await svc.terminate(id);
     if (!agent) {
       res.status(404).json({ error: "Agent not found" });
@@ -1906,6 +1925,12 @@ export function agentRoutes(db: Db) {
   router.delete("/agents/:id", async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const agent = await svc.remove(id);
     if (!agent) {
       res.status(404).json({ error: "Agent not found" });
@@ -1927,6 +1952,12 @@ export function agentRoutes(db: Db) {
   router.get("/agents/:id/keys", async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const agent = await svc.getById(id);
+    if (!agent) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    assertCompanyAccess(req, agent.companyId);
     const keys = await svc.listKeys(id);
     res.json(keys);
   });
@@ -1934,26 +1965,36 @@ export function agentRoutes(db: Db) {
   router.post("/agents/:id/keys", validate(createAgentKeySchema), async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const agent = await svc.getById(id);
+    if (!agent) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    assertCompanyAccess(req, agent.companyId);
     const key = await svc.createApiKey(id, req.body.name);
 
-    const agent = await svc.getById(id);
-    if (agent) {
-      await logActivity(db, {
-        companyId: agent.companyId,
-        actorType: "user",
-        actorId: req.actor.userId ?? "board",
-        action: "agent.key_created",
-        entityType: "agent",
-        entityId: agent.id,
-        details: { keyId: key.id, name: key.name },
-      });
-    }
+    await logActivity(db, {
+      companyId: agent.companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "agent.key_created",
+      entityType: "agent",
+      entityId: agent.id,
+      details: { keyId: key.id, name: key.name },
+    });
 
     res.status(201).json(key);
   });
 
   router.delete("/agents/:id/keys/:keyId", async (req, res) => {
     assertBoard(req);
+    const id = req.params.id as string;
+    const agent = await svc.getById(id);
+    if (!agent) {
+      res.status(404).json({ error: "Agent not found" });
+      return;
+    }
+    assertCompanyAccess(req, agent.companyId);
     const keyId = req.params.keyId as string;
     const revoked = await svc.revokeKey(keyId);
     if (!revoked) {
@@ -2175,6 +2216,12 @@ export function agentRoutes(db: Db) {
   router.post("/heartbeat-runs/:runId/cancel", async (req, res) => {
     assertBoard(req);
     const runId = req.params.runId as string;
+    const precheck = await heartbeat.getRun(runId);
+    if (!precheck) {
+      res.status(404).json({ error: "Heartbeat run not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const run = await heartbeat.cancelRun(runId);
 
     if (run) {
@@ -2190,6 +2237,32 @@ export function agentRoutes(db: Db) {
     }
 
     res.json(run);
+  });
+
+  router.post("/heartbeat-runs/:runId/replay", async (req, res) => {
+    assertBoard(req);
+    const runId = req.params.runId as string;
+    const run = await heartbeat.getRun(runId);
+    if (!run) {
+      res.status(404).json({ error: "Heartbeat run not found" });
+      return;
+    }
+    assertCompanyAccess(req, run.companyId);
+
+    const model = typeof req.body.model === "string" ? req.body.model : null;
+    const newRun = await heartbeat.replayRun(runId, { model });
+
+    await logActivity(db, {
+      companyId: run.companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "heartbeat.replay",
+      entityType: "heartbeat_run",
+      entityId: run.id,
+      details: { newRunId: newRun.id, model: model ?? undefined },
+    });
+
+    res.status(201).json(newRun);
   });
 
   router.get("/heartbeat-runs/:runId/events", async (req, res) => {
