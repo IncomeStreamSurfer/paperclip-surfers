@@ -154,6 +154,21 @@ export function emailService(db: Db) {
       .map((r) => r.email);
   }
 
+  /** Returns email addresses for all human board members of a company. */
+  async function getBoardMemberEmails(companyId: string): Promise<string[]> {
+    const rows = await db
+      .select({ email: authUsers.email })
+      .from(companyMemberships)
+      .innerJoin(authUsers, eq(authUsers.id, companyMemberships.principalId))
+      .where(
+        and(
+          eq(companyMemberships.companyId, companyId),
+          eq(companyMemberships.principalType, "user"),
+        ),
+      );
+    return rows.map((r) => r.email).filter(Boolean) as string[];
+  }
+
   return {
     async sendBlockedIssueNotification(issue: {
       id: string;
@@ -173,9 +188,14 @@ export function emailService(db: Db) {
       )];
       const perUserEmails = await getOptedInEmails(candidateIds, "emailOnBlocked");
 
-      // Always include the global notificationEmail if configured
+      // All board members of the company + global notificationEmail
+      const boardEmails = await getBoardMemberEmails(issue.companyId);
       const allRecipients = [
-        ...new Set([...perUserEmails, ...(notifications.notificationEmail ? [notifications.notificationEmail] : [])]),
+        ...new Set([
+          ...perUserEmails,
+          ...boardEmails,
+          ...(notifications.notificationEmail ? [notifications.notificationEmail] : []),
+        ]),
       ];
       if (allRecipients.length === 0) return;
 
@@ -207,6 +227,79 @@ export function emailService(db: Db) {
         ].join("\n"),
         html: await wrapHtml(bodyHtml, notifications, {
           previewText: `Issue blocked: ${issue.identifier} — ${issue.title}`,
+          unsubscribeUrl,
+        }),
+      });
+    },
+
+    async sendSignoffNeededNotification(approval: {
+      id: string;
+      companyId: string;
+      type: string;
+      description?: string | null;
+      issueIdentifier?: string | null;
+      issueTitle?: string | null;
+    }): Promise<void> {
+      const notifications = await settingsSvc.getNotifications();
+      if (!notifications.enabled) return;
+      if (!isEmailConfigured(notifications)) return;
+
+      const boardEmails = await getBoardMemberEmails(approval.companyId);
+      const allRecipients = [
+        ...new Set([
+          ...boardEmails,
+          ...(notifications.notificationEmail ? [notifications.notificationEmail] : []),
+        ]),
+      ];
+      if (allRecipients.length === 0) return;
+
+      const { transporter } = await createTransporter();
+      const from = notifications.smtpFrom || notifications.smtpUser || "paperclip@localhost";
+      const appUrl = normalizeAppUrl(notifications.emailAppUrl);
+      const companyPrefix = approval.issueIdentifier
+        ? await getCompanyPrefix(approval.companyId)
+        : null;
+      const approvalUrl = appUrl ? `${appUrl}/approvals/${approval.id}` : null;
+      const issueUrl = companyPrefix && appUrl && approval.issueIdentifier
+        ? `${appUrl}/${companyPrefix}/issues/${approval.issueIdentifier}`
+        : null;
+      const unsubscribeUrl = appUrl ? `${appUrl}/profile` : undefined;
+
+      const issueRef = approval.issueIdentifier
+        ? `<p>Issue: <strong>${approval.issueIdentifier}</strong>${approval.issueTitle ? ` — ${approval.issueTitle}` : ""}</p>`
+        : "";
+      const descRef = approval.description
+        ? `<p>${approval.description}</p>`
+        : "";
+
+      const bodyHtml = [
+        `<h2>Signoff required</h2>`,
+        `<p>An approval request of type <strong>${approval.type}</strong> is waiting for your review.</p>`,
+        descRef,
+        issueRef,
+        issueUrl ? `<p><a href="${issueUrl}" class="btn">Open issue</a></p>` : "",
+        approvalUrl ? `<p><a href="${approvalUrl}" class="btn">Review approval</a></p>` : "",
+      ].join("");
+
+      const subject = approval.issueIdentifier
+        ? `Signoff needed: ${approval.issueIdentifier}${approval.issueTitle ? ` — ${approval.issueTitle}` : ""}`
+        : `Signoff needed: ${approval.type} approval request`;
+
+      await transporter.sendMail({
+        from,
+        to: allRecipients.join(", "),
+        subject,
+        text: [
+          `An approval request is waiting for your review.`,
+          ``,
+          `Type: ${approval.type}`,
+          approval.description ? `Details: ${approval.description}` : "",
+          approval.issueIdentifier ? `Issue: ${approval.issueIdentifier}${approval.issueTitle ? ` — ${approval.issueTitle}` : ""}` : "",
+          issueUrl ? `\nOpen issue: ${issueUrl}` : "",
+          approvalUrl ? `Review approval: ${approvalUrl}` : "",
+        ].filter(Boolean).join("\n"),
+        html: await wrapHtml(bodyHtml, notifications, {
+          previewText: subject,
           unsubscribeUrl,
         }),
       });
