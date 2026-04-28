@@ -10,6 +10,7 @@ import type { StorageService } from "./storage/types.js";
 import { httpLogger, errorHandler } from "./middleware/index.js";
 import { actorMiddleware } from "./middleware/auth.js";
 import { boardMutationGuard } from "./middleware/board-mutation-guard.js";
+import { csrfSetCookie, csrfProtection } from "./middleware/csrf.js";
 import { privateHostnameGuard, resolvePrivateHostnameAllowSet } from "./middleware/private-hostname-guard.js";
 import { healthRoutes } from "./routes/health.js";
 import { companyRoutes } from "./routes/companies.js";
@@ -55,6 +56,9 @@ import { civilRoutes } from "./routes/civil.js";
 import { mcpBuiltinRoutes } from "./routes/mcp-builtins.js";
 import { messagingRoutes } from "./routes/messaging.js";
 import { telegramWebhookRoutes } from "./routes/telegram-webhook.js";
+import { knowledgeBaseRoutes } from "./routes/knowledge-bases.js";
+import { memoryBindingRoutes } from "./routes/memory-bindings.js";
+import { pricingRoutes } from "./routes/pricing.js";
 import { applyUiBranding } from "./ui-branding.js";
 import { logger } from "./middleware/logger.js";
 import { DEFAULT_LOCAL_PLUGIN_DIR, pluginLoader } from "./services/plugin-loader.js";
@@ -112,6 +116,7 @@ export async function createApp(
     },
   }));
   app.use(httpLogger);
+  app.use(csrfSetCookie());
   const privateHostnameGateEnabled =
     opts.deploymentMode === "authenticated" && opts.deploymentExposure === "private";
   const privateHostnameAllowSet = resolvePrivateHostnameAllowSet({
@@ -187,6 +192,7 @@ export async function createApp(
   // Mount API routes
   const api = Router();
   api.use(boardMutationGuard());
+  api.use(csrfProtection());
   api.use(
     "/health",
     healthRoutes(db, {
@@ -231,6 +237,9 @@ export async function createApp(
   api.use(civilRoutes(db));
   api.use(messagingRoutes(db));
   api.use(telegramWebhookRoutes(db));
+  api.use(knowledgeBaseRoutes(db));
+  api.use(memoryBindingRoutes(db));
+  api.use(pricingRoutes(db));
   api.use(mcpBuiltinRoutes());
   const hostServicesDisposers = new Map<string, () => void>();
   const workerManager = createPluginWorkerManager();

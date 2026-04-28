@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Link } from "@/lib/router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import type { Agent, Issue } from "@paperclipai/shared";
 import { heartbeatsApi, type LiveRunForIssue } from "../api/heartbeats";
 import { issuesApi } from "../api/issues";
@@ -10,7 +10,10 @@ import { cn, relativeTime, formatTokens } from "../lib/utils";
 import { AgentIcon } from "./AgentIconPicker";
 import { useLiveRunTranscripts } from "./transcript/useLiveRunTranscripts";
 import { RunTranscriptView } from "./transcript/RunTranscriptView";
-import { ChevronDown, ChevronUp, Cpu, DollarSign, Wrench, Puzzle, Plug, Activity } from "lucide-react";
+import { SpeechBubble } from "./SpeechBubble";
+import { getSayHelloResponse, getReportInResponse } from "../lib/agent-responses";
+import { useToast } from "../context/ToastContext";
+import { ChevronDown, ChevronUp, CircleDot, Cpu, DollarSign, Wrench, Activity, MessageCircle, FileText, Loader2 } from "lucide-react";
 import { Tooltip } from "./Tooltip";
 import type { TranscriptEntry } from "../adapters";
 
@@ -77,6 +80,7 @@ function statusLabel(agent: Agent, run: LiveRunForIssue | undefined, issue: Issu
         ? `Task ${run.issueId.slice(0, 8)}`
         : "Running…";
     }
+    if (issue?.title) return issue.title;
     return run.finishedAt ? `Done ${relativeTime(run.finishedAt)}` : "Recent run";
   }
   switch (agent.status) {
@@ -101,7 +105,72 @@ function runMetrics(run: LiveRunForIssue) {
   return { input, output, cached, total, costCents };
 }
 
+// ---------------------------------------------------------------------------
+// useBubbles — per-agent speech bubble state with thinking animation
+// Shows "thinking" spinner for 1-3s, then reveals the response
+// ---------------------------------------------------------------------------
+
+function randBetween(min: number, max: number) {
+  return Math.random() * (max - min) + min;
+}
+
+type BubbleState = { text: string; thinking: boolean };
+
+function useBubbles(visibleMs = 10000) {
+  const [bubbles, setBubbles] = useState<Map<string, BubbleState>>(new Map());
+  const timers = useRef<Map<string, { thinkingTimer: ReturnType<typeof setTimeout>; clearTimer: ReturnType<typeof setTimeout> }>>(new Map());
+
+  const showBubble = useCallback((agentId: string, text: string) => {
+    const existing = timers.current.get(agentId);
+    if (existing) {
+      clearTimeout(existing.thinkingTimer);
+      clearTimeout(existing.clearTimer);
+    }
+
+    const thinkingMs = randBetween(1000, 3000);
+    const totalMs = thinkingMs + visibleMs;
+
+    setBubbles((prev) => new Map(prev).set(agentId, { text, thinking: true }));
+
+    const thinkingTimer = setTimeout(() => {
+      setBubbles((prev) => {
+        const current = prev.get(agentId);
+        if (!current) return prev;
+        const next = new Map(prev);
+        next.set(agentId, { ...current, thinking: false });
+        return next;
+      });
+    }, thinkingMs);
+
+    const clearTimer = setTimeout(() => {
+      setBubbles((prev) => {
+        const next = new Map(prev);
+        next.delete(agentId);
+        return next;
+      });
+      timers.current.delete(agentId);
+    }, totalMs);
+
+    timers.current.set(agentId, { thinkingTimer, clearTimer });
+  }, [visibleMs]);
+
+  useEffect(() => {
+    const t = timers.current;
+    return () => {
+      for (const { thinkingTimer, clearTimer } of t.values()) {
+        clearTimeout(thinkingTimer);
+        clearTimeout(clearTimer);
+      }
+    };
+  }, []);
+
+  return { bubbles, showBubble };
+}
+
 export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps) {
+  const { pushToast } = useToast();
+  const { bubbles, showBubble } = useBubbles();
+
   const { data: liveRuns } = useQuery({
     queryKey: [...queryKeys.liveRuns(companyId), "dashboard"],
     queryFn: () => heartbeatsApi.liveRunsForCompany(companyId, MIN_DASHBOARD_RUNS),
@@ -128,7 +197,6 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
     return map;
   }, [issues]);
 
-  // Build agentId → first department name map
   const agentDeptMap = useMemo(() => {
     const map = new Map<string, string>();
     const depts = (deptsData?.departments ?? []) as DepartmentWithAgents[];
@@ -140,10 +208,8 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
     return map;
   }, [deptsData]);
 
-  // Map agentId → most recent live run
   const runByAgent = useMemo(() => {
     const map = new Map<string, LiveRunForIssue>();
-    // runs arrive newest-first; just take first occurrence per agent
     for (const run of runs) {
       if (!map.has(run.agentId)) map.set(run.agentId, run);
     }
@@ -152,9 +218,52 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
 
   const { transcriptByRun, hasOutputForRun } = useLiveRunTranscripts({ runs, companyId });
 
+  const sayHelloMutation = useMutation({
+    mutationFn: async () => {
+      const active = agents.filter(
+        (a) => a.status !== "terminated" && a.status !== "paused" && a.status !== "pending_approval",
+      );
+      const results = await Promise.allSettled(
+        active.map((a) => fetch(`/api/agents/${a.id}/heartbeat/invoke`, { method: "POST" })),
+      );
+      const succeeded = results.filter((r) => r.status === "fulfilled" && (r.value as Response).ok).length;
+      return { succeeded, total: results.length, active };
+    },
+    onSuccess: ({ succeeded, total, active }) => {
+      active.forEach((agent, i) => {
+        setTimeout(() => {
+          const run = runByAgent.get(agent.id);
+          showBubble(agent.id, getSayHelloResponse({
+            name: agent.id,
+            role: agent.role,
+            title: agent.title,
+            status: run ? "running" : agent.status,
+            dept: agentDeptMap.get(agent.id),
+          }));
+        }, i * 120);
+      });
+    },
+    onError: () => pushToast({ title: "Failed to say hello", tone: "error" }),
+  });
+
+  function triggerReportIn() {
+    for (const agent of agents) {
+      if (agent.status === "terminated") continue;
+      const run = runByAgent.get(agent.id);
+      const issue = run?.issueId ? issueById.get(run.issueId) : undefined;
+      showBubble(agent.id, getReportInResponse({
+        name: agent.id,
+        role: agent.role,
+        title: agent.title,
+        status: run ? (run.status === "running" || run.status === "queued" ? "running" : agent.status) : agent.status,
+        issueTitle: issue?.title,
+        dept: agentDeptMap.get(agent.id),
+      }));
+    }
+  }
+
   if (agents.length === 0) return null;
 
-  // Sort: running/live first, then idle, then active, then others
   const sorted = [...agents].sort((a, b) => {
     const order = (ag: Agent) => {
       const run = runByAgent.get(ag.id);
@@ -167,16 +276,13 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
     return order(a) - order(b);
   });
 
-  // Auto-expand the first live agent on mount
   useEffect(() => {
     if (expandedAgentId !== null) return;
     const firstLive = sorted.find((ag) => {
       const run = runByAgent.get(ag.id);
       return run && (run.status === "running" || run.status === "queued");
     });
-    if (firstLive) {
-      setExpandedAgentId(firstLive.id);
-    }
+    if (firstLive) setExpandedAgentId(firstLive.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agents.length, runs.length]);
 
@@ -189,12 +295,37 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
             {agents.length} total
           </span>
         </h3>
-        <Link
-          to="/agents"
-          className="text-xs text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors no-underline font-medium"
-        >
-          View all agents →
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => triggerReportIn()}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            title="Report in"
+          >
+            <FileText className="h-3 w-3" />
+            Report in
+          </button>
+          <button
+            type="button"
+            onClick={() => sayHelloMutation.mutate()}
+            disabled={sayHelloMutation.isPending}
+            className="flex items-center gap-1 text-xs text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors disabled:opacity-50"
+            title="Say hello to all agents"
+          >
+            {sayHelloMutation.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <MessageCircle className="h-3 w-3" />
+            )}
+            Say hello
+          </button>
+          <Link
+            to="/agents"
+            className="text-xs text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors no-underline font-medium"
+          >
+            View all →
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
@@ -208,17 +339,20 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
           const isExpanded = expandedAgentId === agent.id;
           const transcript = run ? transcriptByRun.get(run.id) ?? [] : [];
           const metrics = run ? runMetrics(run) : null;
+          const bubble = bubbles.get(agent.id);
 
           return (
             <div
               key={agent.id}
               className={cn(
-                "rounded-lg border overflow-hidden transition-colors",
+                "relative rounded-lg border transition-colors",
                 isLive
                   ? "border-cyan-500/30 bg-cyan-500/[0.04]"
                   : "border-border bg-background/60",
               )}
             >
+              {bubble && <SpeechBubble text={bubble.text} thinking={bubble.thinking} />}
+
               <div className="flex items-center gap-2.5 px-3 py-2">
                 <Link
                   to={href}
@@ -246,6 +380,16 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
                       <p className="truncate text-xs font-semibold leading-tight min-w-0">
                         {agent.name}
                       </p>
+                      <span className={cn(
+                        "shrink-0 text-[9px] font-medium px-1 py-px rounded leading-tight ml-1",
+                        isLive
+                          ? "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+                          : agent.status === "paused"
+                            ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            : "bg-muted/60 text-muted-foreground",
+                      )}>
+                        {agent.status === "idle" && !run ? "Idle" : agent.status}
+                      </span>
                       {agentDeptMap.get(agent.id) && (
                         <Tooltip content={agentDeptMap.get(agent.id)!}>
                           <span className="shrink-0 text-[9px] font-medium px-1 py-px rounded bg-muted/60 text-muted-foreground border border-border/60 leading-tight ml-1 max-w-[70px] truncate cursor-default">
@@ -290,7 +434,6 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
               {/* Expanded live stream */}
               {isExpanded && run && (
                 <div className="border-t border-border/60 px-3 py-2 space-y-2">
-                  {/* Metadata bar: API, tokens, cost, capabilities */}
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/60">
                       <Cpu className="h-2.5 w-2.5" />
@@ -308,11 +451,14 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
                         ${(metrics.costCents / 100).toFixed(2)}
                       </span>
                     )}
-                    {agent.capabilities && (
-                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/60">
-                        <Puzzle className="h-2.5 w-2.5" />
-                        {agent.capabilities}
-                      </span>
+                    {issue && (
+                      <Link
+                        to={`/issues/${issue.identifier ?? issue.id}`}
+                        className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/20 transition-colors no-underline max-w-[200px]"
+                      >
+                        <CircleDot className="h-2.5 w-2.5 shrink-0" />
+                        <span className="truncate">{issue.identifier ?? issue.title}</span>
+                      </Link>
                     )}
                     <Link
                       to={`/agents/${agent.id}`}
@@ -322,7 +468,6 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
                     </Link>
                   </div>
 
-                  {/* Transcript */}
                   <div className="max-h-[260px] overflow-y-auto">
                     <RunTranscriptView
                       entries={transcript}

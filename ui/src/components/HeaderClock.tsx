@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Plus, X, Globe, ChevronUp, ChevronDown } from "lucide-react";
 import { authApi } from "@/api/auth";
+import { userProfileApi } from "@/api/userProfile";
 import { queryKeys } from "@/lib/queryKeys";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import {
   useTimezones,
   getAllTimezones,
@@ -20,9 +26,9 @@ function useTick() {
   return now;
 }
 
-/** Format local time HH:MM:SS */
-function formatLocal(date: Date) {
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+/** Format local time */
+function formatLocal(date: Date, hour12: boolean) {
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12 });
 }
 
 export function HeaderClock() {
@@ -36,6 +42,14 @@ export function HeaderClock() {
     retry: false,
   });
 
+  const { data: profile } = useQuery({
+    queryKey: ["user-profile"],
+    queryFn: () => userProfileApi.get(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const hour12 = profile?.preferences?.clock24h === false;
   const userName = session?.user?.name ?? session?.user?.email ?? null;
 
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -85,9 +99,16 @@ export function HeaderClock() {
             </div>
           ))}
           {timezones.length > 3 && (
-            <span className="text-[10px] text-muted-foreground/60" title={`${timezones.length - 3} more in World Clock widget`}>
-              +{timezones.length - 3}
-            </span>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-[10px] text-muted-foreground/60">
+                  +{timezones.length - 3} more
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                +{timezones.length - 3} more in World Clock widget
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       )}
@@ -95,7 +116,7 @@ export function HeaderClock() {
       {/* Local clock */}
       <div className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground">
         <Clock className="h-3.5 w-3.5 shrink-0" />
-        <span className="tabular-nums">{formatLocal(now)}</span>
+        <span className="tabular-nums">{formatLocal(now, hour12)}</span>
       </div>
 
       {/* Add timezone button */}

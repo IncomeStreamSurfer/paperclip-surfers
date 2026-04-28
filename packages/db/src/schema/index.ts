@@ -85,3 +85,6 @@ export type { SprintStatus } from "./sprints.js";
 export { civilProjects, civilDrawings, civilSpecifications } from "./civil.js";
 export type { DepartmentMemoryEntry } from "./departments.js";
 export { messagingProviders, messagingSubscriptions, messagingDeliveries } from "./messaging.js";
+export { knowledgeBases, knowledgeDocuments, agentKnowledgeBases } from "./knowledge.js";
+export { memoryBindings, memoryOperations } from "./memory.js";
+export { modelPricing } from "./model_pricing.js";

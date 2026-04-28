@@ -12,7 +12,7 @@ import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { Tooltip } from "../components/Tooltip";
 import { AgentIcon } from "../components/AgentIconPicker";
-import { Download, Network, RotateCcw, Upload } from "lucide-react";
+import { Download, Image, Network, RotateCcw, Upload } from "lucide-react";
 import { AGENT_ROLE_LABELS, type Agent } from "@paperclipai/shared";
 
 // Layout constants
@@ -171,6 +171,21 @@ const statusDotColor: Record<string, string> = {
 const defaultDotColor = "#a3a3a3";
 
 // ── Main component ──────────────────────────────────────────────────────
+
+async function downloadOrgChart(companyId: string, format: "svg" | "png") {
+  const url = `/api/companies/${companyId}/org.${format}`;
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`Failed to download org chart (${res.status})`);
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = `org-chart.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+}
 
 export function OrgChart() {
   const { selectedCompanyId } = useCompany();
@@ -483,6 +498,26 @@ export function OrgChart() {
             Export company
           </Button>
         </Link>
+        <Tooltip content="Download org chart as SVG">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => selectedCompanyId && downloadOrgChart(selectedCompanyId, "svg")}
+          >
+            <Image className="mr-1.5 h-3.5 w-3.5" />
+            SVG
+          </Button>
+        </Tooltip>
+        <Tooltip content="Download org chart as PNG">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => selectedCompanyId && downloadOrgChart(selectedCompanyId, "png")}
+          >
+            <Image className="mr-1.5 h-3.5 w-3.5" />
+            PNG
+          </Button>
+        </Tooltip>
         {hasCustomLayout && (
           <Tooltip content="Reset agent positions to default">
             <Button variant="ghost" size="sm" onClick={handleResetLayout}>

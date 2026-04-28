@@ -219,6 +219,18 @@ export function CompanySettings() {
     }
   });
 
+  const unarchiveMutation = useMutation({
+    mutationFn: (companyId: string) => companiesApi.unarchive(companyId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.all
+      });
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.companies.stats
+      });
+    }
+  });
+
   useEffect(() => {
     setBreadcrumbs([
       { label: selectedCompany?.name ?? "Company", href: "/dashboard" },
@@ -692,52 +704,73 @@ export function CompanySettings() {
         <div className="text-xs font-medium text-destructive uppercase tracking-wide">
           Danger Zone
         </div>
-        <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-4">
-          <p className="text-sm text-muted-foreground">
-            Archive this company to hide it from the sidebar. This persists in
-            the database.
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="destructive"
-              disabled={
-                archiveMutation.isPending ||
-                selectedCompany.status === "archived"
-              }
-              onClick={() => {
-                if (!selectedCompanyId) return;
-                const confirmed = window.confirm(
-                  `Archive company "${selectedCompany.name}"? It will be hidden from the sidebar.`
-                );
-                if (!confirmed) return;
-                const nextCompanyId =
-                  companies.find(
-                    (company) =>
-                      company.id !== selectedCompanyId &&
-                      company.status !== "archived"
-                  )?.id ?? null;
-                archiveMutation.mutate({
-                  companyId: selectedCompanyId,
-                  nextCompanyId
-                });
-              }}
-            >
-              {archiveMutation.isPending
-                ? "Archiving..."
-                : selectedCompany.status === "archived"
-                ? "Already archived"
-                : "Archive company"}
-            </Button>
-            {archiveMutation.isError && (
-              <span className="text-xs text-destructive">
-                {archiveMutation.error instanceof Error
-                  ? archiveMutation.error.message
-                  : "Failed to archive company"}
-              </span>
-            )}
+        {selectedCompany.status === "archived" ? (
+          <div className="space-y-3 rounded-md border border-border/60 bg-muted/30 px-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              This company is archived. Unarchive it to restore access.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={unarchiveMutation.isPending}
+                onClick={() => {
+                  if (!selectedCompanyId) return;
+                  unarchiveMutation.mutate(selectedCompanyId);
+                }}
+              >
+                {unarchiveMutation.isPending ? "Unarchiving..." : "Unarchive company"}
+              </Button>
+              {unarchiveMutation.isError && (
+                <span className="text-xs text-destructive">
+                  {unarchiveMutation.error instanceof Error
+                    ? unarchiveMutation.error.message
+                    : "Failed to unarchive"}
+                </span>
+              )}
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/5 px-4 py-4">
+            <p className="text-sm text-muted-foreground">
+              Archive this company to hide it from the sidebar. This persists in
+              the database.
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={archiveMutation.isPending}
+                onClick={() => {
+                  if (!selectedCompanyId) return;
+                  const confirmed = window.confirm(
+                    `Archive company "${selectedCompany.name}"? It will be hidden from the sidebar.`
+                  );
+                  if (!confirmed) return;
+                  const nextCompanyId =
+                    companies.find(
+                      (company) =>
+                        company.id !== selectedCompanyId &&
+                        company.status !== "archived"
+                    )?.id ?? null;
+                  archiveMutation.mutate({
+                    companyId: selectedCompanyId,
+                    nextCompanyId
+                  });
+                }}
+              >
+                {archiveMutation.isPending ? "Archiving..." : "Archive company"}
+              </Button>
+              {archiveMutation.isError && (
+                <span className="text-xs text-destructive">
+                  {archiveMutation.error instanceof Error
+                    ? archiveMutation.error.message
+                    : "Failed to archive company"}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

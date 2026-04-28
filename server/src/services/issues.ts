@@ -791,6 +791,18 @@ export function issueService(db: Db) {
       return row;
     },
 
+    markUnread: async (companyId: string, issueId: string, userId: string) => {
+      await db
+        .delete(issueReadStates)
+        .where(
+          and(
+            eq(issueReadStates.companyId, companyId),
+            eq(issueReadStates.issueId, issueId),
+            eq(issueReadStates.userId, userId),
+          ),
+        );
+    },
+
     archiveInbox: async (companyId: string, issueId: string, userId: string, archivedAt: Date = new Date()) => {
       const now = new Date();
       const [row] = await db

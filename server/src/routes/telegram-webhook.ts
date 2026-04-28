@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from "express";
 import { timingSafeEqual } from "node:crypto";
 import type { Db } from "@paperclipai/db";
-import { messagingProviders, issues, heartbeatRuns, agents } from "@paperclipai/db";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { messagingProviders, issues, heartbeatRuns, agents, approvals, issueApprovals } from "@paperclipai/db";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { logger } from "../middleware/logger.js";
 import { logActivity } from "../services/index.js";
 
@@ -26,8 +26,8 @@ interface TelegramUpdate {
 export function telegramWebhookRoutes(db: Db) {
   const router = Router();
 
-  router.post("/webhooks/telegram/:companyId", async (req: Request, res: Response) => {
-    const companyId = req.params.companyId as string;
+  router.post("/webhooks/telegram/:webhookToken", async (req: Request, res: Response) => {
+    const webhookToken = req.params.webhookToken as string;
     const update = req.body as TelegramUpdate;
 
     // Acknowledge quickly so Telegram doesn't retry
@@ -37,15 +37,21 @@ export function telegramWebhookRoutes(db: Db) {
     const chatId = update.message?.chat.id ?? update.callback_query?.message?.chat.id;
     if (!messageText || chatId === undefined) return;
 
-    // Verify the chat ID matches the company's configured Telegram provider
-    const providerRow = await db
+    // Look up the provider by opaque webhook token (not company UUID)
+    const allTelegramProviders = await db
       .select()
       .from(messagingProviders)
-      .where(and(eq(messagingProviders.companyId, companyId), eq(messagingProviders.provider, "telegram")))
-      .then((rows) => rows[0] ?? null);
-    if (!providerRow?.enabled) return;
+      .where(eq(messagingProviders.provider, "telegram"));
 
-    const config = providerRow.config as { botToken?: string; chatId?: string; webhookSecret?: string };
+    const providerRow = allTelegramProviders.find((p) => {
+      const cfg = p.config as Record<string, unknown>;
+      return cfg.webhookToken === webhookToken;
+    }) ?? null;
+
+    if (!providerRow?.enabled) return;
+    const companyId = providerRow.companyId;
+
+    const config = providerRow.config as { botToken?: string; chatId?: string; webhookSecret?: string; webhookToken?: string };
 
     // Always require webhook secret validation. Reject unauthenticated requests.
     // Return 200 before validating so Telegram doesn't retry, but do not process commands.
@@ -171,6 +177,29 @@ async function handleCompleteCommand(db: Db, companyId: string, chatId: number, 
   if (issue.status === "done") {
     await sendTelegramMessage(botToken, chatId, `✅ Issue \`${escapeMarkdown(issueIdentifier)}\` is already completed.`);
     return;
+  }
+
+  // Check approval gates — reject if any linked approval is pending or in_progress
+  const linkedApprovalIds = await db
+    .select({ approvalId: issueApprovals.approvalId })
+    .from(issueApprovals)
+    .where(eq(issueApprovals.issueId, issue.id))
+    .then((rows) => rows.map((r) => r.approvalId));
+
+  if (linkedApprovalIds.length > 0) {
+    const activeApprovals = await db
+      .select({ id: approvals.id, status: approvals.status })
+      .from(approvals)
+      .where(and(inArray(approvals.id, linkedApprovalIds), inArray(approvals.status, ["pending", "in_progress"])));
+
+    if (activeApprovals.length > 0) {
+      await sendTelegramMessage(
+        botToken,
+        chatId,
+        `🚫 Issue \`${escapeMarkdown(issueIdentifier)}\` has pending approvals and cannot be completed via Telegram.`,
+      );
+      return;
+    }
   }
 
   await db

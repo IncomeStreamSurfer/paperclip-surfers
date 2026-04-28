@@ -4,6 +4,8 @@ import { AGENT_ICON_NAMES } from "@paperclipai/shared";
 import { forbidden } from "../errors.js";
 import { listServerAdapters } from "../adapters/index.js";
 import { agentService } from "../services/agents.js";
+import { boardMutationGuard } from "../middleware/board-mutation-guard.js";
+import { csrfProtection } from "../middleware/csrf.js";
 
 function hasCreatePermission(agent: { role: string; permissions: Record<string, unknown> | null | undefined }) {
   if (!agent.permissions || typeof agent.permissions !== "object") return false;
@@ -12,6 +14,8 @@ function hasCreatePermission(agent: { role: string; permissions: Record<string, 
 
 export function llmRoutes(db: Db) {
   const router = Router();
+  router.use(boardMutationGuard());
+  router.use(csrfProtection());
   const agentsSvc = agentService(db);
 
   async function assertCanRead(req: Request) {

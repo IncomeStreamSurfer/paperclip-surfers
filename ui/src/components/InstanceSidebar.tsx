@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Bell, Clock3, FlaskConical, KeyRound, Puzzle, Settings, SlidersHorizontal, Users } from "lucide-react";
+import { ArrowLeft, Bell, Clock3, DollarSign, FlaskConical, KeyRound, Puzzle, Settings, SlidersHorizontal, Store, Users } from "lucide-react";
 import { Link, NavLink } from "@/lib/router";
 import { pluginsApi } from "@/api/plugins";
 import { queryKeys } from "@/lib/queryKeys";
@@ -28,7 +28,9 @@ export function InstanceSidebar() {
           <SidebarNavItem to="/instance/settings/notifications" label="Notifications" icon={Bell} end />
           <SidebarNavItem to="/instance/settings/users" label="Users" icon={Users} end />
           <SidebarNavItem to="/instance/settings/cli-auth" label="CLI Auth" icon={KeyRound} end />
+          <SidebarNavItem to="/instance/settings/pricing" label="Pricing" icon={DollarSign} end />
           <SidebarNavItem to="/instance/settings/plugins" label="Plugins" icon={Puzzle} />
+          <SidebarNavItem to="/marketplace" label="Marketplace" icon={Store} end />
           {(plugins ?? []).length > 0 ? (
             <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-border/70 pl-3">
               {(plugins ?? []).map((plugin) => (

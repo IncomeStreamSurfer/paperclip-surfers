@@ -8,6 +8,7 @@ import { authApi } from "./api/auth";
 import { healthApi } from "./api/health";
 import { instanceSettingsApi } from "./api/instanceSettings";
 import { Dashboard } from "./pages/Dashboard";
+import { DashboardFullscreen } from "./pages/DashboardFullscreen";
 import { Companies } from "./pages/Companies";
 import { Agents } from "./pages/Agents";
 import { AgentDetail } from "./pages/AgentDetail";
@@ -72,9 +73,13 @@ import { CivilOverview } from "./pages/CivilOverview";
 import { CivilProjects } from "./pages/CivilProjects";
 import { CivilDrawings } from "./pages/CivilDrawings";
 import { CivilSpecs } from "./pages/CivilSpecs";
+import { KnowledgeBases } from "./pages/KnowledgeBases";
+import { KnowledgeBaseDetail } from "./pages/KnowledgeBaseDetail";
+import { MemorySettings } from "./pages/MemorySettings";
 import { PluginManager } from "./pages/PluginManager";
 import { PluginSettings } from "./pages/PluginSettings";
 import { PluginPage } from "./pages/PluginPage";
+import { PluginMarketplace } from "./pages/PluginMarketplace";
 import { RunTranscriptUxLab } from "./pages/RunTranscriptUxLab";
 import { OrgChart } from "./pages/OrgChart";
 import { NewAgent } from "./pages/NewAgent";
@@ -162,6 +167,7 @@ function boardRoutes() {
     <>
       <Route index element={<Navigate to="dashboard" replace />} />
       <Route path="dashboard" element={<Dashboard />} />
+      <Route path="dashboard/fullscreen" element={<DashboardFullscreen />} />
       <Route path="onboarding" element={<OnboardingRoutePage />} />
       <Route path="companies" element={<Companies />} />
       <Route path="company/settings" element={<CompanySettings />} />
@@ -202,7 +208,10 @@ function boardRoutes() {
        <Route path="civil/projects" element={<CivilProjects />} />
        <Route path="civil/drawings" element={<CivilDrawings />} />
        <Route path="civil/specs" element={<CivilSpecs />} />
-       <Route path="analytics" element={<Analytics />} />
+       <Route path="knowledge" element={<KnowledgeBases />} />
+        <Route path="knowledge/:kbId" element={<KnowledgeBaseDetail />} />
+        <Route path="memory" element={<MemorySettings />} />
+        <Route path="analytics" element={<Analytics />} />
       <Route path="settings" element={<LegacySettingsRedirect />} />
       <Route path="settings/*" element={<LegacySettingsRedirect />} />
       <Route path="plugins/:pluginId" element={<PluginPage />} />
@@ -516,6 +525,7 @@ export function App() {
             <Route path="cli-auth" element={<InstanceCliAuthSettings />} />
             <Route path="plugins" element={<PluginManager />} />
             <Route path="plugins/:pluginId" element={<PluginSettings />} />
+            <Route path="marketplace" element={<PluginMarketplace />} />
           </Route>
           <Route path="profile" element={<Layout />}>
             <Route index element={<ProfilePage />} />
@@ -560,9 +570,11 @@ export function App() {
            <Route path="msp" element={<UnprefixedBoardRedirect />} />
            <Route path="msp/*" element={<UnprefixedBoardRedirect />} />
            <Route path="sprints" element={<UnprefixedBoardRedirect />} />
-           <Route path="civil" element={<UnprefixedBoardRedirect />} />
-           <Route path="civil/*" element={<UnprefixedBoardRedirect />} />
-          <Route path=":companyPrefix" element={<Layout />}>
+            <Route path="civil" element={<UnprefixedBoardRedirect />} />
+            <Route path="civil/*" element={<UnprefixedBoardRedirect />} />
+            <Route path="knowledge" element={<UnprefixedBoardRedirect />} />
+            <Route path="knowledge/*" element={<UnprefixedBoardRedirect />} />
+           <Route path=":companyPrefix" element={<Layout />}>
             {boardRoutes()}
           </Route>
           <Route path="*" element={<NotFoundPage scope="global" />} />

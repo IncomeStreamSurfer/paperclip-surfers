@@ -36,6 +36,7 @@ export const companiesApi = {
   updateBranding: (companyId: string, data: UpdateCompanyBranding) =>
     api.patch<Company>(`/companies/${companyId}/branding`, data),
   archive: (companyId: string) => api.post<Company>(`/companies/${companyId}/archive`, {}),
+  unarchive: (companyId: string) => api.post<Company>(`/companies/${companyId}/unarchive`, {}),
   remove: (companyId: string) => api.delete<{ ok: true }>(`/companies/${companyId}`),
   exportBundle: (
     companyId: string,

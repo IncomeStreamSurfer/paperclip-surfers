@@ -11,7 +11,11 @@ import { validate } from "../middleware/validate.js";
 import { assertCompanyAccess } from "./authz.js";
 
 function generateWebhookSecret(): string {
-  return randomBytes(32).toString("hex");
+  return require("node:crypto").randomBytes(32).toString("hex");
+}
+
+function generateWebhookToken(): string {
+  return require("node:crypto").randomBytes(16).toString("hex");
 }
 
 export function messagingRoutes(db: Db) {
@@ -59,9 +63,11 @@ export function messagingRoutes(db: Db) {
         if (provider === "telegram") {
           const existingSecret = (existing?.config as Record<string, unknown> | undefined)?.webhookSecret as string | undefined;
           const incomingSecret = config.webhookSecret as string | undefined;
+          const existingToken = (existing?.config as Record<string, unknown> | undefined)?.webhookToken as string | undefined;
           finalConfig = {
             ...config,
             webhookSecret: incomingSecret || existingSecret || generateWebhookSecret(),
+            webhookToken: existingToken || generateWebhookToken(),
           };
         }
 

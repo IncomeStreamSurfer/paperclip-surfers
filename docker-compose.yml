@@ -15,6 +15,22 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  chroma:
+    image: chromadb/chroma:latest
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ALLOW_RESET=TRUE
+      - ANONYMIZED_TELEMETRY=FALSE
+    volumes:
+      - ${PAPERCLIP_CHROMA_DIR:-~/.paperclip/chroma}:/chroma/chroma
+    healthcheck:
+      test: ["CMD-SHELL", "chroma run --help >/dev/null 2>&1 || true"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - default
+
   server:
     build: .
     ports:
@@ -22,15 +38,17 @@ services:
     environment:
       DATABASE_URL: postgres://paperclip:paperclip@db:5432/paperclip
       PORT: "3100"
+      HOST: "0.0.0.0"
       SERVE_UI: "true"
       PAPERCLIP_DEPLOYMENT_MODE: "authenticated"
-      PAPERCLIP_DEPLOYMENT_EXPOSURE: "private"
+      PAPERCLIP_DEPLOYMENT_EXPOSURE: "public"
       PAPERCLIP_PUBLIC_URL: "${PAPERCLIP_PUBLIC_URL:-http://localhost:3100}"
       BETTER_AUTH_SECRET: "${BETTER_AUTH_SECRET:?BETTER_AUTH_SECRET must be set}"
       HOME: /paperclip
       OLLAMA_HOST: "http://192.168.68.230:11434"
       # Tell Ollama to keep models loaded indefinitely (prevents timeout on first use)
       OLLAMA_KEEP_ALIVE: "-1"
+      CHROMA_HOST: "http://chroma:8000"
     volumes:
       - paperclip-data:/paperclip
       - ${HOME}/.claude:/paperclip/.claude
@@ -51,6 +69,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      chroma:
+        condition: service_started
 
 volumes:
   pgdata:

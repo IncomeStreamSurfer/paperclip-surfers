@@ -3,6 +3,7 @@ import { api } from "./client";
 export interface UserPreferences {
   timezone?: string;
   language?: string;
+  clock24h?: boolean;
   notifications?: {
     emailOnBlocked?: boolean;
     emailOnMention?: boolean;

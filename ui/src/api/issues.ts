@@ -55,6 +55,7 @@ export const issuesApi = {
   deleteLabel: (id: string) => api.delete<IssueLabel>(`/labels/${id}`),
   get: (id: string) => api.get<Issue>(`/issues/${id}`),
   markRead: (id: string) => api.post<{ id: string; lastReadAt: Date }>(`/issues/${id}/read`, {}),
+  markUnread: (id: string) => api.post<{ ok: boolean }>(`/issues/${id}/mark-unread`, {}),
   archiveFromInbox: (id: string) =>
     api.post<{ id: string; archivedAt: Date }>(`/issues/${id}/inbox-archive`, {}),
   unarchiveFromInbox: (id: string) =>

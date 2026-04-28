@@ -1,4 +1,5 @@
 import type { Request, RequestHandler } from "express";
+import { logger } from "./logger.js";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const DEFAULT_DEV_ORIGINS = [
@@ -18,10 +19,26 @@ function parseOrigin(value: string | undefined) {
 
 function trustedOriginsForRequest(req: Request) {
   const origins = new Set(DEFAULT_DEV_ORIGINS.map((value) => value.toLowerCase()));
-  const host = req.header("host")?.trim();
+
+  // Use the forwarded host when behind a reverse proxy so the allowed origins
+  // match what the browser sees, not the internal upstream host.
+  const forwardedHost = req.header("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedProto = req.header("x-forwarded-proto")?.split(",")[0]?.trim();
+  const host = forwardedHost || req.header("host")?.trim();
+
   if (host) {
-    origins.add(`http://${host}`.toLowerCase());
-    origins.add(`https://${host}`.toLowerCase());
+    const httpOrigin = `http://${host}`.toLowerCase();
+    const httpsOrigin = `https://${host}`.toLowerCase();
+    origins.add(httpOrigin);
+    origins.add(httpsOrigin);
+
+    // When we have a forwarded proto, prefer it for the matching origin.
+    // Still keep both http/https as fallbacks.
+    if (forwardedProto === "https") {
+      origins.add(httpsOrigin);
+    } else if (forwardedProto === "http") {
+      origins.add(httpOrigin);
+    }
   }
   return origins;
 }
@@ -57,6 +74,14 @@ export function boardMutationGuard(): RequestHandler {
     }
 
     if (!isTrustedBoardMutationRequest(req)) {
+      const origin = req.header("origin");
+      const referer = req.header("referer");
+      const host = req.header("host");
+      const forwardedHost = req.header("x-forwarded-host");
+      logger.warn(
+        { method: req.method, path: req.path, origin, referer, host, forwardedHost, actorSource: req.actor.source },
+        "boardMutationGuard: rejected untrusted origin",
+      );
       res.status(403).json({ error: "Board mutation requires trusted browser origin" });
       return;
     }

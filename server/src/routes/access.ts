@@ -39,6 +39,7 @@ import {
 } from "../errors.js";
 import { logger } from "../middleware/logger.js";
 import { validate } from "../middleware/validate.js";
+import { safeFetch } from "../utils/safe-fetch.js";
 import {
   accessService,
   agentService,
@@ -1495,7 +1496,7 @@ async function probeInviteResolutionTarget(
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, {
+    const response = await safeFetch(url.toString(), {
       method: "HEAD",
       redirect: "manual",
       signal: controller.signal

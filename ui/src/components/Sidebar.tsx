@@ -34,6 +34,7 @@ import {
   Ruler,
   FileText,
   Bot,
+  Brain,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -253,7 +254,9 @@ export function Sidebar() {
             <span className="text-sm font-bold text-foreground truncate">
               {selectedCompany?.name ?? "Select company"}
             </span>
-
+            {selectedCompany?.status === "archived" && (
+              <span className="text-[10px] text-muted-foreground/60 ml-1">(archived)</span>
+            )}
           </button>
           
           {companyDropdownOpen && (
@@ -287,6 +290,9 @@ export function Sidebar() {
                       className="w-4 h-4 rounded-sm"
                     />
                     <span className="truncate flex-1 text-left">{company.name}</span>
+                    {company.status === "archived" && (
+                      <span className="text-[10px] text-muted-foreground/50 mr-1">archived</span>
+                    )}
                     <Star className="h-3 w-3 fill-yellow-500 text-yellow-500 shrink-0" />
                   </button>
                 );
@@ -305,7 +311,7 @@ export function Sidebar() {
                   }}
                   className={`flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent/50 transition-colors ${
                     company.id === selectedCompanyId ? "bg-accent" : ""
-                  }`}
+                  } ${company.status === "archived" ? "opacity-50" : ""}`}
                 >
                   <CompanyPatternIcon
                     companyName={company.name}
@@ -314,6 +320,9 @@ export function Sidebar() {
                     className="w-4 h-4 rounded-sm"
                   />
                   <span className="truncate flex-1 text-left">{company.name}</span>
+                  {company.status === "archived" && (
+                    <span className="text-[10px] text-muted-foreground/50 shrink-0">archived</span>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -504,6 +513,8 @@ export function Sidebar() {
           <SidebarNavItem to="/departments" label="Departments" icon={Building2} />
           <SidebarNavItem to="/skills" label="Skills" icon={Boxes} />
           <SidebarNavItem to="/mcp-servers" label="MCPs" icon={Plug} />
+          <SidebarNavItem to="/knowledge" label="Knowledge" icon={BookOpen} />
+          <SidebarNavItem to="/memory" label="MemPalace" icon={Brain} />
           {showSoftware && <SidebarNavItem to="/software" label="Software" icon={FolderKanban} />}
           {showSocialMedia && <SidebarNavItem to="/social-media" label="Social Media" icon={Share2} />}
           {showSeo && <SidebarNavItem to="/seo" label="SEO" icon={Search} />}

@@ -174,6 +174,12 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
     enabled: !!companyId && !!issue.sprintId,
   });
 
+  const { data: allSprints } = useQuery({
+    queryKey: queryKeys.sprints.list(companyId!),
+    queryFn: () => sprintApi.list(companyId!),
+    enabled: !!companyId && !!onUpdate,
+  });
+
   const createLabel = useMutation({
     mutationFn: (data: { name: string; color: string }) => issuesApi.createLabel(companyId!, data),
     onSuccess: async (created) => {
@@ -646,16 +652,22 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
           </PropertyRow>
         )}
 
-        {issue.sprintId && sprint && (
-          <PropertyRow label="Sprint">
-            <Link
-              to="/sprints"
-              className="text-sm hover:underline"
+        <PropertyRow label="Sprint">
+          {onUpdate ? (
+            <select
+              value={issue.sprintId ?? ""}
+              onChange={(e) => onUpdate({ sprintId: e.target.value || null })}
+              className="rounded border border-border bg-transparent px-2 py-1 text-sm outline-none max-w-[200px]"
             >
-              {sprint.name}
-            </Link>
-          </PropertyRow>
-        )}
+              <option value="">No sprint</option>
+              {(allSprints?.sprints ?? []).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          ) : issue.sprintId && sprint ? (
+            <Link to="/sprints" className="text-sm hover:underline">{sprint.name}</Link>
+          ) : null}
+        </PropertyRow>
 
         {issue.requestDepth > 0 && (
           <PropertyRow label="Depth">

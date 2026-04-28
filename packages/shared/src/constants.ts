@@ -176,7 +176,7 @@ export type RoutineRunStatus = (typeof ROUTINE_RUN_STATUSES)[number];
 export const ROUTINE_RUN_SOURCES = ["schedule", "manual", "api", "webhook"] as const;
 export type RoutineRunSource = (typeof ROUTINE_RUN_SOURCES)[number];
 
-export const PAUSE_REASONS = ["manual", "budget", "system"] as const;
+export const PAUSE_REASONS = ["manual", "budget", "system", "stuck"] as const;
 export type PauseReason = (typeof PAUSE_REASONS)[number];
 
 export const PROJECT_COLORS = [
@@ -297,6 +297,7 @@ export const HEARTBEAT_INVOCATION_SOURCES = [
   "assignment",
   "on_demand",
   "automation",
+  "replay",
 ] as const;
 export type HeartbeatInvocationSource = (typeof HEARTBEAT_INVOCATION_SOURCES)[number];
 

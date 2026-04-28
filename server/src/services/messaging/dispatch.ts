@@ -3,6 +3,7 @@ import { messagingProviders, messagingSubscriptions, messagingDeliveries, issues
 import { eq, and } from "drizzle-orm";
 import type { MessagingMessageType, MessagingProvider } from "@paperclipai/shared";
 import { sendTelegramMessage, sendTelegramPhoto, type TelegramConfig } from "./telegram.js";
+import { sendWhatsAppMessage, sendWhatsAppPhoto, type WhatsAppConfig } from "./whatsapp.js";
 
 function sha256(text: string): string {
   const crypto = require("node:crypto");
@@ -77,6 +78,12 @@ export function messagingDispatchService(db: Db) {
           if (!config) continue;
           const result = await sendTelegramMessage(config, text);
           await recordDelivery(db, issue.companyId, provider, "new_issue", text, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
+        } else if (provider === "whatsapp") {
+          const config = await this.getWhatsAppConfig(db, issue.companyId);
+          if (!config) continue;
+          const plainText = text.replace(/\\/g, "").replace(/\*/g, "");
+          const result = await sendWhatsAppMessage(config, plainText);
+          await recordDelivery(db, issue.companyId, provider, "new_issue", plainText, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
         }
       }
     },
@@ -95,6 +102,12 @@ export function messagingDispatchService(db: Db) {
           if (!config) continue;
           const result = await sendTelegramMessage(config, text);
           await recordDelivery(db, issue.companyId, provider, "issue_blocked", text, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
+        } else if (provider === "whatsapp") {
+          const config = await this.getWhatsAppConfig(db, issue.companyId);
+          if (!config) continue;
+          const plainText = text.replace(/\\/g, "").replace(/\*/g, "");
+          const result = await sendWhatsAppMessage(config, plainText);
+          await recordDelivery(db, issue.companyId, provider, "issue_blocked", plainText, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
         }
       }
     },
@@ -117,6 +130,12 @@ export function messagingDispatchService(db: Db) {
           if (!config) continue;
           const result = await sendTelegramMessage(config, text);
           await recordDelivery(db, issue.companyId, provider, "issue_completed", text, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
+        } else if (provider === "whatsapp") {
+          const config = await this.getWhatsAppConfig(db, issue.companyId);
+          if (!config) continue;
+          const plainText = text.replace(/\\/g, "").replace(/\*/g, "");
+          const result = await sendWhatsAppMessage(config, plainText);
+          await recordDelivery(db, issue.companyId, provider, "issue_completed", plainText, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
         }
       }
     },
@@ -135,6 +154,12 @@ export function messagingDispatchService(db: Db) {
           if (!config) continue;
           const result = await sendTelegramMessage(config, text);
           await recordDelivery(db, agent.companyId, provider, "run_hang", text, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
+        } else if (provider === "whatsapp") {
+          const config = await this.getWhatsAppConfig(db, agent.companyId);
+          if (!config) continue;
+          const plainText = text.replace(/\\/g, "").replace(/\*/g, "");
+          const result = await sendWhatsAppMessage(config, plainText);
+          await recordDelivery(db, agent.companyId, provider, "run_hang", plainText, result.messageId ?? null, result.ok ? "sent" : "failed", result.error);
         }
       }
     },
@@ -149,6 +174,18 @@ export function messagingDispatchService(db: Db) {
       const config = row.config as Partial<TelegramConfig>;
       if (!config.botToken || !config.chatId) return null;
       return { botToken: config.botToken, chatId: config.chatId };
+    },
+
+    async getWhatsAppConfig(db: Db, companyId: string): Promise<WhatsAppConfig | null> {
+      const row = await db
+        .select()
+        .from(messagingProviders)
+        .where(and(eq(messagingProviders.companyId, companyId), eq(messagingProviders.provider, "whatsapp")))
+        .then((rows) => rows[0] ?? null);
+      if (!row?.enabled) return null;
+      const config = row.config as Partial<WhatsAppConfig>;
+      if (!config.phoneNumberId || !config.accessToken || !config.chatId) return null;
+      return { phoneNumberId: config.phoneNumberId, accessToken: config.accessToken, chatId: config.chatId };
     },
 
     escapeMarkdown(text: string): string {

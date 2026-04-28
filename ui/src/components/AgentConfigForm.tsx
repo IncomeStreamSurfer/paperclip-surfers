@@ -54,6 +54,11 @@ import { shouldShowLegacyWorkingDirectoryField } from "../lib/legacy-agent-confi
 // so existing imports from this file keep working.
 export type { CreateConfigValues } from "@paperclipai/adapter-utils";
 import type { CreateConfigValues } from "@paperclipai/adapter-utils";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 /* ---- Props ---- */
 
@@ -1494,9 +1499,7 @@ function ModelDropdown({
                 onOpenChange(false);
               }}
             >
-              <span className="block w-full text-left truncate font-mono text-xs" title={value}>
-                {value}
-              </span>
+              <Tooltip><TooltipTrigger asChild><span className="block w-full text-left truncate font-mono text-xs">{value}</span></TooltipTrigger><TooltipContent side="top" className="text-xs">{value}</TooltipContent></Tooltip>
               <span className="shrink-0 ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">
                 current
               </span>
@@ -1513,9 +1516,7 @@ function ModelDropdown({
                 onOpenChange(false);
               }}
             >
-              <span className="block w-full text-left truncate font-mono text-xs" title={detectedModel}>
-                {detectedModel}
-              </span>
+              <Tooltip><TooltipTrigger asChild><span className="block w-full text-left truncate font-mono text-xs">{detectedModel}</span></TooltipTrigger><TooltipContent side="top" className="text-xs">{detectedModel}</TooltipContent></Tooltip>
               <span className="shrink-0 ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20">
                 detected
               </span>
@@ -1571,9 +1572,7 @@ function ModelDropdown({
                       onOpenChange(false);
                     }}
                   >
-                    <span className="block w-full text-left truncate" title={m.id}>
-                      {groupByProvider ? extractModelName(m.id) : m.label}
-                    </span>
+                    <Tooltip><TooltipTrigger asChild><span className="block w-full text-left truncate">{groupByProvider ? extractModelName(m.id) : m.label}</span></TooltipTrigger><TooltipContent side="top" className="text-xs">{m.id}</TooltipContent></Tooltip>
                   </button>
                 ))}
               </div>

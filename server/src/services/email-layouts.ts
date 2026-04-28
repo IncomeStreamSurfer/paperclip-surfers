@@ -68,6 +68,17 @@ const BASE_RESET = `
   a{color:inherit}
 `.trim();
 
+const DARK_MODE_LIGHT_BODY = `
+@media (prefers-color-scheme: dark) {
+  .dm-bg{background:#0f1117!important}
+  .dm-card{background:#1e2030!important;color:#e2e8f0!important}
+  .dm-h{color:#f1f5f9!important}
+  .dm-muted{color:#94a3b8!important}
+  .dm-footer{color:#64748b!important}
+  .dm-footer a{color:#64748b!important}
+}
+`.trim();
+
 // ---------------------------------------------------------------------------
 // Template 1 — Clean
 // Minimal white background, text header, simple gray footer.
@@ -89,6 +100,7 @@ function renderClean(o: EmailLayoutOptions): string {
 <title>${esc(appName)}</title>
 <style>
 ${BASE_RESET}
+${DARK_MODE_LIGHT_BODY}
 .wrap{max-width:600px;margin:0 auto;padding:24px 16px}
 .header{padding:20px 0 16px;border-bottom:2px solid ${esc(primaryColor)};display:flex;align-items:center}
 .header a{font-size:18px;font-weight:700;color:${esc(primaryColor)};text-decoration:none;font-family:system-ui,sans-serif}
@@ -100,14 +112,14 @@ ${BASE_RESET}
 .footer a{color:#999;text-decoration:none}
 </style>
 </head>
-<body>
+<body class="dm-bg">
 ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(previewText)}&nbsp;&#8203;</div>` : ""}
 <div class="wrap">
   <div class="header">
     <a href="${esc(appUrl)}">${iconHtml}${esc(appName)}</a>
   </div>
-  <div class="body">${body}</div>
-  <div class="footer">
+  <div class="body dm-card dm-h">${body}</div>
+  <div class="footer dm-footer">
     <a href="${esc(appUrl)}">${esc(appName)}</a> &middot; You received this because you have an account on this instance.${unsubscribeHtml}
   </div>
 </div>
@@ -149,14 +161,15 @@ body{background:${bg}}
 .body .btn{display:inline-block;padding:10px 22px;background:${esc(primaryColor)};color:#fff!important;border-radius:6px;font-size:14px;font-weight:600;text-decoration:none;margin:8px 0}
 .footer{background:${esc(primaryColor)};border-radius:0 0 8px 8px;padding:14px 32px;text-align:center;font-family:system-ui,sans-serif;font-size:11px;color:rgba(255,255,255,0.75)}
 .footer a{color:rgba(255,255,255,0.9);text-decoration:none}
+${DARK_MODE_LIGHT_BODY}
 </style>
 </head>
-<body>
+<body class="dm-bg">
 ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(previewText)}&nbsp;&#8203;</div>` : ""}
 <div style="padding:32px 16px">
 <div class="outer">
   <div class="header"><a href="${esc(appUrl)}">${iconHtml}${esc(appName)}</a></div>
-  <div class="body">${body}</div>
+  <div class="body dm-card dm-h">${body}</div>
   <div class="footer">
     <a href="${esc(appUrl)}">${esc(appName)}</a> &bull; You received this because you have an account on this instance.${unsubscribeHtml}
   </div>
@@ -199,6 +212,7 @@ body{background:#0f1117}
 .body .btn{display:inline-block;padding:10px 22px;background:#111;color:#fff!important;border-radius:6px;font-size:14px;font-weight:600;text-decoration:none;border:1px solid ${esc(primaryColor)};margin:8px 0}
 .footer{background:#1a1d27;border-radius:0 0 8px 8px;padding:14px 32px;text-align:center;font-family:system-ui,sans-serif;font-size:11px;color:#6b7280}
 .footer a{color:#9ca3af;text-decoration:none}
+${DARK_MODE_LIGHT_BODY}
 </style>
 </head>
 <body>
@@ -206,7 +220,7 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
 <div style="padding:32px 16px">
 <div class="outer">
   <div class="header"><a href="${esc(appUrl)}">${iconHtml}${esc(appName)}<span>.</span></a></div>
-  <div class="body">${body}</div>
+  <div class="body dm-card dm-h">${body}</div>
   <div class="footer">
     <a href="${esc(appUrl)}">${esc(appName)}</a> &mdash; You received this because you have an account on this instance.${unsubscribeHtml}
   </div>
@@ -252,17 +266,22 @@ body{background:${bg}}
 .card-body .btn{display:inline-block;padding:10px 22px;background:${esc(primaryColor)};color:#fff!important;border-radius:6px;font-size:14px;font-weight:600;text-decoration:none;margin:8px 0}
 .footer{text-align:center;font-size:11px;color:#aaa;font-family:system-ui,sans-serif;padding:16px 0}
 .footer a{color:#aaa;text-decoration:none}
+${DARK_MODE_LIGHT_BODY}
+@media (prefers-color-scheme: dark) {
+  .card{background:#1e2030!important}
+  .divider{background:#2d3148!important}
+}
 </style>
 </head>
-<body>
+<body class="dm-bg">
 ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(previewText)}&nbsp;&#8203;</div>` : ""}
 <div class="wrap">
   <div class="card">
     <div class="card-header"><a class="card-logo" href="${esc(appUrl)}">${iconHtml}${esc(appName)}</a></div>
     <div class="divider"></div>
-    <div class="card-body">${body}</div>
+    <div class="card-body dm-h">${body}</div>
   </div>
-  <div class="footer">
+  <div class="footer dm-footer">
     <a href="${esc(appUrl)}">${esc(appName)}</a> &middot; Sent by your instance administrator.${unsubscribeHtml}
   </div>
 </div>
@@ -307,6 +326,10 @@ body{background:#eef0f3}
 .footer .links{margin-top:4px}
 .footer .links a{color:#9ca3af;font-size:11px;font-family:system-ui,sans-serif;text-decoration:none;margin-left:10px}
 .footer .note{color:#6b7280;font-size:11px;font-family:system-ui,sans-serif;margin-top:4px}
+${DARK_MODE_LIGHT_BODY}
+@media (prefers-color-scheme: dark) {
+  body{background:#0f1117!important}
+}
 </style>
 </head>
 <body>
@@ -318,7 +341,7 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
     <div style="height:18px"></div>
   </div>
   <div class="accent-bar"></div>
-  <div class="body">${body}</div>
+  <div class="body dm-card dm-h">${body}</div>
   <div class="footer">
     <div class="footer-cols">
       <div class="footer-left">

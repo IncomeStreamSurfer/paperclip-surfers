@@ -240,9 +240,10 @@ export function ProfilePage() {
     onError: (err: Error) => pushToast({ title: err.message, tone: "error" }),
   });
 
-  // --- Preferences (timezone, language, notification opt-outs) ---
+  // --- Preferences (timezone, language, clock format, notification opt-outs) ---
   const [timezone, setTimezone] = useState("UTC");
   const [language, setLanguage] = useState("en");
+  const [clock24h, setClock24h] = useState(true);
   const [notifEmailOnBlocked, setNotifEmailOnBlocked] = useState(true);
   const [notifEmailOnMention, setNotifEmailOnMention] = useState(true);
   const [notifEmailOnAssigned, setNotifEmailOnAssigned] = useState(true);
@@ -253,6 +254,7 @@ export function ProfilePage() {
     if (!p) return;
     setTimezone(p.timezone ?? "UTC");
     setLanguage(p.language ?? "en");
+    setClock24h(p.clock24h ?? true);
     const n = p.notifications;
     if (n) {
       setNotifEmailOnBlocked(n.emailOnBlocked ?? true);
@@ -267,6 +269,7 @@ export function ProfilePage() {
       const prefs: UserPreferences = {
         timezone,
         language,
+        clock24h,
         notifications: {
           emailOnBlocked: notifEmailOnBlocked,
           emailOnMention: notifEmailOnMention,
@@ -634,6 +637,22 @@ export function ProfilePage() {
                 <option key={l.value} value={l.value}>{l.label}</option>
               ))}
             </select>
+          </div>
+
+          {/* Clock format */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={clock24h}
+                onChange={(e) => setClock24h(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-sm">24-hour clock</span>
+            </label>
+            <p className="text-[11px] text-muted-foreground mt-0.5 ml-6">
+              Uncheck to show AM/PM format in the header clock.
+            </p>
           </div>
 
           {/* Email notification opt-outs */}

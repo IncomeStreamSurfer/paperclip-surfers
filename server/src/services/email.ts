@@ -128,10 +128,10 @@ export function emailService(db: Db) {
     notifications: Awaited<ReturnType<typeof settingsSvc.getNotifications>>,
     opts?: Partial<Pick<EmailLayoutOptions, "appName" | "previewText" | "unsubscribeUrl">>,
   ): Promise<string> {
-    const appIconUrl = await getAppIconUrl();
+    const [appIconUrl, general] = await Promise.all([getAppIconUrl(), settingsSvc.getGeneral()]);
     const layoutOpts: EmailLayoutOptions = {
       body,
-      appName: opts?.appName ?? "Paperclip",
+      appName: opts?.appName ?? general.siteTitle ?? "Paperclip",
       appUrl: normalizeAppUrl(notifications.emailAppUrl),
       primaryColor: "#5c5fff",
       template: notifications.emailTemplate ?? "clean",

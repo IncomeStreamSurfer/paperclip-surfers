@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import type { CSSProperties } from "react";
 import type { HeartbeatRun, TokenUsageSummary, BurndownSummary, TasksByAgentSummary, AgentTimeSummary, IssuesByProjectSummary, CycleTimeSummary, CostTrendSummary, ProjectHealthSummary } from "@paperclipai/shared";
 import type { Sprint } from "../api/sprints";
 import { Link } from "@/lib/router";
+import { cn } from "@/lib/utils";
 import { Globe, Plus, X, ChevronUp, ChevronDown } from "lucide-react";
 import {
   Tooltip,
@@ -95,7 +97,7 @@ export function RunActivityChart({ runs }: { runs: HeartbeatRun[] }) {
   return (
     <div>
       <div className="flex items-end gap-[3px] h-20">
-        {days.map(day => {
+        {days.map((day, i) => {
           const entry = grouped.get(day)!;
           const total = entry.succeeded + entry.failed + entry.other;
           const heightPct = (total / maxValue) * 100;
@@ -104,7 +106,7 @@ export function RunActivityChart({ runs }: { runs: HeartbeatRun[] }) {
               <TooltipTrigger asChild>
                 <div className="flex-1 h-full flex flex-col justify-end">
                   {total > 0 ? (
-                    <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
+                    <div className="bar-grow flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2, "--bar-idx": i } as CSSProperties}>
                       {entry.succeeded > 0 && <div className="bg-emerald-500" style={{ flex: entry.succeeded }} />}
                       {entry.failed > 0 && <div className="bg-red-500" style={{ flex: entry.failed }} />}
                       {entry.other > 0 && <div className="bg-neutral-500" style={{ flex: entry.other }} />}
@@ -122,6 +124,11 @@ export function RunActivityChart({ runs }: { runs: HeartbeatRun[] }) {
         })}
       </div>
       <DateLabels days={days} />
+      <ChartLegend items={[
+        { color: "#10b981", label: "Succeeded" },
+        { color: "#ef4444", label: "Failed / Timed out" },
+        { color: "#6b7280", label: "Other" },
+      ]} />
     </div>
   );
 }
@@ -154,7 +161,7 @@ export function PriorityChart({ issues }: { issues: { priority: string; createdA
   return (
     <div>
       <div className="flex items-end gap-[3px] h-20">
-        {days.map(day => {
+        {days.map((day, i) => {
           const entry = grouped.get(day)!;
           const total = Object.values(entry).reduce((a, b) => a + b, 0);
           const heightPct = (total / maxValue) * 100;
@@ -163,7 +170,7 @@ export function PriorityChart({ issues }: { issues: { priority: string; createdA
               <TooltipTrigger asChild>
                 <div className="flex-1 h-full flex flex-col justify-end">
                   {total > 0 ? (
-                    <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
+                    <div className="bar-grow flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2, "--bar-idx": i } as CSSProperties}>
                       {priorityOrder.map(p => entry[p] > 0 ? (
                         <div key={p} style={{ flex: entry[p], backgroundColor: priorityColors[p] }} />
                       ) : null)}
@@ -228,7 +235,7 @@ export function IssueStatusChart({ issues }: { issues: { status: string; created
   return (
     <div>
       <div className="flex items-end gap-[3px] h-20">
-        {days.map(day => {
+        {days.map((day, i) => {
           const entry = grouped.get(day)!;
           const total = Object.values(entry).reduce((a, b) => a + b, 0);
           const heightPct = (total / maxValue) * 100;
@@ -237,7 +244,7 @@ export function IssueStatusChart({ issues }: { issues: { status: string; created
               <TooltipTrigger asChild>
                 <div className="flex-1 h-full flex flex-col justify-end">
                   {total > 0 ? (
-                    <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
+                    <div className="bar-grow flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2, "--bar-idx": i } as CSSProperties}>
                       {statusOrder.map(s => (entry[s] ?? 0) > 0 ? (
                         <div key={s} style={{ flex: entry[s], backgroundColor: statusColors[s] ?? "#6b7280" }} />
                       ) : null)}
@@ -278,7 +285,7 @@ export function SuccessRateChart({ runs }: { runs: HeartbeatRun[] }) {
   return (
     <div>
       <div className="flex items-end gap-[3px] h-20">
-        {days.map(day => {
+        {days.map((day, i) => {
           const entry = grouped.get(day)!;
           const rate = entry.total > 0 ? entry.succeeded / entry.total : 0;
           const color = entry.total === 0 ? undefined : rate >= 0.8 ? "#10b981" : rate >= 0.5 ? "#eab308" : "#ef4444";
@@ -287,7 +294,7 @@ export function SuccessRateChart({ runs }: { runs: HeartbeatRun[] }) {
               <TooltipTrigger asChild>
                 <div className="flex-1 h-full flex flex-col justify-end">
                   {entry.total > 0 ? (
-                    <div style={{ height: `${rate * 100}%`, minHeight: 2, backgroundColor: color }} />
+                    <div className="bar-grow" style={{ height: `${rate * 100}%`, minHeight: 2, backgroundColor: color, "--bar-idx": i } as CSSProperties} />
                   ) : (
                     <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
                   )}
@@ -329,7 +336,7 @@ export function TokenUsageChart({ data }: { data: TokenUsageSummary }) {
         {formatTokens(totalInputTokens + totalOutputTokens)} total &middot; {formatTokens(totalInputTokens)} in / {formatTokens(totalOutputTokens)} out
       </p>
       {byAgent.slice(0, 8).map((row, i) => (
-        <div key={row.agentId} className="flex items-center gap-2">
+        <div key={row.agentId} className="list-item-enter flex items-center gap-2" style={{ "--item-idx": i } as CSSProperties}>
           <span className="text-[10px] text-muted-foreground truncate w-20 shrink-0">{row.agentName}</span>
           <div className="flex-1 h-3 bg-muted/30 rounded-sm overflow-hidden">
             <div
@@ -374,7 +381,7 @@ export function BurndownChart({ data }: { data: BurndownSummary }) {  const days
   return (
     <div>
       <div className="flex items-end gap-[2px] h-20">
-        {days.map((day) => {
+        {days.map((day, i) => {
           const opened = openedMap.get(day) ?? 0;
           const closed = closedMap.get(day) ?? 0;
           const openedPct = (opened / maxValue) * 100;
@@ -382,14 +389,14 @@ export function BurndownChart({ data }: { data: BurndownSummary }) {  const days
           return (
             <Tooltip key={day}>
               <TooltipTrigger asChild>
-                <div className="flex-1 h-full flex flex-col-reverse justify-start gap-px">
-                  {opened > 0 ? (
-                    <div className="w-full bg-blue-400 rounded-sm" style={{ height: `${openedPct}%`, minHeight: 2 }} />
+                <div className="bar-grow flex-1 h-full flex flex-col-reverse justify-start gap-px" style={{ "--bar-idx": i } as CSSProperties}>
+                  {closed > 0 ? (
+                    <div className="w-full bg-emerald-500 rounded-sm" style={{ height: `${closedPct}%`, minHeight: 2 }} />
                   ) : (
                     <div className="w-full bg-muted/20 rounded-sm" style={{ height: 2 }} />
                   )}
-                  {closed > 0 ? (
-                    <div className="w-full bg-emerald-500 rounded-sm" style={{ height: `${closedPct}%`, minHeight: 2 }} />
+                  {opened > 0 ? (
+                    <div className="w-full bg-blue-400 rounded-sm" style={{ height: `${openedPct}%`, minHeight: 2 }} />
                   ) : (
                     <div className="w-full bg-muted/20 rounded-sm" style={{ height: 2 }} />
                   )}
@@ -426,8 +433,8 @@ export function TasksByAgentChart({ data }: { data: TasksByAgentSummary }) {
 
   return (
     <div className="space-y-1.5">
-      {byAgent.slice(0, 8).map((row) => (
-        <div key={row.agentId} className="flex items-center gap-2">
+      {byAgent.slice(0, 8).map((row, i) => (
+        <div key={row.agentId} className="list-item-enter flex items-center gap-2" style={{ "--item-idx": i } as CSSProperties}>
           <span className="text-[10px] text-muted-foreground truncate w-20 shrink-0">{row.agentName}</span>
           <div className="flex-1 h-3 bg-muted/30 rounded-sm overflow-hidden flex">
             {row.inProgressCount > 0 && (
@@ -495,7 +502,7 @@ export function AgentTimeChart({ data }: { data: AgentTimeSummary }) {
   return (
     <div className="space-y-1.5">
       {byAgent.slice(0, 8).map((row, i) => (
-        <div key={row.agentId} className="flex items-center gap-2">
+        <div key={row.agentId} className="list-item-enter flex items-center gap-2" style={{ "--item-idx": i } as CSSProperties}>
           <span className="text-[10px] text-muted-foreground truncate w-20 shrink-0">{row.agentName}</span>
           <div className="flex-1 h-3 bg-muted/30 rounded-sm overflow-hidden">
             <Tooltip>
@@ -536,7 +543,7 @@ export function IssuesByProjectChart({ data }: { data: IssuesByProjectSummary })
   return (
     <div className="space-y-1.5">
       {byProject.slice(0, 8).map((row, i) => (
-        <div key={row.projectId} className="flex items-center gap-2">
+        <div key={row.projectId} className="list-item-enter flex items-center gap-2" style={{ "--item-idx": i } as CSSProperties}>
           <span className="text-[10px] text-muted-foreground truncate w-24 shrink-0">{row.projectName}</span>
           <div className="flex-1 h-3 bg-muted/30 rounded-sm overflow-hidden flex">
             {row.inProgressCount > 0 && (
@@ -637,7 +644,7 @@ export function CostTrendChart({ data }: { data: CostTrendSummary }) {
               <TooltipTrigger asChild>
                 <div className="flex-1 h-full flex flex-col justify-end">
                   {day.costCents > 0 ? (
-                    <div className="bg-amber-500 rounded-sm" style={{ height: `${heightPct}%`, minHeight: 2 }} />
+                    <div className="bar-grow bg-amber-500 rounded-sm" style={{ height: `${heightPct}%`, minHeight: 2, "--bar-idx": i } as CSSProperties} />
                   ) : (
                     <div className="bg-muted/20 rounded-sm" style={{ height: 2 }} />
                   )}
@@ -734,11 +741,12 @@ export function BlockedIssuesWidget({ issues }: { issues: { id: string; identifi
   return (
     <div className="space-y-1">
       <p className="text-[10px] text-muted-foreground mb-2">{blocked.length} blocked issue{blocked.length === 1 ? "" : "s"}</p>
-      {blocked.slice(0, 8).map((issue) => (
+      {blocked.slice(0, 8).map((issue, i) => (
         <Link
           key={issue.id}
           to={`/issues/${issue.identifier ?? issue.id}`}
-          className="flex items-center gap-2 px-2 py-1.5 rounded bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors no-underline text-inherit"
+          className="list-item-enter flex items-center gap-2 px-2 py-1.5 rounded bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors no-underline text-inherit"
+          style={{ "--item-idx": i } as CSSProperties}
         >
           <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
           <span className="text-[10px] font-mono text-muted-foreground shrink-0">{issue.identifier ?? issue.id.slice(0, 6)}</span>
@@ -758,8 +766,8 @@ export function ProjectHealthWidget({ data }: { data: ProjectHealthSummary }) {
 
   return (
     <div className="space-y-1.5">
-      {projects.slice(0, 8).map((row) => (
-        <div key={row.projectId} className="space-y-0.5">
+      {projects.slice(0, 8).map((row, i) => (
+        <div key={row.projectId} className="list-item-enter space-y-0.5" style={{ "--item-idx": i } as CSSProperties}>
           <div className="flex items-center gap-2">
             <span className="text-[10px] text-muted-foreground truncate flex-1 min-w-0">{row.projectName}</span>
             <div className="flex items-center gap-1 shrink-0">
@@ -841,13 +849,13 @@ function fmt(dateStr: string | null): string | null {
   return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-function SprintRow({ sprint }: { sprint: Sprint }) {
+function SprintRow({ sprint, className, style }: { sprint: Sprint; className?: string; style?: CSSProperties }) {
   const statusStyle = SPRINT_STATUS_STYLES[sprint.status] ?? "text-muted-foreground";
   const start = fmt(sprint.startDate);
   const end = fmt(sprint.endDate);
 
   return (
-    <div className="space-y-1 rounded-md border border-border bg-muted/20 px-3 py-2.5">
+    <div className={cn("space-y-1 rounded-md border border-border bg-muted/20 px-3 py-2.5", className)} style={style}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-medium truncate">{sprint.name}</span>
         <span
@@ -1210,8 +1218,8 @@ export function SprintOverviewWidget({ sprints }: { sprints: Sprint[] }) {
 
       {/* Sprint rows */}
       <div className="space-y-1.5">
-        {featured.map((s) => (
-          <SprintRow key={s.id} sprint={s} />
+        {featured.map((s, i) => (
+          <SprintRow key={s.id} sprint={s} className="list-item-enter" style={{ "--item-idx": i } as CSSProperties} />
         ))}
       </div>
 

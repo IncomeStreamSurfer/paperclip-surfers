@@ -1994,6 +1994,7 @@ export function heartbeatService(db: Db) {
             id: issues.id,
             identifier: issues.identifier,
             title: issues.title,
+            description: issues.description,
             projectId: issues.projectId,
             projectWorkspaceId: issues.projectWorkspaceId,
             executionWorkspaceId: issues.executionWorkspaceId,
@@ -2096,6 +2097,7 @@ export function heartbeatService(db: Db) {
     const runtimeConfig = {
       ...resolvedConfig,
       paperclipRuntimeSkills: runtimeSkillEntries,
+      ...(context.replayModelOverride ? { model: context.replayModelOverride } : {}),
     };
     const issueRef = issueContext
       ? {
@@ -2617,6 +2619,35 @@ Keep memories concise and specific. Don't write vague platitudes.`;
         logger.warn({ err: memErr, agentId: agent.id, runId: run.id }, "V2: failed to load agent memories");
       }
 
+      // MemPalace: Pre-run hydration — query semantic memory for relevant context
+      let memPalaceSection = "";
+      try {
+        const { hydrateMemPalace } = await import("./agent-runtime/mempalace.js");
+        const issueTitle = issueRef?.title ?? "";
+        const issueDescription = issueContext?.description ?? "";
+        memPalaceSection = await hydrateMemPalace(
+          db,
+          agent.companyId,
+          agent.id,
+          issueRef?.id,
+          executionProjectId ?? undefined,
+          `${issueTitle} ${issueDescription}`.slice(0, 1000),
+        );
+        if (memPalaceSection) {
+          // Append to memory file if it exists, otherwise inject into context directly
+          if (context.paperclipMemoryFilePath) {
+            const fsSync2 = await import("node:fs");
+            try {
+              const existing = fsSync2.readFileSync(context.paperclipMemoryFilePath as string, "utf-8");
+              fsSync2.writeFileSync(context.paperclipMemoryFilePath as string, existing + "\n\n" + memPalaceSection);
+            } catch { /* ignore */ }
+          }
+          logger.info({ agentId: agent.id, runId: run.id }, "MemPalace: injected relevant context into run");
+        }
+      } catch (mpErr) {
+        logger.warn({ err: mpErr, agentId: agent.id, runId: run.id }, "MemPalace: hydration failed");
+      }
+
       // V2 Layer 3: Inject active experiment approach into context
       try {
         const { agentExperiments: expTable } = await import("@paperclipai/db");
@@ -2923,6 +2954,26 @@ Keep memories concise and specific. Don't write vague platitudes.`;
             });
           } catch (err) {
             logger.warn({ err, agentId: agent.id, runId: run.id }, "V2: failed to persist project session");
+          }
+        }
+        // MemPalace: Post-run capture — store run summary to semantic memory
+        if (outcome === "succeeded") {
+          try {
+            const { captureRunToMemPalace } = await import("./agent-runtime/mempalace.js");
+            const summary = adapterResult.resultJson
+              ? JSON.stringify(adapterResult.resultJson).slice(0, 4000)
+              : stdoutExcerpt?.slice(0, 4000) ?? "Run completed successfully";
+            await captureRunToMemPalace(
+              db,
+              agent.companyId,
+              agent.id,
+              run.id,
+              taskKey ?? undefined,
+              summary,
+            );
+            logger.info({ agentId: agent.id, runId: run.id }, "MemPalace: captured run summary");
+          } catch (mpErr) {
+            logger.warn({ err: mpErr, agentId: agent.id, runId: run.id }, "MemPalace: run capture failed");
           }
         }
         // V2: Post-run KPI recording
@@ -4224,6 +4275,51 @@ Focus on **trends over time**, not single runs. Only act when you see a sustaine
       }
 
       return { checked, enqueued, skipped };
+    },
+
+    replayRun: async (
+      runId: string,
+      opts?: { model?: string | null },
+    ) => {
+      const run = await getRun(runId);
+      if (!run) throw notFound("Heartbeat run not found");
+
+      const canReplay =
+        (run.status === "failed" || run.status === "timed_out") &&
+        run.contextSnapshot &&
+        typeof run.contextSnapshot === "object";
+
+      if (!canReplay) {
+        throw conflict("Run cannot be replayed — it must be failed/timed_out with a context snapshot");
+      }
+
+      const contextSnapshot: Record<string, unknown> = {
+        ...run.contextSnapshot,
+        replayOfRunId: run.id,
+      };
+      if (opts?.model) {
+        contextSnapshot.replayModelOverride = opts.model;
+      }
+
+      const newRun = await db
+        .insert(heartbeatRuns)
+        .values({
+          companyId: run.companyId,
+          agentId: run.agentId,
+          invocationSource: "replay",
+          triggerDetail: "manual",
+          status: "queued",
+          contextSnapshot,
+          retryOfRunId: run.id,
+        })
+        .returning()
+        .then((rows) => rows[0]);
+
+      void startNextQueuedRunForAgent(run.agentId).catch((err) => {
+        logger.error({ err, agentId: run.agentId }, "failed to schedule replay run");
+      });
+
+      return newRun;
     },
 
     cancelRun: (runId: string) => cancelRunInternal(runId),

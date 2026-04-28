@@ -28,7 +28,8 @@ import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
 import { logger } from "./middleware/logger.js";
 import { setupLiveEventsWebSocketServer } from "./realtime/live-events-ws.js";
-import { heartbeatService, reconcilePersistedRuntimeServicesOnStartup, routineService } from "./services/index.js";
+import { heartbeatService, heartbeatWatchdogService, reconcilePersistedRuntimeServicesOnStartup, routineService } from "./services/index.js";
+import { seedModelPricing } from "./services/pricing-seed.js";
 import { createStorageServiceFromConfig } from "./storage/index.js";
 import { printStartupBanner } from "./startup-banner.js";
 import { getBoardClaimWarningUrl, initializeBoardClaimChallenge } from "./board-claim.js";
@@ -561,10 +562,15 @@ export async function startServer(): Promise<StartedServer> {
     .catch((err) => {
       logger.error({ err }, "startup reconciliation of persisted runtime services failed");
     });
+
+  void seedModelPricing(db as any).catch((err) => {
+    logger.error({ err }, "model pricing seed failed");
+  });
   
   if (config.heartbeatSchedulerEnabled) {
     const heartbeat = heartbeatService(db as any);
     const routines = routineService(db as any);
+    const watchdog = heartbeatWatchdogService(db as any, (runId, reason) => heartbeat.cancelRun(runId));
   
     // Reap orphaned running runs at startup while in-memory execution state is empty,
     // then resume any persisted queued runs that were waiting on the previous process.
@@ -605,6 +611,11 @@ export async function startServer(): Promise<StartedServer> {
         .catch((err) => {
           logger.error({ err }, "periodic heartbeat recovery failed");
         });
+
+      // Check for stuck runs (running but no recent events)
+      void watchdog.checkStuckRuns().catch((err) => {
+        logger.error({ err }, "heartbeat watchdog check failed");
+      });
     }, config.heartbeatSchedulerIntervalMs);
   }
   

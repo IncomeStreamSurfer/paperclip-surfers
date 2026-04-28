@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
@@ -10,7 +10,7 @@ import { Link } from "@/lib/router";
 import {
   Zap, Plus, Trash2, RefreshCw, ChevronDown, ChevronUp,
   CheckCircle2, Clock, AlertCircle, BarChart2,
-  FolderOpen, Link2, X, Search,
+  FolderOpen, Link2, X, Search, GripVertical, ExternalLink,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Tooltip } from "../components/Tooltip";
@@ -22,6 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { ContextMenu } from "@/components/ui/context-menu";
+import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import type { Issue, Project } from "@paperclipai/shared";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -38,7 +40,15 @@ const ISSUE_STATUS_COLORS: Record<string, string> = {
   cancelled: "text-red-500",
 };
 
-// ─── Issues tab ──────────────────────────────────────────────────────────────
+// ─── Issues tab (list + kanban) ──────────────────────────────────────────────
+
+const KANBAN_COLUMNS = [
+  { key: "backlog", label: "Backlog", color: "bg-neutral-100 dark:bg-neutral-900" },
+  { key: "todo", label: "To Do", color: "bg-blue-50 dark:bg-blue-950" },
+  { key: "in-progress", label: "In Progress", color: "bg-amber-50 dark:bg-amber-950" },
+  { key: "done", label: "Done", color: "bg-emerald-50 dark:bg-emerald-950" },
+  { key: "cancelled", label: "Cancelled", color: "bg-red-50 dark:bg-red-950" },
+];
 
 function SprintIssuesTab({
   sprint,
@@ -52,6 +62,7 @@ function SprintIssuesTab({
   const queryClient = useQueryClient();
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState("");
+  const [view, setView] = useState<"list" | "kanban">("list");
 
   const issuesQuery = useQuery({
     queryKey: queryKeys.sprints.issues(sprint.id),
@@ -100,20 +111,54 @@ function SprintIssuesTab({
     return projects.filter((p) => ids.has(p.id));
   }, [issues, projects]);
 
+  const issuesByStatus = useMemo(() => {
+    const map = new Map<string, Issue[]>();
+    for (const col of KANBAN_COLUMNS) map.set(col.key, []);
+    for (const issue of issues) {
+      const col = map.get(issue.status);
+      if (col) col.push(issue);
+      else map.get("backlog")!.push(issue);
+    }
+    return map;
+  }, [issues]);
+
+  const projectMap = useMemo(() => {
+    const map = new Map(projects.map((p) => [p.id, p]));
+    return map;
+  }, [projects]);
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted-foreground">
           {issues.length} issue{issues.length !== 1 ? "s" : ""}
         </span>
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 text-xs gap-1"
-          onClick={() => { setSearch(""); setShowAdd(true); }}
-        >
-          <Link2 className="h-3 w-3" /> Add Issue
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex border border-border rounded-md overflow-hidden text-xs">
+            <button
+              type="button"
+              className={`px-2 py-1 ${view === "list" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setView("list")}
+            >
+              List
+            </button>
+            <button
+              type="button"
+              className={`px-2 py-1 ${view === "kanban" ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"}`}
+              onClick={() => setView("kanban")}
+            >
+              Kanban
+            </button>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs gap-1"
+            onClick={() => { setSearch(""); setShowAdd(true); }}
+          >
+            <Link2 className="h-3 w-3" /> Add Issue
+          </Button>
+        </div>
       </div>
 
       {linkedProjects.length > 0 && (
@@ -136,40 +181,130 @@ function SprintIssuesTab({
         <p className="text-xs text-muted-foreground italic">
           No issues linked yet. Click "Add Issue" to link one.
         </p>
+      ) : view === "kanban" ? (
+        <div className="grid grid-cols-5 gap-2">
+          {KANBAN_COLUMNS.map((col) => {
+            const colIssues = issuesByStatus.get(col.key) ?? [];
+            return (
+              <div key={col.key} className={`rounded-lg ${col.color} p-2 space-y-1.5 min-h-[120px]`}>
+                <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground px-1">
+                  <span>{col.label}</span>
+                  <span className="tabular-nums">{colIssues.length}</span>
+                </div>
+                {colIssues.map((issue) => {
+                  const project = issue.projectId ? projectMap.get(issue.projectId) : undefined;
+                  return (
+                    <ContextMenu
+                      key={issue.id}
+                      items={[
+                        {
+                          label: "Open issue",
+                          icon: <ExternalLink className="h-3 w-3" />,
+                          onClick: () => {},
+                        },
+                        { label: "—", onClick: () => {}, disabled: true },
+                        ...KANBAN_COLUMNS.filter((c) => c.key !== issue.status).map((c) => ({
+                          label: `Move to ${c.label}`,
+                          onClick: () => issuesApi.update(issue.id, { status: c.key }),
+                          disabled: false,
+                        })),
+                        { label: "—", onClick: () => {}, disabled: true },
+                        {
+                          label: "Remove from sprint",
+                          icon: <X className="h-3 w-3" />,
+                          onClick: () => removeIssue.mutate(issue.id),
+                          destructive: true,
+                        },
+                      ]}
+                    >
+                      <Link
+                        to={`/issues/${issue.identifier ?? issue.id}`}
+                        className="block rounded-md border border-border bg-background px-2.5 py-2 text-xs hover:shadow-sm transition-shadow no-underline text-inherit"
+                      >
+                        <div className="font-medium truncate">{issue.title}</div>
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {issue.identifier ?? issue.issueNumber ?? "—"}
+                          </span>
+                          {project && (
+                            <span className="text-[10px] text-muted-foreground truncate flex items-center gap-0.5">
+                              <FolderOpen className="h-2.5 w-2.5" />
+                              {project.name}
+                            </span>
+                          )}
+                        </div>
+                      </Link>
+                    </ContextMenu>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <div className="space-y-1">
-          {issues.map((issue) => (
-            <div
-              key={issue.id}
-              className="flex items-center gap-2 rounded-md border px-3 py-1.5"
-            >
-              <span
-                className={`text-xs font-mono shrink-0 ${ISSUE_STATUS_COLORS[issue.status] ?? "text-muted-foreground"}`}
+          {issues.map((issue) => {
+            const project = issue.projectId ? projectMap.get(issue.projectId) : undefined;
+            return (
+              <ContextMenu
+                key={issue.id}
+                items={[
+                  {
+                    label: "Open issue",
+                    icon: <ExternalLink className="h-3 w-3" />,
+                    onClick: () => {},
+                  },
+                  { label: "—", onClick: () => {}, disabled: true },
+                  ...KANBAN_COLUMNS.filter((c) => c.key !== issue.status).map((c) => ({
+                    label: `Move to ${c.label}`,
+                    onClick: () => issuesApi.update(issue.id, { status: c.key }),
+                    disabled: false,
+                  })),
+                  { label: "—", onClick: () => {}, disabled: true },
+                  {
+                    label: "Remove from sprint",
+                    icon: <X className="h-3 w-3" />,
+                    onClick: () => removeIssue.mutate(issue.id),
+                    destructive: true,
+                  },
+                ]}
               >
-                {issue.identifier ?? issue.issueNumber ?? "—"}
-              </span>
-              <Link
-                to={`/issues/${issue.identifier ?? issue.id}`}
-                className="flex-1 text-xs truncate hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {issue.title}
-              </Link>
-              <Badge variant="outline" className="text-[10px] shrink-0">
-                {issue.status}
-              </Badge>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
-                onClick={() => removeIssue.mutate(issue.id)}
-                disabled={removeIssue.isPending}
-                title="Remove from sprint"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                  <span
+                    className={`text-xs font-mono shrink-0 ${ISSUE_STATUS_COLORS[issue.status] ?? "text-muted-foreground"}`}
+                  >
+                    {issue.identifier ?? issue.issueNumber ?? "—"}
+                  </span>
+                  <Link
+                    to={`/issues/${issue.identifier ?? issue.id}`}
+                    className="flex-1 text-xs truncate hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {issue.title}
+                  </Link>
+                  {project && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-0.5 shrink-0">
+                      <FolderOpen className="h-2.5 w-2.5" />
+                      {project.name}
+                    </span>
+                  )}
+                  <Badge variant="outline" className="text-[10px] shrink-0">
+                    {issue.status}
+                  </Badge>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-5 w-5 text-muted-foreground hover:text-destructive shrink-0"
+                    onClick={() => removeIssue.mutate(issue.id)}
+                    disabled={removeIssue.isPending}
+                    title="Remove from sprint"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              </ContextMenu>
+            );
+          })}
         </div>
       )}
 

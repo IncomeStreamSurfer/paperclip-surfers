@@ -23,6 +23,7 @@ import type {
 } from "@paperclipai/shared";
 import { notFound, unprocessable } from "../errors.js";
 import { logActivity } from "./activity-log.js";
+import { logger } from "../middleware/logger.js";
 
 type ScopeRecord = {
   companyId: string;
@@ -709,6 +710,90 @@ export function budgetService(db: Db, hooks: BudgetServiceHooks = {}) {
               },
             });
           }
+        }
+      }
+
+      // --- Cost anomaly detection ---
+      // Per-agent rolling baseline: alert + auto-pause when a single run
+      // exceeds an absolute ceiling or mean + 3σ of historical runs.
+      const ABSOLUTE_CEILING_CENTS = 5000; // $50 hard ceiling per run
+      const ANOMALY_SIGMA_THRESHOLD = 3;
+      const BASELINE_RUN_COUNT = 20;
+
+      if (event.heartbeatRunId) {
+        try {
+          const runTotalResult = await db
+            .select({ total: sql<number>`coalesce(sum(${costEvents.costCents}), 0)` })
+            .from(costEvents)
+            .where(eq(costEvents.heartbeatRunId, event.heartbeatRunId))
+            .then((rows) => Number(rows[0]?.total ?? 0));
+
+          if (runTotalResult > ABSOLUTE_CEILING_CENTS) {
+            await db
+              .update(agents)
+              .set({ status: "paused", pauseReason: "budget", pausedAt: new Date(), updatedAt: new Date() })
+              .where(eq(agents.id, event.agentId));
+            await logActivity(db, {
+              companyId: event.companyId,
+              actorType: "system",
+              actorId: "budget_service",
+              action: "cost.anomaly_detected",
+              entityType: "agent",
+              entityId: event.agentId,
+              details: {
+                type: "absolute_ceiling",
+                runTotalCents: runTotalResult,
+                ceilingCents: ABSOLUTE_CEILING_CENTS,
+                runId: event.heartbeatRunId,
+              },
+            });
+          }
+
+          const historicalEvents = await db
+            .select({ costCents: costEvents.costCents })
+            .from(costEvents)
+            .where(
+              and(
+                eq(costEvents.agentId, event.agentId),
+                eq(costEvents.provider, event.provider),
+                ne(costEvents.heartbeatRunId, event.heartbeatRunId),
+              ),
+            )
+            .orderBy(desc(costEvents.occurredAt))
+            .limit(BASELINE_RUN_COUNT);
+
+          const runCosts: number[] = historicalEvents.map((e) => Number(e.costCents));
+          if (runCosts.length >= 5) {
+            const mean = runCosts.reduce((s, c) => s + c, 0) / runCosts.length;
+            const variance = runCosts.reduce((s, c) => s + (c - mean) ** 2, 0) / runCosts.length;
+            const stddev = Math.sqrt(variance);
+            const threshold = mean + ANOMALY_SIGMA_THRESHOLD * stddev;
+
+            if (runTotalResult > threshold && runTotalResult > mean * 2) {
+              await db
+                .update(agents)
+                .set({ status: "paused", pauseReason: "budget", pausedAt: new Date(), updatedAt: new Date() })
+                .where(eq(agents.id, event.agentId));
+              await logActivity(db, {
+                companyId: event.companyId,
+                actorType: "system",
+                actorId: "budget_service",
+                action: "cost.anomaly_detected",
+                entityType: "agent",
+                entityId: event.agentId,
+                details: {
+                  type: "statistical_spike",
+                  runTotalCents: runTotalResult,
+                  thresholdCents: Math.round(threshold),
+                  meanCents: Math.round(mean),
+                  stddevCents: Math.round(stddev),
+                  runId: event.heartbeatRunId,
+                },
+              });
+            }
+          }
+        } catch (err) {
+          logger.warn({ err, agentId: event.agentId, runId: event.heartbeatRunId }, "cost anomaly detection failed");
         }
       }
     },

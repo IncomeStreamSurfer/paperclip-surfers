@@ -3,6 +3,8 @@ import type { Db } from "@paperclipai/db";
 import { activityLog, agents, companies, costEvents, issues, projects } from "@paperclipai/db";
 import { notFound, unprocessable } from "../errors.js";
 import { budgetService, type BudgetServiceHooks } from "./budgets.js";
+import { pricingService } from "./pricing.js";
+import { logger } from "../middleware/logger.js";
 
 export interface CostDateRange {
   from?: Date;
@@ -49,6 +51,60 @@ function computeMinCostCents(
   );
 }
 
+/**
+ * Tolerance factor for client-reported costs. If the reported cost is within
+ * 95% of the server-calculated value, we accept it to avoid penalizing minor
+ * rounding differences between client libraries.
+ */
+const COST_VERIFICATION_TOLERANCE = 0.95;
+
+async function computeVerifiedCostCents(
+  pricingSvc: ReturnType<typeof pricingService>,
+  data: {
+    provider: string;
+    model: string | null | undefined;
+    inputTokens: number;
+    outputTokens: number;
+    cachedInputTokens: number;
+    costCents: number;
+  },
+): Promise<{ costCents: number; wasOverridden: boolean; reason?: string }> {
+  const { provider, model, inputTokens, outputTokens, cachedInputTokens, costCents } = data;
+
+  // 1. Try the dynamic pricing catalog first (most accurate, admin-updatable)
+  if (model) {
+    try {
+      const price = await pricingSvc.findByProviderModel(provider, model);
+      if (price) {
+        const expected =
+          (inputTokens * price.inputPriceCentsPer1M +
+            outputTokens * price.outputPriceCentsPer1M +
+            cachedInputTokens * price.cachedInputPriceCentsPer1M) /
+          1_000_000;
+        const minAccepted = expected * COST_VERIFICATION_TOLERANCE;
+        if (costCents < minAccepted) {
+          return {
+            costCents: Math.ceil(expected),
+            wasOverridden: true,
+            reason: `catalog_floor:${provider}/${model}`,
+          };
+        }
+        return { costCents, wasOverridden: false };
+      }
+    } catch {
+      // Pricing lookup failure is non-fatal — fall through to hardcoded floor
+    }
+  }
+
+  // 2. Fall back to hardcoded floor (covers models not yet in the catalog)
+  const minCost = computeMinCostCents(model, inputTokens, outputTokens);
+  if (minCost !== null && costCents < minCost) {
+    return { costCents: minCost, wasOverridden: true, reason: `hardcoded_floor` };
+  }
+
+  return { costCents, wasOverridden: false };
+}
+
 function currentUtcMonthWindow(now = new Date()) {
   const year = now.getUTCFullYear();
   const month = now.getUTCMonth();
@@ -82,6 +138,7 @@ async function getMonthlySpendTotal(
 
 export function costService(db: Db, budgetHooks: BudgetServiceHooks = {}) {
   const budgets = budgetService(db, budgetHooks);
+  const pricingSvc = pricingService(db);
   return {
     createEvent: async (companyId: string, data: Omit<typeof costEvents.$inferInsert, "companyId">) => {
       const agent = await db
@@ -95,21 +152,38 @@ export function costService(db: Db, budgetHooks: BudgetServiceHooks = {}) {
         throw unprocessable("Agent does not belong to company");
       }
 
-      // Server-side cost floor: if the agent-reported costCents is below the
-      // minimum calculable from known model pricing, use the server value to
-      // prevent budget-cap evasion via underreporting.
-      const minCost = computeMinCostCents(
-        data.model,
-        data.inputTokens ?? 0,
-        data.outputTokens ?? 0,
-      );
-      const costCents = minCost !== null && data.costCents < minCost ? minCost : data.costCents;
+      // Server-side cost verification: reject under-reported costs by looking
+      // up the dynamic pricing catalog first, then falling back to hardcoded
+      // floors. This prevents a compromised agent from evading budget caps.
+      const verification = await computeVerifiedCostCents(pricingSvc, {
+        provider: data.provider,
+        model: data.model,
+        inputTokens: data.inputTokens ?? 0,
+        outputTokens: data.outputTokens ?? 0,
+        cachedInputTokens: data.cachedInputTokens ?? 0,
+        costCents: data.costCents,
+      });
+
+      if (verification.wasOverridden) {
+        logger.warn(
+          {
+            companyId,
+            agentId: data.agentId,
+            provider: data.provider,
+            model: data.model,
+            reportedCents: data.costCents,
+            verifiedCents: verification.costCents,
+            reason: verification.reason,
+          },
+          "costEvent: client-reported cost was below server-calculated floor; overriding",
+        );
+      }
 
       const event = await db
         .insert(costEvents)
         .values({
           ...data,
-          costCents,
+          costCents: verification.costCents,
           companyId,
           biller: data.biller ?? data.provider,
           billingType: data.billingType ?? "unknown",

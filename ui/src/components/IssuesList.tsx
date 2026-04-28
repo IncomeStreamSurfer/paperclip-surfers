@@ -672,6 +672,7 @@ export function IssuesList({
           agents={agents}
           liveIssueIds={liveIssueIds}
           onUpdateIssue={onUpdateIssue}
+          onCreateIssue={(status) => openNewIssue(newIssueDefaults(status))}
         />
       ) : (
         groupedContent.map((group) => (

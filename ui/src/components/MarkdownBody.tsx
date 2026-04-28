@@ -91,6 +91,12 @@ function MermaidDiagramBlock({ source, darkMode }: { source: string; darkMode: b
   );
 }
 
+const UUID_RE = /\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi;
+
+function linkCommentUuids(text: string): string {
+  return text.replace(UUID_RE, "[$1](#comment-$1)");
+}
+
 export function MarkdownBody({ children, className, resolveImageSrc }: MarkdownBodyProps) {
   const { schemaId } = useColorSchema();
   const isDark = schemaId === "dark";
@@ -146,7 +152,7 @@ export function MarkdownBody({ children, className, resolveImageSrc }: MarkdownB
       )}
     >
       <Markdown remarkPlugins={[remarkGfm]} components={components} urlTransform={(url) => url}>
-        {children}
+        {linkCommentUuids(children)}
       </Markdown>
     </div>
   );

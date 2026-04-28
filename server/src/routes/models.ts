@@ -172,6 +172,7 @@ export function modelRoutes(db: Db) {
 
   // Get suggestions (filtered by allowed for Pro+)
   router.get("/models/suggestions", async (req, res) => {
+    assertBoard(req);
     const useCase = req.query.useCase as string | undefined;
     const companyId = req.query.companyId as string | undefined;
 
@@ -247,6 +248,7 @@ export function modelRoutes(db: Db) {
 
   // Add vLLM endpoint
   router.post("/models/vllm/endpoints", async (req, res) => {
+    assertModelAdmin(req);
     const { name, baseURL, apiKey } = req.body as { name: string; baseURL: string; apiKey?: string };
     if (!name || !baseURL) {
       res.status(400).json({ error: "name and baseURL are required" });
@@ -274,6 +276,7 @@ export function modelRoutes(db: Db) {
 
   // Delete vLLM endpoint
   router.delete("/models/vllm/endpoints/:id", async (req, res) => {
+    assertModelAdmin(req);
     const id = req.params.id as string;
     const row = await getInstanceSettingsSingleton(db);
 

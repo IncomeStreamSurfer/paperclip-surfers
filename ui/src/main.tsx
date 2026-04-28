@@ -17,10 +17,12 @@ import { FloatingIssuePanelsProvider } from "./context/FloatingIssuePanelsContex
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { initPluginBridge } from "./plugins/bridge-init";
 import { PluginLauncherProvider } from "./plugins/launchers";
+import { setupScrollAnimations } from "./lib/animationObserver";
 import "@mdxeditor/editor/style.css";
 import "./index.css";
 
 initPluginBridge(React, ReactDOM);
+setupScrollAnimations();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

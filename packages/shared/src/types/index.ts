@@ -219,3 +219,33 @@ export type {
   DesignAssetStatus,
   DesignAsset,
 } from "./design.js";
+
+export type {
+  MemoryScope,
+  MemoryProviderKind,
+  MemoryOp,
+  MemoryAdapterCapabilities,
+  MemoryScopeInput,
+  MemorySourceRef,
+  MemoryUsage,
+  MemoryWriteRequest,
+  MemoryRecordHandle,
+  MemoryQueryRequest,
+  MemorySnippet,
+  MemoryContextBundle,
+  MemoryAdapter,
+  MemoryBinding,
+  CreateMemoryBinding,
+  UpdateMemoryBinding,
+  MemoryOperation,
+  MemoryQueryApi,
+  MemoryWriteApi,
+} from "./memory.js";
+
+export type {
+  ModelPricing,
+  CreateModelPricing,
+  UpdateModelPricing,
+  ModelPricingLookup,
+  CalculatedCost,
+} from "./model-pricing.js";

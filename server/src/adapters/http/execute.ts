@@ -1,5 +1,6 @@
 import type { AdapterExecutionContext, AdapterExecutionResult } from "../types.js";
 import { asString, asNumber, parseObject } from "../utils.js";
+import { safeFetch, SsrfBlockedError } from "../../utils/safe-fetch.js";
 
 export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExecutionResult> {
   const { config, runId, agent, context } = ctx;
@@ -16,7 +17,7 @@ export async function execute(ctx: AdapterExecutionContext): Promise<AdapterExec
   const timer = timeoutMs > 0 ? setTimeout(() => controller.abort(), timeoutMs) : null;
 
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       method,
       headers: {
         "content-type": "application/json",

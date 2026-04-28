@@ -170,6 +170,7 @@ export const queryKeys = {
   plugins: {
     all: ["plugins"] as const,
     examples: ["plugins", "examples"] as const,
+    marketplace: ["plugins", "marketplace"] as const,
     detail: (pluginId: string) => ["plugins", pluginId] as const,
     health: (pluginId: string) => ["plugins", pluginId, "health"] as const,
     uiContributions: ["plugins", "ui-contributions"] as const,
@@ -254,5 +255,15 @@ export const queryKeys = {
   messaging: {
     providers: (companyId: string) => ["messaging", companyId, "providers"] as const,
     subscriptions: (companyId: string) => ["messaging", companyId, "subscriptions"] as const,
+  },
+  knowledge: {
+    bases: (companyId: string) => ["knowledge", companyId, "bases"] as const,
+    documents: (companyId: string, kbId: string) => ["knowledge", companyId, kbId, "documents"] as const,
+    agentKbs: (companyId: string, agentId: string) => ["knowledge", companyId, agentId, "agent-kbs"] as const,
+  },
+  memory: {
+    bindings: (companyId: string) => ["memory", companyId, "bindings"] as const,
+    operations: (companyId: string, opts?: { agentId?: string; bindingId?: string }) =>
+      ["memory", companyId, "operations", opts?.agentId ?? "_", opts?.bindingId ?? "_"] as const,
   },
 };

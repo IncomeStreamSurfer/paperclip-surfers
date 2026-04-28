@@ -275,6 +275,17 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       res.status(404).json({ error: "Company not found" });
       return;
     }
+
+    // Pause agents when archiving via PATCH
+    if (body.status === "archived") {
+      const activeAgents = await agents.list(companyId);
+      await Promise.allSettled(
+        activeAgents
+          .filter((a) => a.status !== "paused")
+          .map((a) => agents.pause(a.id, "system")),
+      );
+    }
+
     await logActivity(db, {
       companyId,
       actorType: actor.actorType,
@@ -338,6 +349,26 @@ export function companyRoutes(db: Db, storage?: StorageService) {
         .map((a) => agents.pause(a.id, "system")),
     );
 
+    res.json(company);
+  });
+
+  router.post("/:companyId/unarchive", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const company = await svc.update(companyId, { status: "active" });
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+    await logActivity(db, {
+      companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "company.unarchived",
+      entityType: "company",
+      entityId: companyId,
+    });
     res.json(company);
   });
 

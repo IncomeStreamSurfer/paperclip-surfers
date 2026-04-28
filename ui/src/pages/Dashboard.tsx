@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import { Link } from "@/lib/router";
+import type { CSSProperties } from "react";
+import { Link, useNavigate } from "@/lib/router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
@@ -32,7 +33,7 @@ import { ActivityRow } from "../components/ActivityRow";
 import { Identity } from "../components/Identity";
 import { timeAgo } from "../lib/timeAgo";
 import { cn, formatCents } from "../lib/utils";
-import { Bot, ChevronRight, CircleDot, ChevronsDownUp, ChevronsUpDown, DollarSign, ShieldCheck, LayoutDashboard, PauseCircle, Settings2 } from "lucide-react";
+import { Bot, ChevronRight, CircleDot, ChevronsDownUp, ChevronsUpDown, DollarSign, ShieldCheck, LayoutDashboard, Maximize2, PauseCircle, Settings2 } from "lucide-react";
 import { ActiveAgentsPanel } from "../components/ActiveAgentsPanel";
 import {
   RunActivityChart,
@@ -135,6 +136,19 @@ export function Dashboard() {
   });
   const [countdown, setCountdown] = useState(autoRefreshIntervalSec);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  /* fullscreen shortcut */
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "f" || e.key === "F") {
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+        navigate("/dashboard/fullscreen");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navigate]);
 
   useEffect(() => {
     try { localStorage.setItem("paperclip_dashboard_auto_refresh", String(autoRefreshEnabled)); } catch {}
@@ -409,7 +423,7 @@ export function Dashboard() {
   /* ---- Widget renderer ---- */
 
   const renderWidget = useCallback(
-    (id: string) => {
+    (id: string, index = 0) => {
       const def = WIDGET_REGISTRY.find((w) => w.id === id);
       if (!def) return null;
 
@@ -534,6 +548,7 @@ export function Dashboard() {
           subtitle={subtitle}
           size={def.size}
           editMode={customizeOpen}
+          index={index}
           onRemove={disableWidget}
         >
           {content}
@@ -633,57 +648,65 @@ export function Dashboard() {
 
           {/* Metric cards */}
           <div className="grid grid-cols-2 xl:grid-cols-4 gap-1 sm:gap-2">
-            <MetricCard
-              icon={Bot}
-              value={data.agents.active + data.agents.running + data.agents.paused + data.agents.error}
-              label="Agents Enabled"
-              to="/agents"
-              description={
-                <span>
-                  {data.agents.running} running{", "}
-                  {data.agents.paused} paused{", "}
-                  {data.agents.error} errors
-                </span>
-              }
-            />
-            <MetricCard
-              icon={CircleDot}
-              value={data.tasks.inProgress}
-              label="Tasks In Progress"
-              to="/issues"
-              description={
-                <span>
-                  {data.tasks.open} open{", "}
-                  {data.tasks.blocked} blocked
-                </span>
-              }
-            />
-            <MetricCard
-              icon={DollarSign}
-              value={formatCents(data.costs.monthSpendCents)}
-              label="Month Spend"
-              to="/costs"
-              description={
-                <span>
-                  {data.costs.monthBudgetCents > 0
-                    ? `${data.costs.monthUtilizationPercent}% of ${formatCents(data.costs.monthBudgetCents)} budget`
-                    : "Unlimited budget"}
-                </span>
-              }
-            />
-            <MetricCard
-              icon={ShieldCheck}
-              value={data.pendingApprovals + data.budgets.pendingApprovals}
-              label="Pending Approvals"
-              to="/approvals"
-              description={
-                <span>
-                  {data.budgets.pendingApprovals > 0
-                    ? `${data.budgets.pendingApprovals} budget overrides awaiting board review`
-                    : "Awaiting board review"}
-                </span>
-              }
-            />
+            <div className="metric-pop" style={{ "--metric-idx": 0 } as CSSProperties}>
+              <MetricCard
+                icon={Bot}
+                value={data.agents.active + data.agents.running + data.agents.paused + data.agents.error}
+                label="Agents Enabled"
+                to="/agents"
+                description={
+                  <span>
+                    {data.agents.running} running{", "}
+                    {data.agents.paused} paused{", "}
+                    {data.agents.error} errors
+                  </span>
+                }
+              />
+            </div>
+            <div className="metric-pop" style={{ "--metric-idx": 1 } as CSSProperties}>
+              <MetricCard
+                icon={CircleDot}
+                value={data.tasks.inProgress}
+                label="Tasks In Progress"
+                to="/issues"
+                description={
+                  <span>
+                    {data.tasks.open} open{", "}
+                    {data.tasks.blocked} blocked
+                  </span>
+                }
+              />
+            </div>
+            <div className="metric-pop" style={{ "--metric-idx": 2 } as CSSProperties}>
+              <MetricCard
+                icon={DollarSign}
+                value={formatCents(data.costs.monthSpendCents)}
+                label="Month Spend"
+                to="/costs"
+                description={
+                  <span>
+                    {data.costs.monthBudgetCents > 0
+                      ? `${data.costs.monthUtilizationPercent}% of ${formatCents(data.costs.monthBudgetCents)} budget`
+                      : "Unlimited budget"}
+                  </span>
+                }
+              />
+            </div>
+            <div className="metric-pop" style={{ "--metric-idx": 3 } as CSSProperties}>
+              <MetricCard
+                icon={ShieldCheck}
+                value={data.pendingApprovals + data.budgets.pendingApprovals}
+                label="Pending Approvals"
+                to="/approvals"
+                description={
+                  <span>
+                    {data.budgets.pendingApprovals > 0
+                      ? `${data.budgets.pendingApprovals} budget overrides awaiting board review`
+                      : "Awaiting board review"}
+                  </span>
+                }
+              />
+            </div>
           </div>
 
           {/* Chart toolbar */}
@@ -712,6 +735,15 @@ export function Dashboard() {
                   </Tooltip>
                 </>
               )}
+              <Tooltip content="Full-screen mode (F)">
+                <button
+                  onClick={() => navigate("/dashboard/fullscreen")}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:bg-muted/60 px-2.5 py-1 rounded font-medium transition-colors"
+                >
+                  <Maximize2 className="h-3 w-3" />
+                  Full screen
+                </button>
+              </Tooltip>
               <button
                 onClick={() => setCustomizeOpen(true)}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:bg-muted/60 px-2.5 py-1 rounded font-medium transition-colors"
@@ -750,7 +782,7 @@ export function Dashboard() {
                   <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                     <SortableContext items={sWidgets} strategy={rectSortingStrategy}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {sWidgets.map((id) => renderWidget(id))}
+                        {sWidgets.map((id, idx) => renderWidget(id, idx))}
                       </div>
                     </SortableContext>
                   </DndContext>
@@ -770,7 +802,7 @@ export function Dashboard() {
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={ungroupedWidgets} strategy={rectSortingStrategy}>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {ungroupedWidgets.map((id) => renderWidget(id))}
+                    {ungroupedWidgets.map((id, idx) => renderWidget(id, idx))}
                   </div>
                 </SortableContext>
               </DndContext>
