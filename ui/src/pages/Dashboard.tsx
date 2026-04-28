@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { Link } from "@/lib/router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DndContext,
   closestCenter,
@@ -125,6 +125,53 @@ export function Dashboard() {
   /* time filter */
   const [days, setDays] = useState<number>(30);
 
+  /* auto-refresh settings */
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(() => {
+    try { return localStorage.getItem("paperclip_dashboard_auto_refresh") === "true"; } catch { return false; }
+  });
+  const [autoRefreshIntervalSec, setAutoRefreshIntervalSec] = useState(() => {
+    try { return parseInt(localStorage.getItem("paperclip_dashboard_refresh_interval") ?? "30", 10); } catch { return 30; }
+  });
+  const [countdown, setCountdown] = useState(autoRefreshIntervalSec);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    try { localStorage.setItem("paperclip_dashboard_auto_refresh", String(autoRefreshEnabled)); } catch {}
+  }, [autoRefreshEnabled]);
+
+  useEffect(() => {
+    try { localStorage.setItem("paperclip_dashboard_refresh_interval", String(autoRefreshIntervalSec)); } catch {}
+  }, [autoRefreshIntervalSec]);
+
+  useEffect(() => {
+    setCountdown(autoRefreshIntervalSec);
+  }, [autoRefreshIntervalSec, autoRefreshEnabled]);
+
+  useEffect(() => {
+    if (!autoRefreshEnabled) return;
+    const timer = window.setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          return autoRefreshIntervalSec;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [autoRefreshEnabled, autoRefreshIntervalSec]);
+
+  const handleManualRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboard(selectedCompanyId!) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.activity(selectedCompanyId!) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(selectedCompanyId!) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.projects.list(selectedCompanyId!) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.heartbeats(selectedCompanyId!) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(selectedCompanyId!) });
+    setCountdown(autoRefreshIntervalSec);
+  };
+
+  const refetchInterval = autoRefreshEnabled ? autoRefreshIntervalSec * 1000 : false;
+
   /* selected company business type (for widget defaults) */
   const selectedCompany = useMemo(
     () => companies.find((c) => c.id === selectedCompanyId) ?? null,
@@ -155,90 +202,105 @@ export function Dashboard() {
     queryKey: queryKeys.agents.list(selectedCompanyId!),
     queryFn: () => agentsApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.dashboard(selectedCompanyId!),
     queryFn: () => dashboardApi.summary(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: activity } = useQuery({
     queryKey: queryKeys.activity(selectedCompanyId!),
     queryFn: () => activityApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: issues } = useQuery({
     queryKey: queryKeys.issues.list(selectedCompanyId!),
     queryFn: () => issuesApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: projects } = useQuery({
     queryKey: queryKeys.projects.list(selectedCompanyId!),
     queryFn: () => projectsApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: runs } = useQuery({
     queryKey: [...queryKeys.heartbeats(selectedCompanyId!), days],
     queryFn: () => heartbeatsApi.list(selectedCompanyId!, undefined, undefined, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: tokenUsage } = useQuery({
     queryKey: [...queryKeys.dashboardTokenUsage(selectedCompanyId!), days],
     queryFn: () => dashboardApi.tokenUsage(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: burndown } = useQuery({
     queryKey: [...queryKeys.dashboardBurndown(selectedCompanyId!), days],
     queryFn: () => dashboardApi.burndown(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: tasksByAgent } = useQuery({
     queryKey: [...queryKeys.dashboardTasksByAgent(selectedCompanyId!), days],
     queryFn: () => dashboardApi.tasksByAgent(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: agentTime } = useQuery({
     queryKey: [...queryKeys.dashboardAgentTime(selectedCompanyId!), days],
     queryFn: () => dashboardApi.agentTime(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: issuesByProject } = useQuery({
     queryKey: [...queryKeys.dashboardIssuesByProject(selectedCompanyId!), days],
     queryFn: () => dashboardApi.issuesByProject(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: cycleTime } = useQuery({
     queryKey: [...queryKeys.dashboardCycleTime(selectedCompanyId!), days],
     queryFn: () => dashboardApi.cycleTime(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: costTrend } = useQuery({
     queryKey: [...queryKeys.dashboardCostTrend(selectedCompanyId!), days],
     queryFn: () => dashboardApi.costTrend(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: projectHealth } = useQuery({
     queryKey: [...queryKeys.dashboardProjectHealth(selectedCompanyId!), days],
     queryFn: () => dashboardApi.projectHealth(selectedCompanyId!, days),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   const { data: sprintsData } = useQuery({
     queryKey: queryKeys.sprints.list(selectedCompanyId!),
     queryFn: () => sprintApi.list(selectedCompanyId!),
     enabled: !!selectedCompanyId,
+    refetchInterval,
   });
 
   /* ---- Derived ---- */
