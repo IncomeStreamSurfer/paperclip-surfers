@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { HeartbeatRun, TokenUsageSummary, BurndownSummary, TasksByAgentSummary, AgentTimeSummary, IssuesByProjectSummary, CycleTimeSummary, CostTrendSummary, ProjectHealthSummary } from "@paperclipai/shared";
 import type { Sprint } from "../api/sprints";
 import { Link } from "@/lib/router";
@@ -882,12 +882,38 @@ function useWidgetTick() {
   return now;
 }
 
+type ClockSortMode = "manual" | "alpha" | "time" | "tz";
+
+function getTzMinutesFromMidnight(tz: string, date: Date): number {
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }).formatToParts(date);
+    const hour = parseInt(parts.find((p) => p.type === "hour")?.value ?? "0");
+    const minute = parseInt(parts.find((p) => p.type === "minute")?.value ?? "0");
+    return (hour % 24) * 60 + minute;
+  } catch {
+    return 0;
+  }
+}
+
+const SORT_LABELS: Record<ClockSortMode, string> = {
+  manual: "Manual",
+  alpha: "A–Z",
+  time: "Time",
+  tz: "Zone",
+};
+
 export function WorldClockWidget() {
   const now = useWidgetTick();
   const { timezones, addTimezone, removeTimezone, moveTimezone } = useTimezones();
 
   const [search, setSearch] = useState("");
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [sortMode, setSortMode] = useState<ClockSortMode>("manual");
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
@@ -906,6 +932,19 @@ export function WorldClockWidget() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdownOpen]);
+
+  const sortedTimezones = useMemo(() => {
+    if (sortMode === "manual") return timezones;
+    const copy = [...timezones];
+    if (sortMode === "alpha") {
+      copy.sort((a, b) => a.label.localeCompare(b.label));
+    } else if (sortMode === "time") {
+      copy.sort((a, b) => getTzMinutesFromMidnight(a.tz, now) - getTzMinutesFromMidnight(b.tz, now));
+    } else if (sortMode === "tz") {
+      copy.sort((a, b) => a.tz.localeCompare(b.tz));
+    }
+    return copy;
+  }, [sortMode, timezones, now]);
 
   const results: SearchResult[] = searchTimezones(search, 40);
   const addedTzSet = new Set(timezones.map((t) => t.tz));
@@ -937,9 +976,29 @@ export function WorldClockWidget() {
 
   return (
     <div className="space-y-2">
+      {/* Sort controls */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <span className="text-[10px] text-muted-foreground/60 mr-0.5">Sort:</span>
+        {(["manual", "alpha", "time", "tz"] as ClockSortMode[]).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => setSortMode(mode)}
+            className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors border ${
+              sortMode === mode
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-transparent text-muted-foreground border-border/60 hover:bg-muted/60 hover:text-foreground"
+            }`}
+          >
+            {SORT_LABELS[mode]}
+          </button>
+        ))}
+      </div>
+
       {/* Clock rows */}
       <div className="grid gap-1.5" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-        {timezones.map((entry, idx) => {
+        {sortedTimezones.map((entry) => {
+          const manualIdx = timezones.findIndex((t) => t.id === entry.id);
           const { time, ampm, day, offset } = formatTzDateTime(entry.tz, now);
           return (
             <Tooltip key={entry.id}>
@@ -959,46 +1018,48 @@ export function WorldClockWidget() {
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">Remove</TooltipContent>
                   </Tooltip>
-                  {/* Reorder buttons */}
-                  <div className="absolute bottom-1.5 right-1.5 flex-col gap-px opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => moveTimezone(entry.id, "up")}
-                          disabled={idx === 0}
-                          className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
-                        >
-                          <ChevronUp className="h-2.5 w-2.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">Move left</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={() => moveTimezone(entry.id, "down")}
-                          disabled={idx === timezones.length - 1}
-                          className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
-                        >
-                          <ChevronDown className="h-2.5 w-2.5" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="text-xs">Move right</TooltipContent>
-                    </Tooltip>
+                  {/* Reorder buttons — only visible in manual sort mode */}
+                  {sortMode === "manual" && (
+                    <div className="absolute bottom-1.5 right-1.5 flex-col gap-px opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => moveTimezone(entry.id, "up")}
+                            disabled={manualIdx === 0}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
+                          >
+                            <ChevronUp className="h-2.5 w-2.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">Move left</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => moveTimezone(entry.id, "down")}
+                            disabled={manualIdx === timezones.length - 1}
+                            className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
+                          >
+                            <ChevronDown className="h-2.5 w-2.5" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="text-xs">Move right</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  )}
+                  <span className="text-[10px] font-medium text-muted-foreground truncate pr-4">{entry.label}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-lg font-mono font-semibold tabular-nums leading-tight">{time}</span>
+                    {ampm && <span className="text-[10px] font-medium text-muted-foreground">{ampm}</span>}
                   </div>
-              <span className="text-[10px] font-medium text-muted-foreground truncate pr-4">{entry.label}</span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-lg font-mono font-semibold tabular-nums leading-tight">{time}</span>
-                {ampm && <span className="text-[10px] font-medium text-muted-foreground">{ampm}</span>}
-              </div>
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
-                <span>{day}</span>
-                {offset && <><span className="text-border/60">·</span><span>{offset}</span></>}
-              </div>
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="text-xs">{entry.tz}</TooltipContent>
-        </Tooltip>
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/70">
+                    <span>{day}</span>
+                    {offset && <><span className="text-border/60">·</span><span>{offset}</span></>}
+                  </div>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">{entry.tz}</TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
