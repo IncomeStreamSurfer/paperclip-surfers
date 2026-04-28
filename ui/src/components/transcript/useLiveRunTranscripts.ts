@@ -82,6 +82,17 @@ export function useLiveRunTranscripts({
     () => runs.map((run) => run.id).sort((a, b) => a.localeCompare(b)).join(","),
     [runs],
   );
+  // Stable string key for active run IDs — used as WebSocket effect dep to avoid
+  // tearing down the connection on every query refetch (Set/Map are new objects each time).
+  const activeRunIdsKey = useMemo(
+    () => [...activeRunIds].sort((a, b) => a.localeCompare(b)).join(","),
+    [activeRunIds],
+  );
+  // Refs keep the WebSocket handler current without re-subscribing.
+  const activeRunIdsRef = useRef(activeRunIds);
+  activeRunIdsRef.current = activeRunIds;
+  const runByIdRef = useRef(runById);
+  runByIdRef.current = runById;
 
   const appendChunks = (runId: string, chunks: Array<RunLogChunk & { dedupeKey: string }>) => {
     if (chunks.length === 0) return;
@@ -175,7 +186,8 @@ export function useLiveRunTranscripts({
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, [runIdsKey, runs]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runIdsKey]);
 
   useEffect(() => {
     if (!companyId || activeRunIds.size === 0) return;
@@ -209,8 +221,8 @@ export function useLiveRunTranscripts({
         if (event.companyId !== companyId) return;
         const payload = event.payload ?? {};
         const runId = readString(payload["runId"]);
-        if (!runId || !activeRunIds.has(runId)) return;
-        if (!runById.has(runId)) return;
+        if (!runId || !activeRunIdsRef.current.has(runId)) return;
+        if (!runByIdRef.current.has(runId)) return;
 
         if (event.type === "heartbeat.run.log") {
           const chunk = readString(payload["chunk"]);
@@ -276,7 +288,10 @@ export function useLiveRunTranscripts({
         socket.close(1000, "live_run_transcripts_unmount");
       }
     };
-  }, [activeRunIds, companyId, runById]);
+  // activeRunIdsKey is a stable string derived from activeRunIds — avoids tearing down
+  // the WebSocket on every query refetch when Set/Map objects get new references.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRunIdsKey, companyId]);
 
   const transcriptByRun = useMemo(() => {
     const next = new Map<string, TranscriptEntry[]>();
