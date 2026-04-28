@@ -12,7 +12,7 @@ import {
   toggleModelSchema,
 } from "@paperclipai/shared";
 import { validate } from "../middleware/validate.js";
-import { assertCompanyAccess } from "./authz.js";
+import { assertCompanyAccess, assertBoard } from "./authz.js";
 import { forbidden, notFound } from "../errors.js";
 import { getActorInfo } from "./authz.js";
 import {
@@ -198,19 +198,22 @@ export function modelRoutes(db: Db) {
   });
 
   // Get available Ollama models to install
-  router.get("/models/available", async (_req, res) => {
+  router.get("/models/available", async (req, res) => {
+    assertBoard(req);
     const models = await getAvailableOllamaModels();
     res.json(models);
   });
 
   // Get installed Ollama models
-  router.get("/models/installed", async (_req, res) => {
+  router.get("/models/installed", async (req, res) => {
+    assertBoard(req);
     const models = await getInstalledOllamaModels();
     res.json(models);
   });
 
   // Install Ollama model
   router.post("/models/install", async (req, res) => {
+    assertModelAdmin(req);
     const { modelName } = req.body;
     if (!modelName) {
       res.status(400).json({ error: "modelName is required" });
@@ -223,17 +226,23 @@ export function modelRoutes(db: Db) {
 
   // Delete installed Ollama model
   router.delete("/models/ollama/:modelName", async (req, res) => {
+    assertModelAdmin(req);
     const modelName = decodeURIComponent(req.params.modelName as string);
     const result = await deleteOllamaModel(modelName);
     res.json(result);
   });
 
   // List vLLM endpoint configs (stored in instance_settings)
-  router.get("/models/vllm/endpoints", async (_req, res) => {
+  router.get("/models/vllm/endpoints", async (req, res) => {
+    assertModelAdmin(req);
     const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const endpoints = (general.vllmEndpoints as VllmEndpoint[]) ?? [];
-    res.json({ endpoints });
+    const redacted = endpoints.map((ep) => ({
+      ...ep,
+      apiKey: ep.apiKey ? `...${ep.apiKey.slice(-4)}` : "",
+    }));
+    res.json({ endpoints: redacted });
   });
 
   // Add vLLM endpoint
@@ -284,6 +293,7 @@ export function modelRoutes(db: Db) {
 
   // Probe vLLM endpoint and return discovered models
   router.get("/models/vllm/endpoints/:id/models", async (req, res) => {
+    assertBoard(req);
     const id = req.params.id as string;
     const row = await getInstanceSettingsSingleton(db);
 
@@ -363,7 +373,8 @@ export function modelRoutes(db: Db) {
   });
 
   // Image generation checkpoints (ComfyUI)
-  router.get("/models/image-checkpoints", async (_req, res) => {
+  router.get("/models/image-checkpoints", async (req, res) => {
+    assertBoard(req);
     const checkpoints = await comfyuiService.getCheckpoints();
     res.json({ checkpoints, available: checkpoints.length > 0 });
   });
@@ -418,7 +429,8 @@ export function modelRoutes(db: Db) {
     res.json({ ok: true });
   });
 
-  router.get("/models/openai/models", async (_req, res) => {
+  router.get("/models/openai/models", async (req, res) => {
+    assertBoard(req);
     const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = (general.openaiApiKey as string | undefined) || process.env.OPENAI_API_KEY;
@@ -478,7 +490,8 @@ export function modelRoutes(db: Db) {
     res.json({ ok: true });
   });
 
-  router.get("/models/openrouter/models", async (_req, res) => {
+  router.get("/models/openrouter/models", async (req, res) => {
+    assertBoard(req);
     const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = (general.openrouterApiKey as string | undefined) || process.env.OPENROUTER_API_KEY;
@@ -537,7 +550,8 @@ export function modelRoutes(db: Db) {
     res.json({ ok: true });
   });
 
-  router.get("/models/vercelai/models", async (_req, res) => {
+  router.get("/models/vercelai/models", async (req, res) => {
+    assertBoard(req);
     const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = general.vercelaiApiKey as string | undefined;
@@ -602,7 +616,8 @@ export function modelRoutes(db: Db) {
     res.json({ ok: true });
   });
 
-  router.get("/models/azure/models", async (_req, res) => {
+  router.get("/models/azure/models", async (req, res) => {
+    assertBoard(req);
     const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = general.azureOpenaiApiKey as string | undefined;
@@ -618,7 +633,8 @@ export function modelRoutes(db: Db) {
 
   // ── Aggregate: all models from all configured providers ───────────────────
 
-  router.get("/models/all", async (_req, res) => {
+  router.get("/models/all", async (req, res) => {
+    assertBoard(req);
     const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
 

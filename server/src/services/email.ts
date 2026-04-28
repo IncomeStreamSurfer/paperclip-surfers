@@ -6,6 +6,14 @@ import { instanceSettingsService } from "./instance-settings.js";
 import { renderEmailLayout } from "./email-layouts.js";
 import type { EmailLayoutOptions } from "./email-layouts.js";
 
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 export function emailService(db: Db) {
   const settingsSvc = instanceSettingsService(db);
 
@@ -210,9 +218,9 @@ export function emailService(db: Db) {
 
       const bodyHtml = [
         `<h2>An issue has been blocked</h2>`,
-        `<p><strong>${issue.identifier}</strong>: ${issue.title}</p>`,
+        `<p><strong>${esc(issue.identifier)}</strong>: ${esc(issue.title)}</p>`,
         `<p>This issue has been marked as <strong>blocked</strong> and may need your attention.</p>`,
-        issueUrl ? `<p><a href="${issueUrl}" class="btn">Open in Paperclip</a></p>` : "",
+        issueUrl ? `<p><a href="${esc(issueUrl)}" class="btn">Open in Paperclip</a></p>` : "",
       ].join("");
 
       await transporter.sendMail({
@@ -266,19 +274,19 @@ export function emailService(db: Db) {
       const unsubscribeUrl = appUrl ? `${appUrl}/profile` : undefined;
 
       const issueRef = approval.issueIdentifier
-        ? `<p>Issue: <strong>${approval.issueIdentifier}</strong>${approval.issueTitle ? ` — ${approval.issueTitle}` : ""}</p>`
+        ? `<p>Issue: <strong>${esc(approval.issueIdentifier)}</strong>${approval.issueTitle ? ` — ${esc(approval.issueTitle)}` : ""}</p>`
         : "";
       const descRef = approval.description
-        ? `<p>${approval.description}</p>`
+        ? `<p>${esc(approval.description)}</p>`
         : "";
 
       const bodyHtml = [
         `<h2>Signoff required</h2>`,
-        `<p>An approval request of type <strong>${approval.type}</strong> is waiting for your review.</p>`,
+        `<p>An approval request of type <strong>${esc(approval.type)}</strong> is waiting for your review.</p>`,
         descRef,
         issueRef,
-        issueUrl ? `<p><a href="${issueUrl}" class="btn">Open issue</a></p>` : "",
-        approvalUrl ? `<p><a href="${approvalUrl}" class="btn">Review approval</a></p>` : "",
+        issueUrl ? `<p><a href="${esc(issueUrl)}" class="btn">Open issue</a></p>` : "",
+        approvalUrl ? `<p><a href="${esc(approvalUrl)}" class="btn">Review approval</a></p>` : "",
       ].join("");
 
       const subject = approval.issueIdentifier
@@ -330,9 +338,9 @@ export function emailService(db: Db) {
 
       const bodyHtml = [
         `<h2>Issue assigned to you</h2>`,
-        `<p><strong>${issue.identifier}</strong>: ${issue.title}</p>`,
+        `<p><strong>${esc(issue.identifier)}</strong>: ${esc(issue.title)}</p>`,
         `<p>This issue has been assigned to you.</p>`,
-        issueUrl ? `<p><a href="${issueUrl}" class="btn">Open in Paperclip</a></p>` : "",
+        issueUrl ? `<p><a href="${esc(issueUrl)}" class="btn">Open in Paperclip</a></p>` : "",
       ].join("");
 
       await transporter.sendMail({
@@ -400,8 +408,8 @@ export function emailService(db: Db) {
         html: await wrapHtml(
           [
             `<h2>You've been invited</h2>`,
-            `<p>You've been invited to join <strong>${invite.companyName}</strong> on Paperclip as <strong>${roleLabel}</strong>.</p>`,
-            `<p><a href="${invite.acceptLink}" class="btn">Accept invitation</a></p>`,
+            `<p>You've been invited to join <strong>${esc(invite.companyName)}</strong> on Paperclip as <strong>${roleLabel}</strong>.</p>`,
+            `<p><a href="${esc(invite.acceptLink)}" class="btn">Accept invitation</a></p>`,
             `<p style="color:#888;font-size:12px">This invitation expires in 72 hours.</p>`,
           ].join(""),
           notifications,
@@ -496,7 +504,7 @@ export function emailService(db: Db) {
 
       const htmlLines: string[] = [
         `<h2>Paperclip ${digestType === "daily" ? "Daily" : "Weekly"} Digest</h2>`,
-        `<p><em>Period: ${period}</em></p>`,
+        `<p><em>Period: ${esc(period)}</em></p>`,
         `<ul>`,
         `  <li>${newIssues.length} new task(s) created</li>`,
         `  <li>${completedIssues.length} task(s) completed</li>`,
@@ -508,7 +516,7 @@ export function emailService(db: Db) {
         for (const i of blockedIssues.slice(0, 10)) {
           const co = companyNameMap.get(i.companyId) ?? "";
           htmlLines.push(
-            `  <li><strong>${i.identifier ?? i.id.slice(0, 8)}</strong>: ${i.title}${co ? ` <em>(${co})</em>` : ""}</li>`,
+            `  <li><strong>${esc(i.identifier ?? i.id.slice(0, 8))}</strong>: ${esc(i.title)}${co ? ` <em>(${esc(co)})</em>` : ""}</li>`,
           );
         }
         htmlLines.push(`</ul>`);
