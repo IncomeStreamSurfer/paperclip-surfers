@@ -1,5 +1,5 @@
 export type { Company } from "./company.js";
-export type { InstanceExperimentalSettings, InstanceGeneralSettings, InstanceSettings } from "./instance.js";
+export type { InstanceExperimentalSettings, InstanceGeneralSettings, InstanceNotificationSettings, InstanceSettings } from "./instance.js";
 export type {
   CompanySkillSourceType,
   CompanySkillTrustLevel,
@@ -47,7 +47,7 @@ export type {
   AdapterEnvironmentTestResult,
 } from "./agent.js";
 export type { AssetImage } from "./asset.js";
-export type { Project, ProjectCodebase, ProjectCodebaseOrigin, ProjectGoalRef, ProjectWorkspace } from "./project.js";
+export type { Project, ProjectMetrics, ProjectCodebase, ProjectCodebaseOrigin, ProjectGoalRef, ProjectWorkspace } from "./project.js";
 export type {
   ExecutionWorkspace,
   WorkspaceRuntimeService,
@@ -87,7 +87,7 @@ export type {
   IssueAttachment,
   IssueLabel,
 } from "./issue.js";
-export type { Goal } from "./goal.js";
+export type { Goal, GoalMetrics } from "./goal.js";
 export type { Approval, ApprovalComment } from "./approval.js";
 export type {
   BudgetPolicy,
@@ -128,7 +128,7 @@ export type {
   InstanceSchedulerHeartbeatAgent,
 } from "./heartbeat.js";
 export type { LiveEvent } from "./live.js";
-export type { DashboardSummary } from "./dashboard.js";
+export type { DashboardSummary, TokenUsageSummary, TokenUsageAgentRow, BurndownSummary, BurndownDay, TasksByAgentRow, TasksByAgentSummary, AgentTimeRow, AgentTimeSummary, IssuesByProjectRow, IssuesByProjectSummary, CycleTimeSummary, CostTrendDay, CostTrendSummary, ProjectHealthRow, ProjectHealthSummary } from "./dashboard.js";
 export type { ActivityEvent } from "./activity.js";
 export type { SidebarBadges } from "./sidebar-badges.js";
 export type {
@@ -192,3 +192,60 @@ export type {
   PluginJobRunRecord,
   PluginWebhookDeliveryRecord,
 } from "./plugin.js";
+
+export type {
+  SocialPlatform,
+  SocialAccountStatus,
+  SocialPostStatus,
+  SocialPostData,
+  SocialAccount,
+  SocialPost,
+} from "./social-media.js";
+
+export type {
+  SeoPageStatus,
+  SeoKeyword,
+  SeoPage,
+} from "./seo.js";
+
+export type {
+  CrmContactStatus,
+  CrmDealStage,
+  CrmContact,
+  CrmDeal,
+} from "./crm.js";
+
+export type {
+  DesignAssetStatus,
+  DesignAsset,
+} from "./design.js";
+
+export type {
+  MemoryScope,
+  MemoryProviderKind,
+  MemoryOp,
+  MemoryAdapterCapabilities,
+  MemoryScopeInput,
+  MemorySourceRef,
+  MemoryUsage,
+  MemoryWriteRequest,
+  MemoryRecordHandle,
+  MemoryQueryRequest,
+  MemorySnippet,
+  MemoryContextBundle,
+  MemoryAdapter,
+  MemoryBinding,
+  CreateMemoryBinding,
+  UpdateMemoryBinding,
+  MemoryOperation,
+  MemoryQueryApi,
+  MemoryWriteApi,
+} from "./memory.js";
+
+export type {
+  ModelPricing,
+  CreateModelPricing,
+  UpdateModelPricing,
+  ModelPricingLookup,
+  CalculatedCost,
+} from "./model-pricing.js";

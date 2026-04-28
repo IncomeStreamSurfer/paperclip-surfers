@@ -33,6 +33,7 @@ vi.mock("../services/index.js", () => ({
   documentService: () => ({
     getIssueDocumentPayload: vi.fn(async () => ({})),
   }),
+  emailService: () => ({}),
   executionWorkspaceService: () => ({
     getById: vi.fn(),
   }),

@@ -2,7 +2,7 @@ import { isValidElement, useEffect, useId, useState, type ReactNode } from "reac
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "../lib/utils";
-import { useTheme } from "../context/ThemeContext";
+import { useColorSchema } from "../context/ColorSchemaContext";
 import { mentionChipInlineStyle, parseMentionChipHref } from "../lib/mention-chips";
 
 interface MarkdownBodyProps {
@@ -91,13 +91,20 @@ function MermaidDiagramBlock({ source, darkMode }: { source: string; darkMode: b
   );
 }
 
+const UUID_RE = /\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi;
+
+function linkCommentUuids(text: string): string {
+  return text.replace(UUID_RE, "[$1](#comment-$1)");
+}
+
 export function MarkdownBody({ children, className, resolveImageSrc }: MarkdownBodyProps) {
-  const { theme } = useTheme();
+  const { schemaId } = useColorSchema();
+  const isDark = schemaId === "dark";
   const components: Components = {
     pre: ({ node: _node, children: preChildren, ...preProps }) => {
       const mermaidSource = extractMermaidSource(preChildren);
       if (mermaidSource) {
-        return <MermaidDiagramBlock source={mermaidSource} darkMode={theme === "dark"} />;
+        return <MermaidDiagramBlock source={mermaidSource} darkMode={isDark} />;
       }
       return <pre {...preProps}>{preChildren}</pre>;
     },
@@ -140,12 +147,12 @@ export function MarkdownBody({ children, className, resolveImageSrc }: MarkdownB
     <div
       className={cn(
         "paperclip-markdown prose prose-sm max-w-none break-words overflow-hidden",
-        theme === "dark" && "prose-invert",
+        isDark && "prose-invert",
         className,
       )}
     >
       <Markdown remarkPlugins={[remarkGfm]} components={components} urlTransform={(url) => url}>
-        {children}
+        {linkCommentUuids(children)}
       </Markdown>
     </div>
   );

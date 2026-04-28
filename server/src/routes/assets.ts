@@ -5,7 +5,7 @@ import { JSDOM } from "jsdom";
 import type { Db } from "@paperclipai/db";
 import { createAssetImageMetadataSchema } from "@paperclipai/shared";
 import type { StorageService } from "../storage/types.js";
-import { assetService, logActivity } from "../services/index.js";
+import { assetService, instanceSettingsService, logActivity } from "../services/index.js";
 import { isAllowedContentType, MAX_ATTACHMENT_BYTES } from "../attachment-types.js";
 import { assertCompanyAccess, getActorInfo } from "./authz.js";
 const SVG_CONTENT_TYPE = "image/svg+xml";
@@ -316,13 +316,26 @@ export function assetRoutes(db: Db, storage: StorageService) {
       res.status(404).json({ error: "Asset not found" });
       return;
     }
-    assertCompanyAccess(req, asset.companyId);
+
+    // Branding assets (favicon / app icon) must be publicly readable because
+    // the browser fetches <link rel="icon"> without sending cookies.
+    // Only the exact asset IDs stored in instance general settings bypass the
+    // company-access check; everything else still requires authentication.
+    const settingsSvc = instanceSettingsService(db);
+    const general = await settingsSvc.getGeneral();
+    const isBrandingAsset =
+      assetId === general.faviconAssetId || assetId === general.appIconAssetId;
+
+    if (!isBrandingAsset) {
+      assertCompanyAccess(req, asset.companyId);
+    }
 
     const object = await storage.getObject(asset.companyId, asset.objectKey);
     const responseContentType = asset.contentType || object.contentType || "application/octet-stream";
     res.setHeader("Content-Type", responseContentType);
     res.setHeader("Content-Length", String(asset.byteSize || object.contentLength || 0));
-    res.setHeader("Cache-Control", "private, max-age=60");
+    // Branding assets are public; allow shared caches to store them longer.
+    res.setHeader("Cache-Control", isBrandingAsset ? "public, max-age=300" : "private, max-age=60");
     res.setHeader("X-Content-Type-Options", "nosniff");
     if (responseContentType === SVG_CONTENT_TYPE) {
       res.setHeader("Content-Security-Policy", "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");

@@ -29,9 +29,24 @@ interface CompanyContextValue {
     description?: string | null;
     budgetMonthlyCents?: number;
   }) => Promise<Company>;
+  favoriteCompanyIds: string[];
+  toggleFavorite: (companyId: string) => void;
 }
 
 const STORAGE_KEY = "paperclip.selectedCompanyId";
+const FAVORITES_KEY = "paperclip.favoriteCompanyIds";
+
+function getStoredFavorites(): string[] {
+  try {
+    const raw = localStorage.getItem(FAVORITES_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return [];
+}
+
+function saveFavorites(ids: string[]) {
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(ids));
+}
 
 const CompanyContext = createContext<CompanyContextValue | null>(null);
 
@@ -39,6 +54,17 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [selectionSource, setSelectionSource] = useState<CompanySelectionSource>("bootstrap");
   const [selectedCompanyId, setSelectedCompanyIdState] = useState<string | null>(() => localStorage.getItem(STORAGE_KEY));
+  const [favoriteCompanyIds, setFavoriteCompanyIds] = useState<string[]>(() => getStoredFavorites());
+
+  const toggleFavorite = useCallback((companyId: string) => {
+    setFavoriteCompanyIds((prev) => {
+      const newFavorites = prev.includes(companyId)
+        ? prev.filter((id) => id !== companyId)
+        : [...prev, companyId];
+      saveFavorites(newFavorites);
+      return newFavorites;
+    });
+  }, []);
 
   const { data: companies = [], isLoading, error } = useQuery({
     queryKey: queryKeys.companies.all,
@@ -124,6 +150,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setSelectedCompanyId,
       reloadCompanies,
       createCompany,
+      favoriteCompanyIds,
+      toggleFavorite,
     }),
     [
       companies,
@@ -135,6 +163,8 @@ export function CompanyProvider({ children }: { children: ReactNode }) {
       setSelectedCompanyId,
       reloadCompanies,
       createCompany,
+      favoriteCompanyIds,
+      toggleFavorite,
     ],
   );
 

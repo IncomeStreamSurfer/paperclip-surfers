@@ -58,6 +58,7 @@ import { useDismissedInboxItems, useReadInboxItems } from "../hooks/useInboxBadg
 type InboxCategoryFilter =
   | "everything"
   | "issues_i_touched"
+  | "blocked_issues"
   | "join_requests"
   | "approvals"
   | "failed_runs"
@@ -620,13 +621,18 @@ export function Inbox() {
     () => touchedIssues.filter((issue) => issue.isUnreadForMe),
     [touchedIssues],
   );
+
+  const showBlockedCategory =
+    allCategoryFilter === "blocked_issues";
   const issuesToRender = useMemo(
     () => {
-      if (tab === "mine") return mineIssues;
-      if (tab === "unread") return unreadTouchedIssues;
-      return touchedIssues;
+      let base = tab === "mine" ? mineIssues : tab === "unread" ? unreadTouchedIssues : touchedIssues;
+      if (showBlockedCategory) {
+        base = base.filter((issue) => issue.status === "blocked");
+      }
+      return base;
     },
-    [tab, mineIssues, touchedIssues, unreadTouchedIssues],
+    [tab, mineIssues, touchedIssues, unreadTouchedIssues, showBlockedCategory],
   );
 
   const agentById = useMemo(() => {
@@ -662,6 +668,7 @@ export function Inbox() {
     }
     return filtered;
   }, [approvals, tab, allApprovalFilter, dismissed]);
+
   const showJoinRequestsCategory =
     allCategoryFilter === "everything" || allCategoryFilter === "join_requests";
   const showTouchedCategory =
@@ -984,6 +991,35 @@ export function Inbox() {
               {markAllReadMutation.isPending ? "Marking…" : "Mark all as read"}
             </Button>
           )}
+          {issuesToRender.length > 0 && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 shrink-0"
+                onClick={() => {
+                  issuesToRender.forEach((issue) => issuesApi.markUnread(issue.id).catch(() => {}));
+                  queryClient.invalidateQueries({ queryKey: queryKeys.issues.listMineByMe(selectedCompanyId!) });
+                  queryClient.invalidateQueries({ queryKey: queryKeys.issues.listUnreadTouchedByMe(selectedCompanyId!) });
+                }}
+              >
+                Mark all as unread
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 shrink-0 text-destructive hover:text-destructive"
+                onClick={() => {
+                  issuesToRender.forEach((issue) => issuesApi.archiveFromInbox(issue.id).catch(() => {}));
+                  invalidateInboxIssueQueries();
+                }}
+              >
+                Close all
+              </Button>
+            </>
+          )}
         </div>
 
         {tab === "all" && (
@@ -998,6 +1034,7 @@ export function Inbox() {
               <SelectContent>
                 <SelectItem value="everything">All categories</SelectItem>
                 <SelectItem value="issues_i_touched">My recent issues</SelectItem>
+                <SelectItem value="blocked_issues">Blocked issues</SelectItem>
                 <SelectItem value="join_requests">Join requests</SelectItem>
                 <SelectItem value="approvals">Approvals</SelectItem>
                 <SelectItem value="failed_runs">Failed runs</SelectItem>

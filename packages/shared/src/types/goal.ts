@@ -12,3 +12,11 @@ export interface Goal {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface GoalMetrics {
+  total: number;
+  byStatus: { planned: number; active: number; achieved: number; cancelled: number };
+  byLevel: { company: number; team: number; agent: number; task: number };
+  /** Achieved / (total − cancelled) × 100, rounded */
+  completionRate: number;
+}

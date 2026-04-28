@@ -1,8 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link } from "@/lib/router";
 import { X } from "lucide-react";
-import { useToast, type ToastItem, type ToastTone } from "../context/ToastContext";
+import { useToast, type ToastItem, type ToastTone, type ToastPosition } from "../context/ToastContext";
 import { cn } from "../lib/utils";
+
+const positionClasses: Record<ToastPosition, string> = {
+  "bottom-left":  "fixed bottom-3 left-3",
+  "bottom-right": "fixed bottom-3 right-3",
+  "top-right":    "fixed top-3 right-3",
+  "center":       "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+};
+
+const stackClasses: Record<ToastPosition, string> = {
+  "bottom-left":  "flex-col-reverse",
+  "bottom-right": "flex-col-reverse",
+  "top-right":    "flex-col",
+  "center":       "flex-col",
+};
+
+const entryTranslate: Record<ToastPosition, string> = {
+  "bottom-left":  "translate-y-3",
+  "bottom-right": "translate-y-3",
+  "top-right":    "-translate-y-3",
+  "center":       "translate-y-3",
+};
 
 const toneClasses: Record<ToastTone, string> = {
   info: "border-sky-300 bg-sky-50 text-sky-900 dark:border-sky-500/25 dark:bg-sky-950/60 dark:text-sky-100",
@@ -21,9 +42,11 @@ const toneDotClasses: Record<ToastTone, string> = {
 function AnimatedToast({
   toast,
   onDismiss,
+  entryTranslateClass,
 }: {
   toast: ToastItem;
   onDismiss: (id: string) => void;
+  entryTranslateClass: string;
 }) {
   const [visible, setVisible] = useState(false);
 
@@ -38,7 +61,7 @@ function AnimatedToast({
         "pointer-events-auto rounded-sm border shadow-lg backdrop-blur-xl transition-[transform,opacity] duration-200 ease-out",
         visible
           ? "translate-y-0 opacity-100"
-          : "translate-y-3 opacity-0",
+          : `${entryTranslateClass} opacity-0`,
         toneClasses[toast.tone],
       )}
     >
@@ -75,7 +98,7 @@ function AnimatedToast({
 }
 
 export function ToastViewport() {
-  const { toasts, dismissToast } = useToast();
+  const { toasts, dismissToast, toastPosition } = useToast();
 
   if (toasts.length === 0) return null;
 
@@ -83,14 +106,18 @@ export function ToastViewport() {
     <aside
       aria-live="polite"
       aria-atomic="false"
-      className="pointer-events-none fixed bottom-3 left-3 z-[120] w-full max-w-sm px-1"
+      className={cn(
+        "pointer-events-none z-[120] w-full max-w-sm px-1",
+        positionClasses[toastPosition],
+      )}
     >
-      <ol className="flex w-full flex-col-reverse gap-2">
+      <ol className={cn("flex w-full gap-2", stackClasses[toastPosition])}>
         {toasts.map((toast) => (
           <AnimatedToast
             key={toast.id}
             toast={toast}
             onDismiss={dismissToast}
+            entryTranslateClass={entryTranslate[toastPosition]}
           />
         ))}
       </ol>

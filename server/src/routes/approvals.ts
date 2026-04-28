@@ -11,11 +11,14 @@ import { validate } from "../middleware/validate.js";
 import { logger } from "../middleware/logger.js";
 import {
   approvalService,
+  emailService,
   heartbeatService,
   issueApprovalService,
   logActivity,
   secretService,
 } from "../services/index.js";
+import { issues } from "@paperclipai/db";
+import { eq } from "drizzle-orm";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 import { redactEventPayload } from "../redaction.js";
 
@@ -29,6 +32,7 @@ function redactApprovalPayload<T extends { payload: Record<string, unknown> }>(a
 export function approvalRoutes(db: Db) {
   const router = Router();
   const svc = approvalService(db);
+  const emailSvc = emailService(db);
   const heartbeat = heartbeatService(db);
   const issueApprovalsSvc = issueApprovalService(db);
   const secretsSvc = secretService(db);
@@ -103,6 +107,33 @@ export function approvalRoutes(db: Db) {
       details: { type: approval.type, issueIds: uniqueIssueIds },
     });
 
+    // Fire-and-forget board signoff notification
+    Promise.resolve().then(async () => {
+      try {
+        let issueIdentifier: string | null = null;
+        let issueTitle: string | null = null;
+        if (uniqueIssueIds.length > 0) {
+          const issueRow = await db
+            .select({ identifier: issues.identifier, title: issues.title })
+            .from(issues)
+            .where(eq(issues.id, uniqueIssueIds[0]))
+            .then((rows) => rows[0] ?? null);
+          issueIdentifier = issueRow?.identifier ?? null;
+          issueTitle = issueRow?.title ?? null;
+        }
+        await emailSvc.sendSignoffNeededNotification({
+          id: approval.id,
+          companyId,
+          type: approval.type,
+          description: (approval.payload as Record<string, unknown>)?.description as string | null ?? null,
+          issueIdentifier,
+          issueTitle,
+        });
+      } catch (err) {
+        logger.warn({ err, approvalId: approval.id }, "failed to send signoff needed notification");
+      }
+    });
+
     res.status(201).json(redactApprovalPayload(approval));
   });
 
@@ -121,6 +152,12 @@ export function approvalRoutes(db: Db) {
   router.post("/approvals/:id/approve", validate(resolveApprovalSchema), async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Approval not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const { approval, applied } = await svc.approve(
       id,
       req.body.decidedByUserId ?? "board",
@@ -216,6 +253,12 @@ export function approvalRoutes(db: Db) {
   router.post("/approvals/:id/reject", validate(resolveApprovalSchema), async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Approval not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const { approval, applied } = await svc.reject(
       id,
       req.body.decidedByUserId ?? "board",
@@ -243,6 +286,12 @@ export function approvalRoutes(db: Db) {
     async (req, res) => {
       assertBoard(req);
       const id = req.params.id as string;
+      const precheck = await svc.getById(id);
+      if (!precheck) {
+        res.status(404).json({ error: "Approval not found" });
+        return;
+      }
+      assertCompanyAccess(req, precheck.companyId);
       const approval = await svc.requestRevision(
         id,
         req.body.decidedByUserId ?? "board",

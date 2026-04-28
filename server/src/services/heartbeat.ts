@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { execFile as execFileCallback } from "node:child_process";
 import { promisify } from "node:util";
-import { and, asc, desc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import type { BillingType } from "@paperclipai/shared";
 import {
@@ -25,6 +25,7 @@ import type { AdapterExecutionResult, AdapterInvocationMeta, AdapterSessionCodec
 import { createLocalAgentJwt } from "../agent-auth-jwt.js";
 import { parseObject, asBoolean, asNumber, appendWithCap, MAX_EXCERPT_BYTES } from "../adapters/utils.js";
 import { costService } from "./costs.js";
+import { messagingDispatchService } from "./messaging/dispatch.js";
 import { companySkillService } from "./company-skills.js";
 import { budgetService, type BudgetEnforcementScope } from "./budgets.js";
 import { secretService } from "./secrets.js";
@@ -61,6 +62,8 @@ import {
 const MAX_LIVE_LOG_CHUNK_BYTES = 8 * 1024;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_DEFAULT = 1;
 const HEARTBEAT_MAX_CONCURRENT_RUNS_MAX = 10;
+// Default wall-clock timeout per run: 4 hours. Overridable via runtimeConfig.heartbeat.maxRuntimeMs.
+const DEFAULT_RUN_WALL_CLOCK_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 const DEFERRED_WAKE_CONTEXT_KEY = "_paperclipWakeContext";
 const DETACHED_PROCESS_ERROR_CODE = "process_detached";
 const startLocksByAgent = new Map<string, Promise<void>>();
@@ -971,22 +974,33 @@ export function heartbeatService(db: Db) {
       };
     }
 
-    const latestSummary = summarizeHeartbeatRunResultJson(latestRun.resultJson);
-    const latestTextSummary =
-      readNonEmptyString(latestSummary?.summary) ??
-      readNonEmptyString(latestSummary?.result) ??
-      readNonEmptyString(latestSummary?.message) ??
-      readNonEmptyString(latestRun.error);
+    const recentRuns = runs.slice(0, 3);
+    const recentSummaries = recentRuns
+      .map((r) => {
+        const s = summarizeHeartbeatRunResultJson(r.resultJson);
+        return (
+          readNonEmptyString(s?.summary) ??
+          readNonEmptyString(s?.result) ??
+          readNonEmptyString(s?.message) ??
+          readNonEmptyString(r.error)
+        );
+      })
+      .filter((s): s is string => s !== null);
 
     const handoffMarkdown = [
-      "Paperclip session handoff:",
-      `- Previous session: ${sessionId}`,
-      issueId ? `- Issue: ${issueId}` : "",
-      `- Rotation reason: ${reason}`,
-      latestTextSummary ? `- Last run summary: ${latestTextSummary}` : "",
-      "Continue from the current task state. Rebuild only the minimum context you need.",
+      "## Paperclip Session Handoff",
+      "",
+      `**Previous session:** ${sessionId}`,
+      issueId ? `**Issue:** ${issueId}` : "",
+      `**Rotation reason:** ${reason}`,
+      "",
+      recentSummaries.length > 0
+        ? `### Recent run summaries (newest first)\n${recentSummaries.map((s, i) => `${i + 1}. ${s}`).join("\n")}`
+        : "",
+      "",
+      "Continue from the current task state. The summaries above capture what was done — pick up where the last run left off without re-discovering context already established.",
     ]
-      .filter(Boolean)
+      .filter((line) => line !== null)
       .join("\n");
 
     return {
@@ -1617,6 +1631,7 @@ export function heartbeatService(db: Db) {
       intervalSec: Math.max(0, asNumber(heartbeat.intervalSec, 0)),
       wakeOnDemand: asBoolean(heartbeat.wakeOnDemand ?? heartbeat.wakeOnAssignment ?? heartbeat.wakeOnOnDemand ?? heartbeat.wakeOnAutomation, true),
       maxConcurrentRuns: normalizeMaxConcurrentRuns(heartbeat.maxConcurrentRuns),
+      maxRuntimeMs: Math.max(60_000, asNumber(heartbeat.maxRuntimeMs, DEFAULT_RUN_WALL_CLOCK_TIMEOUT_MS)),
     };
   }
 
@@ -1746,7 +1761,21 @@ export function heartbeatService(db: Db) {
     const reaped: string[] = [];
 
     for (const { run, adapterType } of activeRuns) {
-      if (runningProcesses.has(run.id) || activeRunExecutions.has(run.id)) continue;
+      // Skip runs that are legitimately executing in this process — UNLESS they
+      // have exceeded 2× the default wall-clock timeout (safety net for hung awaits).
+      const hardStaleMs = DEFAULT_RUN_WALL_CLOCK_TIMEOUT_MS * 2;
+      const runAgeMs = now.getTime() - (run.startedAt ? new Date(run.startedAt).getTime() : 0);
+      const isHardStale = runAgeMs > hardStaleMs;
+      const isActiveInProcess = runningProcesses.has(run.id) || activeRunExecutions.has(run.id);
+      if (isActiveInProcess && !isHardStale) continue;
+
+      // Notify on run hang (hard-stale and still executing in this process)
+      if (isActiveInProcess && isHardStale) {
+        const durationMinutes = Math.round(runAgeMs / 60_000);
+        messagingDispatchService(db).notifyRunHang(run.agentId, run.id, durationMinutes).catch((err) =>
+          logger.warn({ err, runId: run.id }, "failed to send run hang messaging notification"),
+        );
+      }
 
       // Apply staleness threshold to avoid false positives
       if (staleThresholdMs > 0) {
@@ -1976,6 +2005,7 @@ export function heartbeatService(db: Db) {
             id: issues.id,
             identifier: issues.identifier,
             title: issues.title,
+            description: issues.description,
             projectId: issues.projectId,
             projectWorkspaceId: issues.projectWorkspaceId,
             executionWorkspaceId: issues.executionWorkspaceId,
@@ -2078,6 +2108,7 @@ export function heartbeatService(db: Db) {
     const runtimeConfig = {
       ...resolvedConfig,
       paperclipRuntimeSkills: runtimeSkillEntries,
+      ...(context.replayModelOverride ? { model: context.replayModelOverride } : {}),
     };
     const issueRef = issueContext
       ? {
@@ -2533,10 +2564,12 @@ export function heartbeatService(db: Db) {
       }
       // V2: Load agent memories and inject as system prompt appendix
       let memoryCleanup: (() => void) | null = null;
+      let loadedMemoryTitles: string[] = [];
       try {
         const { memoryLoaderService } = await import("./agent-runtime/memory-loader.js");
         const memoryLoader = memoryLoaderService(db);
         const memories = await memoryLoader.loadMemories(agent.id, executionProjectId ?? undefined);
+        loadedMemoryTitles = memories.map((m) => m.title);
         const os = await import("node:os");
         const fsSync = await import("node:fs");
         const pathMod = await import("node:path");
@@ -2550,9 +2583,9 @@ export function heartbeatService(db: Db) {
             }\n\n`
           : "";
 
-        // Self-reflection instructions — always injected so agent can write memories
+        // Self-reflection instructions — only injected for issue-driven runs where learnings are likely
         const apiUrl = process.env.PAPERCLIP_API_URL ?? `http://localhost:${process.env.PORT ?? 3100}`;
-        const reflectionInstructions = `# Self-Improvement Instructions
+        const reflectionInstructions = issueId ? `# Self-Improvement Instructions
 
 At the end of your work on this task, write 1-3 memory entries about what you learned. Be specific and actionable.
 
@@ -2579,7 +2612,7 @@ Write memories for:
 - **Learnings** from failures or surprises
 - **Feedback** you received (implicit or explicit)
 
-Keep memories concise and specific. Don't write vague platitudes.`;
+Keep memories concise and specific. Don't write vague platitudes.` : "";
 
         const experimentSection = typeof context.v2ExperimentInstruction === "string"
           ? `\n\n${context.v2ExperimentInstruction}`
@@ -2597,6 +2630,36 @@ Keep memories concise and specific. Don't write vague platitudes.`;
         };
       } catch (memErr) {
         logger.warn({ err: memErr, agentId: agent.id, runId: run.id }, "V2: failed to load agent memories");
+      }
+
+      // MemPalace: Pre-run hydration — query semantic memory for relevant context
+      let memPalaceSection = "";
+      try {
+        const { hydrateMemPalace } = await import("./agent-runtime/mempalace.js");
+        const issueTitle = issueRef?.title ?? "";
+        const issueDescription = issueContext?.description ?? "";
+        memPalaceSection = await hydrateMemPalace(
+          db,
+          agent.companyId,
+          agent.id,
+          issueRef?.id,
+          executionProjectId ?? undefined,
+          `${issueTitle} ${issueDescription}`.slice(0, 1000),
+          loadedMemoryTitles,
+        );
+        if (memPalaceSection) {
+          // Append to memory file if it exists, otherwise inject into context directly
+          if (context.paperclipMemoryFilePath) {
+            const fsSync2 = await import("node:fs");
+            try {
+              const existing = fsSync2.readFileSync(context.paperclipMemoryFilePath as string, "utf-8");
+              fsSync2.writeFileSync(context.paperclipMemoryFilePath as string, existing + "\n\n" + memPalaceSection);
+            } catch { /* ignore */ }
+          }
+          logger.info({ agentId: agent.id, runId: run.id }, "MemPalace: injected relevant context into run");
+        }
+      } catch (mpErr) {
+        logger.warn({ err: mpErr, agentId: agent.id, runId: run.id }, "MemPalace: hydration failed");
       }
 
       // V2 Layer 3: Inject active experiment approach into context
@@ -2656,19 +2719,48 @@ Keep memories concise and specific. Don't write vague platitudes.`;
         logger.warn({ err: mcpErr, agentId: agent.id, runId: run.id }, "Failed to resolve MCP config for agent run");
       }
 
-      const adapterResult = await adapter.execute({
-        runId: run.id,
-        agent,
-        runtime: runtimeForAdapter,
-        config: runtimeConfig,
-        context,
-        onLog,
-        onMeta: onAdapterMeta,
-        onSpawn: async (meta) => {
-          await persistRunProcessMetadata(run.id, meta);
-        },
-        authToken: authToken ?? undefined,
-      });
+      // Skip AI invocation when there's no actual work to do — prevents token waste on idle heartbeats
+      const hasActiveWork = issueId != null || (run.wakeupRequestId != null && context.wakeReason != null);
+      let adapterResult: AdapterExecutionResult;
+      if (!hasActiveWork) {
+        logger.info(
+          { agentId: agent.id, runId: run.id, adapterType: agent.adapterType },
+          "No active tasks — skipping adapter invocation",
+        );
+        adapterResult = {
+          exitCode: 0,
+          signal: null,
+          timedOut: false,
+          summary: "No active tasks — skipped AI invocation",
+        };
+      } else {
+        adapterResult = await ((): Promise<AdapterExecutionResult> => {
+          const policy = parseHeartbeatPolicy(agent);
+          const timeoutMs = policy.maxRuntimeMs;
+          let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(() => {
+              reject(new Error(`Run exceeded wall-clock timeout of ${Math.round(timeoutMs / 60_000)} minutes (run_timeout)`));
+            }, timeoutMs);
+          });
+          return Promise.race([
+            adapter.execute({
+              runId: run.id,
+              agent,
+              runtime: runtimeForAdapter,
+              config: runtimeConfig,
+              context,
+              onLog,
+              onMeta: onAdapterMeta,
+              onSpawn: async (meta) => {
+                await persistRunProcessMetadata(run.id, meta);
+              },
+              authToken: authToken ?? undefined,
+            }),
+            timeoutPromise,
+          ]).finally(() => { if (timeoutHandle !== undefined) clearTimeout(timeoutHandle); });
+        })();
+      }
 
       // Clean up temp files
       if (mcpConfigCleanup) mcpConfigCleanup();
@@ -2876,6 +2968,26 @@ Keep memories concise and specific. Don't write vague platitudes.`;
             });
           } catch (err) {
             logger.warn({ err, agentId: agent.id, runId: run.id }, "V2: failed to persist project session");
+          }
+        }
+        // MemPalace: Post-run capture — store run summary to semantic memory
+        if (outcome === "succeeded") {
+          try {
+            const { captureRunToMemPalace } = await import("./agent-runtime/mempalace.js");
+            const summary = adapterResult.resultJson
+              ? JSON.stringify(adapterResult.resultJson).slice(0, 4000)
+              : stdoutExcerpt?.slice(0, 4000) ?? "Run completed successfully";
+            await captureRunToMemPalace(
+              db,
+              agent.companyId,
+              agent.id,
+              run.id,
+              taskKey ?? undefined,
+              summary,
+            );
+            logger.info({ agentId: agent.id, runId: run.id }, "MemPalace: captured run summary");
+          } catch (mpErr) {
+            logger.warn({ err: mpErr, agentId: agent.id, runId: run.id }, "MemPalace: run capture failed");
           }
         }
         // V2: Post-run KPI recording
@@ -4003,15 +4115,18 @@ Focus on **trends over time**, not single runs. Only act when you see a sustaine
   }
 
   return {
-    list: async (companyId: string, agentId?: string, limit?: number) => {
+    list: async (companyId: string, agentId?: string, limit?: number, days?: number) => {
+      const since = days ? new Date(Date.now() - days * 24 * 60 * 60 * 1000) : undefined;
+      const where = and(
+        agentId
+          ? and(eq(heartbeatRuns.companyId, companyId), eq(heartbeatRuns.agentId, agentId))
+          : eq(heartbeatRuns.companyId, companyId),
+        since ? gte(heartbeatRuns.startedAt, since) : undefined,
+      );
       const query = db
         .select(heartbeatRunListColumns)
         .from(heartbeatRuns)
-        .where(
-          agentId
-            ? and(eq(heartbeatRuns.companyId, companyId), eq(heartbeatRuns.agentId, agentId))
-            : eq(heartbeatRuns.companyId, companyId),
-        )
+        .where(where)
         .orderBy(desc(heartbeatRuns.createdAt));
 
       const rows = limit ? await query.limit(limit) : await query;
@@ -4174,6 +4289,51 @@ Focus on **trends over time**, not single runs. Only act when you see a sustaine
       }
 
       return { checked, enqueued, skipped };
+    },
+
+    replayRun: async (
+      runId: string,
+      opts?: { model?: string | null },
+    ) => {
+      const run = await getRun(runId);
+      if (!run) throw notFound("Heartbeat run not found");
+
+      const canReplay =
+        (run.status === "failed" || run.status === "timed_out") &&
+        run.contextSnapshot &&
+        typeof run.contextSnapshot === "object";
+
+      if (!canReplay) {
+        throw conflict("Run cannot be replayed — it must be failed/timed_out with a context snapshot");
+      }
+
+      const contextSnapshot: Record<string, unknown> = {
+        ...run.contextSnapshot,
+        replayOfRunId: run.id,
+      };
+      if (opts?.model) {
+        contextSnapshot.replayModelOverride = opts.model;
+      }
+
+      const newRun = await db
+        .insert(heartbeatRuns)
+        .values({
+          companyId: run.companyId,
+          agentId: run.agentId,
+          invocationSource: "replay",
+          triggerDetail: "manual",
+          status: "queued",
+          contextSnapshot,
+          retryOfRunId: run.id,
+        })
+        .returning()
+        .then((rows) => rows[0]);
+
+      void startNextQueuedRunForAgent(run.agentId).catch((err) => {
+        logger.error({ err, agentId: run.agentId }, "failed to schedule replay run");
+      });
+
+      return newRun;
     },
 
     cancelRun: (runId: string) => cancelRunInternal(runId),

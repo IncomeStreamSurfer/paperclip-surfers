@@ -2,6 +2,7 @@ import { pgTable, uuid, text, timestamp, date, index, jsonb } from "drizzle-orm/
 import { companies } from "./companies.js";
 import { goals } from "./goals.js";
 import { agents } from "./agents.js";
+import { departments } from "./departments.js";
 
 export const projects = pgTable(
   "projects",
@@ -9,6 +10,7 @@ export const projects = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     companyId: uuid("company_id").notNull().references(() => companies.id),
     goalId: uuid("goal_id").references(() => goals.id),
+    departmentId: uuid("department_id").references(() => departments.id, { onDelete: "set null" }),
     name: text("name").notNull(),
     description: text("description"),
     status: text("status").notNull().default("backlog"),

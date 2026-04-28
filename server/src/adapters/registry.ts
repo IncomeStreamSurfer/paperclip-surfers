@@ -55,6 +55,7 @@ import {
 } from "@paperclipai/adapter-openclaw-gateway";
 import { listCodexModels } from "./codex-models.js";
 import { listCursorModels } from "./cursor-models.js";
+import { listCopilotModels } from "./copilot-models.js";
 import {
   execute as piExecute,
   listPiSkills,
@@ -80,6 +81,14 @@ import {
 } from "hermes-paperclip-adapter";
 import { processAdapter } from "./process/index.js";
 import { httpAdapter } from "./http/index.js";
+import { execute as openAIApiExecute } from "./openai-api/execute.js";
+import { testEnvironment as openAIApiTestEnvironment } from "./openai-api/test.js";
+import { execute as anthropicApiExecute } from "./anthropic-api/execute.js";
+import { testEnvironment as anthropicApiTestEnvironment } from "./anthropic-api/test.js";
+import { execute as openRouterApiExecute } from "./openrouter-api/execute.js";
+import { testEnvironment as openRouterApiTestEnvironment } from "./openrouter-api/test.js";
+import { execute as gitHubCopilotExecute } from "./github-copilot/execute.js";
+import { testEnvironment as gitHubCopilotTestEnvironment } from "./github-copilot/test.js";
 
 const claudeLocalAdapter: ServerAdapterModule = {
   type: "claude_local",
@@ -187,6 +196,81 @@ const hermesLocalAdapter: ServerAdapterModule = {
   detectModel: () => detectModelFromHermes(),
 };
 
+/** Pseudo-adapter used only for model discovery — not an agent runtime. */
+const githubCopilotAdapter: ServerAdapterModule = {
+  type: "github_copilot",
+  execute: gitHubCopilotExecute,
+  testEnvironment: gitHubCopilotTestEnvironment,
+  models: [],
+  listModels: listCopilotModels,
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: `# github_copilot agent configuration
+
+Adapter: github_copilot
+
+Uses your GitHub Copilot subscription via the gh CLI token or GITHUB_TOKEN env var.
+
+Core fields:
+- model (string, optional): Copilot model ID (default: gpt-4o)
+- apiKey (string, optional): Override GitHub token (otherwise resolved from gh CLI / GITHUB_TOKEN)
+`,
+};
+
+const openAIApiAdapter: ServerAdapterModule = {
+  type: "openai_api",
+  execute: openAIApiExecute,
+  testEnvironment: openAIApiTestEnvironment,
+  models: [],
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: `# openai_api agent configuration
+
+Adapter: openai_api
+
+Calls the OpenAI Chat Completions API directly.
+
+Core fields:
+- apiKey (string, required): Your OpenAI API key (sk-...)
+- model (string, optional): Model ID, default gpt-4o
+- baseUrl (string, optional): Override base URL, default https://api.openai.com/v1
+`,
+};
+
+const anthropicApiAdapter: ServerAdapterModule = {
+  type: "anthropic_api",
+  execute: anthropicApiExecute,
+  testEnvironment: anthropicApiTestEnvironment,
+  models: [],
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: `# anthropic_api agent configuration
+
+Adapter: anthropic_api
+
+Calls the Anthropic Messages API directly.
+
+Core fields:
+- apiKey (string, required): Your Anthropic API key (sk-ant-...)
+- model (string, optional): Model ID, default claude-sonnet-4-5
+`,
+};
+
+const openRouterApiAdapter: ServerAdapterModule = {
+  type: "openrouter_api",
+  execute: openRouterApiExecute,
+  testEnvironment: openRouterApiTestEnvironment,
+  models: [],
+  supportsLocalAgentJwt: false,
+  agentConfigurationDoc: `# openrouter_api agent configuration
+
+Adapter: openrouter_api
+
+Calls the OpenRouter Chat Completions API, giving access to 300+ models.
+
+Core fields:
+- apiKey (string, required): Your OpenRouter API key (sk-or-...)
+- model (string, optional): Model ID, default openai/gpt-4o
+`,
+};
+
 const adaptersByType = new Map<string, ServerAdapterModule>(
   [
     claudeLocalAdapter,
@@ -197,6 +281,10 @@ const adaptersByType = new Map<string, ServerAdapterModule>(
     geminiLocalAdapter,
     openclawGatewayAdapter,
     hermesLocalAdapter,
+    githubCopilotAdapter,
+    openAIApiAdapter,
+    anthropicApiAdapter,
+    openRouterApiAdapter,
     processAdapter,
     httpAdapter,
   ].map((a) => [a.type, a]),

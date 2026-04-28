@@ -7,6 +7,7 @@ import { agentsApi } from "../api/agents";
 import { authApi } from "../api/auth";
 import { issuesApi } from "../api/issues";
 import { projectsApi } from "../api/projects";
+import { sprintApi } from "../api/sprints";
 import { useCompany } from "../context/CompanyContext";
 import { queryKeys } from "../lib/queryKeys";
 import { useProjectOrder } from "../hooks/useProjectOrder";
@@ -18,8 +19,9 @@ import { Identity } from "./Identity";
 import { formatDate, cn, projectUrl } from "../lib/utils";
 import { timeAgo } from "../lib/timeAgo";
 import { Separator } from "@/components/ui/separator";
+import { ColorPicker } from "@/components/ColorPicker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { User, Hexagon, ArrowUpRight, Tag, Plus, Trash2 } from "lucide-react";
+import { User, Hexagon, ArrowUpRight, Tag, Plus, Trash2, Pencil, Check, X } from "lucide-react";
 import { AgentIcon } from "./AgentIconPicker";
 
 function defaultProjectWorkspaceIdForProject(project: {
@@ -129,6 +131,9 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
   const [labelSearch, setLabelSearch] = useState("");
   const [newLabelName, setNewLabelName] = useState("");
   const [newLabelColor, setNewLabelColor] = useState("#6366f1");
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null);
+  const [editLabelName, setEditLabelName] = useState("");
+  const [editLabelColor, setEditLabelColor] = useState("#6366f1");
 
   const { data: session } = useQuery({
     queryKey: queryKeys.auth.session,
@@ -163,12 +168,35 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
     enabled: !!companyId,
   });
 
+  const { data: sprint } = useQuery({
+    queryKey: queryKeys.sprints.get(issue.sprintId!),
+    queryFn: () => sprintApi.get(companyId!, issue.sprintId!),
+    enabled: !!companyId && !!issue.sprintId,
+  });
+
+  const { data: allSprints } = useQuery({
+    queryKey: queryKeys.sprints.list(companyId!),
+    queryFn: () => sprintApi.list(companyId!),
+    enabled: !!companyId && !!onUpdate,
+  });
+
   const createLabel = useMutation({
     mutationFn: (data: { name: string; color: string }) => issuesApi.createLabel(companyId!, data),
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: queryKeys.issues.labels(companyId!) });
       onUpdate({ labelIds: [...(issue.labelIds ?? []), created.id] });
       setNewLabelName("");
+    },
+  });
+
+  const updateLabel = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: { name?: string; color?: string } }) =>
+      issuesApi.updateLabel(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.labels(companyId!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.list(companyId!) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.issues.detail(issue.id) });
+      setEditingLabelId(null);
     },
   });
 
@@ -227,7 +255,7 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
       {(issue.labels ?? []).slice(0, 3).map((label) => (
         <span
           key={label.id}
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border"
+          className="inline-flex items-center rounded-full pl-2 pr-1 py-0.5 text-xs font-medium border gap-1"
           style={{
             borderColor: label.color,
             backgroundColor: `${label.color}22`,
@@ -235,6 +263,14 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
           }}
         >
           {label.name}
+          <button
+            type="button"
+            className="rounded-full hover:bg-black/10 dark:hover:bg-white/20 p-0.5 -mr-0.5 shrink-0"
+            onClick={(e) => { e.stopPropagation(); toggleLabel(label.id); }}
+            title={`Remove ${label.name}`}
+          >
+            <X className="h-2.5 w-2.5" />
+          </button>
         </span>
       ))}
       {(issue.labels ?? []).length > 3 && (
@@ -265,38 +301,80 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
           })
           .map((label) => {
             const selected = (issue.labelIds ?? []).includes(label.id);
+            const isEditing = editingLabelId === label.id;
             return (
-              <div key={label.id} className="flex items-center gap-1">
-                <button
-                  className={cn(
-                    "flex items-center gap-2 flex-1 px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-left",
-                    selected && "bg-accent"
-                  )}
-                  onClick={() => toggleLabel(label.id)}
-                >
-                  <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: label.color }} />
-                  <span className="truncate">{label.name}</span>
-                </button>
-                <button
-                  type="button"
-                  className="p-1 text-muted-foreground hover:text-destructive rounded"
-                  onClick={() => deleteLabel.mutate(label.id)}
-                  title={`Delete ${label.name}`}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+              <div key={label.id} className="flex items-center gap-1 group/label">
+                {isEditing ? (
+                  <div className="flex items-center gap-1 flex-1 px-1">
+                    <ColorPicker
+                      value={editLabelColor}
+                      onChange={setEditLabelColor}
+                    />
+                    <input
+                      className="flex-1 px-1.5 py-1 text-xs bg-transparent outline-none border-b border-primary"
+                      value={editLabelName}
+                      onChange={(e) => setEditLabelName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") updateLabel.mutate({ id: label.id, data: { name: editLabelName, color: editLabelColor } });
+                        if (e.key === "Escape") setEditingLabelId(null);
+                      }}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      className="p-1 text-muted-foreground hover:text-foreground rounded"
+                      onClick={() => updateLabel.mutate({ id: label.id, data: { name: editLabelName, color: editLabelColor } })}
+                    >
+                      <Check className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      className="p-1 text-muted-foreground hover:text-foreground rounded"
+                      onClick={() => setEditingLabelId(null)}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <button
+                      className={cn(
+                        "flex items-center gap-2 flex-1 px-2 py-1.5 text-xs rounded hover:bg-accent/50 text-left",
+                        selected && "bg-accent"
+                      )}
+                      onClick={() => toggleLabel(label.id)}
+                    >
+                      <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: label.color }} />
+                      <span className="truncate">{label.name}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="p-1 text-muted-foreground hover:text-foreground rounded opacity-0 group-hover/label:opacity-100"
+                      onClick={() => { setEditingLabelId(label.id); setEditLabelName(label.name); setEditLabelColor(label.color); }}
+                      title={`Edit ${label.name}`}
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    <button
+                      type="button"
+                      className="p-1 text-muted-foreground hover:text-destructive rounded"
+                      onClick={() => deleteLabel.mutate(label.id)}
+                      title={`Delete ${label.name}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </>
+                )}
               </div>
             );
           })}
       </div>
       <div className="mt-2 border-t border-border pt-2 space-y-1">
-        <div className="flex items-center gap-1">
-          <input
-            className="h-7 w-7 p-0 rounded bg-transparent"
-            type="color"
-            value={newLabelColor}
-            onChange={(e) => setNewLabelColor(e.target.value)}
-          />
+          <div className="flex items-center gap-1">
+            <ColorPicker
+              value={newLabelColor}
+              onChange={setNewLabelColor}
+            />
           <input
             className="flex-1 px-2 py-1.5 text-xs bg-transparent outline-none rounded placeholder:text-muted-foreground/50"
             placeholder="New label"
@@ -322,7 +400,10 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
   );
 
   const assigneeTrigger = assignee ? (
-    <Identity name={assignee.name} size="sm" />
+    <>
+      <AgentIcon icon={assignee.icon} avatarUrl={assignee.avatarUrl} className="shrink-0 h-5 w-5 rounded-full object-cover" />
+      <span className="text-sm truncate">{assignee.name}</span>
+    </>
   ) : assigneeUserLabel ? (
     <>
       <User className="h-3.5 w-3.5 text-muted-foreground" />
@@ -571,6 +652,23 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
           </PropertyRow>
         )}
 
+        <PropertyRow label="Sprint">
+          {onUpdate ? (
+            <select
+              value={issue.sprintId ?? ""}
+              onChange={(e) => onUpdate({ sprintId: e.target.value || null })}
+              className="rounded border border-border bg-transparent px-2 py-1 text-sm outline-none max-w-[200px]"
+            >
+              <option value="">No sprint</option>
+              {(allSprints?.sprints ?? []).map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          ) : issue.sprintId && sprint ? (
+            <Link to="/sprints" className="text-sm hover:underline">{sprint.name}</Link>
+          ) : null}
+        </PropertyRow>
+
         {issue.requestDepth > 0 && (
           <PropertyRow label="Depth">
             <span className="text-sm font-mono">{issue.requestDepth}</span>
@@ -586,15 +684,28 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
             {issue.createdByAgentId ? (
               <Link
                 to={`/agents/${issue.createdByAgentId}`}
-                className="hover:underline"
+                className="hover:underline inline-flex items-center gap-1.5"
               >
-                <Identity name={agentName(issue.createdByAgentId) ?? issue.createdByAgentId.slice(0, 8)} size="sm" />
+                <AgentIcon
+                  icon={agents?.find((a) => a.id === issue.createdByAgentId)?.icon}
+                  avatarUrl={agents?.find((a) => a.id === issue.createdByAgentId)?.avatarUrl}
+                  className="shrink-0 h-4 w-4 rounded-full object-cover"
+                />
+                <span className="text-sm">{agentName(issue.createdByAgentId) ?? issue.createdByAgentId.slice(0, 8)}</span>
               </Link>
             ) : (
-              <>
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm">{creatorUserLabel ?? "User"}</span>
-              </>
+              <span className="inline-flex items-center gap-1.5">
+                {issue.createdByUserId === currentUserId && session?.user?.image ? (
+                  <img src={session.user.image} alt="" className="h-4 w-4 rounded-full object-cover" />
+                ) : (
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+                <span className="text-sm">
+                  {issue.createdByUserId === currentUserId && session?.user?.name
+                    ? session.user.name
+                    : (creatorUserLabel ?? "User")}
+                </span>
+              </span>
             )}
           </PropertyRow>
         )}

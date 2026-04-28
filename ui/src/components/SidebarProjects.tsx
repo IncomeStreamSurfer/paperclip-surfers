@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "@/lib/router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Plus, Star } from "lucide-react";
 import {
   DndContext,
   PointerSensor,
@@ -36,6 +36,8 @@ function SortableProjectItem({
   companyId,
   companyPrefix,
   isMobile,
+  isFav,
+  onToggleFav,
   project,
   projectSidebarSlots,
   setSidebarOpen,
@@ -44,6 +46,8 @@ function SortableProjectItem({
   companyId: string | null;
   companyPrefix: string | null;
   isMobile: boolean;
+  isFav: boolean;
+  onToggleFav: (id: string) => void;
   project: Project;
   projectSidebarSlots: ProjectSidebarSlot[];
   setSidebarOpen: (open: boolean) => void;
@@ -72,25 +76,37 @@ function SortableProjectItem({
       {...listeners}
     >
       <div className="flex flex-col gap-0.5">
-        <NavLink
-          to={`/projects/${routeRef}/issues`}
-          onClick={() => {
-            if (isMobile) setSidebarOpen(false);
-          }}
-          className={cn(
-            "flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium transition-colors",
-            activeProjectRef === routeRef || activeProjectRef === project.id
-              ? "bg-accent text-foreground"
-              : "text-foreground/80 hover:bg-accent/50 hover:text-foreground",
-          )}
-        >
-          <span
-            className="shrink-0 h-3.5 w-3.5 rounded-sm"
-            style={{ backgroundColor: project.color ?? "#6366f1" }}
-          />
-          <span className="flex-1 truncate">{project.name}</span>
-          {project.pauseReason === "budget" ? <BudgetSidebarMarker title="Project paused by budget" /> : null}
-        </NavLink>
+        <div className="group relative">
+          <NavLink
+            to={`/projects/${routeRef}/issues`}
+            onClick={() => {
+              if (isMobile) setSidebarOpen(false);
+            }}
+            className={cn(
+              "flex items-center gap-2.5 px-3 py-1.5 pr-7 text-[13px] font-medium transition-colors",
+              activeProjectRef === routeRef || activeProjectRef === project.id
+                ? "bg-accent text-foreground"
+                : "text-foreground/80 hover:bg-accent/50 hover:text-foreground",
+            )}
+          >
+            <span
+              className="shrink-0 h-3.5 w-3.5 rounded-sm"
+              style={{ backgroundColor: project.color ?? "#6366f1" }}
+            />
+            <span className="flex-1 truncate">{project.name}</span>
+            {project.pauseReason === "budget" ? <BudgetSidebarMarker title="Project paused by budget" /> : null}
+          </NavLink>
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav(project.id); }}
+            className={cn(
+              "absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded transition-opacity",
+              isFav ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+            title={isFav ? "Remove from favourites" : "Add to favourites"}
+          >
+            <Star className={cn("h-3 w-3", isFav ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground hover:text-yellow-500")} />
+          </button>
+        </div>
         {projectSidebarSlots.length > 0 && (
           <div className="ml-5 flex flex-col gap-0.5">
             {projectSidebarSlots.map((slot) => (
@@ -119,8 +135,14 @@ export function SidebarProjects() {
   const [open, setOpen] = useState(true);
   const { selectedCompany, selectedCompanyId } = useCompany();
   const { openNewProject } = useDialog();
-  const { isMobile, setSidebarOpen } = useSidebar();
+  const { isMobile, setSidebarOpen, forcedSectionState, favoriteProjectIds, toggleFavoriteProject, isFavoriteProject } = useSidebar();
   const location = useLocation();
+
+  useEffect(() => {
+    if (forcedSectionState !== null) {
+      setOpen(forcedSectionState.expanded);
+    }
+  }, [forcedSectionState]);
 
   const { data: projects } = useQuery({
     queryKey: queryKeys.projects.list(selectedCompanyId!),
@@ -149,6 +171,12 @@ export function SidebarProjects() {
     companyId: selectedCompanyId,
     userId: currentUserId,
   });
+
+  // Starred projects float to the top, preserving relative order within each group
+  const displayProjects = useMemo(() => [
+    ...orderedProjects.filter((p) => isFavoriteProject(p.id)),
+    ...orderedProjects.filter((p) => !isFavoriteProject(p.id)),
+  ], [orderedProjects, isFavoriteProject, favoriteProjectIds]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const projectMatch = location.pathname.match(/^\/(?:[^/]+\/)?projects\/([^/]+)/);
   const activeProjectRef = projectMatch?.[1] ?? null;
@@ -180,11 +208,11 @@ export function SidebarProjects() {
           <CollapsibleTrigger className="flex items-center gap-1 flex-1 min-w-0">
             <ChevronRight
               className={cn(
-                "h-3 w-3 text-muted-foreground/60 transition-transform opacity-0 group-hover:opacity-100",
+                "h-3 w-3 text-muted-foreground transition-transform opacity-0 group-hover:opacity-100",
                 open && "rotate-90"
               )}
             />
-            <span className="text-[10px] font-medium uppercase tracking-widest font-mono text-muted-foreground/60">
+            <span className="text-[10px] font-medium uppercase tracking-widest font-mono text-muted-foreground">
               Projects
             </span>
           </CollapsibleTrigger>
@@ -193,7 +221,7 @@ export function SidebarProjects() {
               e.stopPropagation();
               openNewProject();
             }}
-            className="flex items-center justify-center h-4 w-4 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent/50 transition-colors"
+            className="flex items-center justify-center h-4 w-4 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
             aria-label="New project"
           >
             <Plus className="h-3 w-3" />
@@ -208,17 +236,19 @@ export function SidebarProjects() {
           onDragEnd={handleDragEnd}
         >
           <SortableContext
-            items={orderedProjects.map((project) => project.id)}
+            items={displayProjects.map((project) => project.id)}
             strategy={verticalListSortingStrategy}
           >
             <div className="flex flex-col gap-0.5 mt-0.5">
-              {orderedProjects.map((project: Project) => (
+              {displayProjects.map((project: Project) => (
                 <SortableProjectItem
                   key={project.id}
                   activeProjectRef={activeProjectRef}
                   companyId={selectedCompanyId}
                   companyPrefix={selectedCompany?.issuePrefix ?? null}
                   isMobile={isMobile}
+                  isFav={isFavoriteProject(project.id)}
+                  onToggleFav={toggleFavoriteProject}
                   project={project}
                   projectSidebarSlots={projectSidebarSlots}
                   setSidebarOpen={setSidebarOpen}

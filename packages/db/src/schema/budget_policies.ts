@@ -1,5 +1,6 @@
-import { boolean, index, integer, pgTable, text, timestamp, uuid, uniqueIndex } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid, uniqueIndex } from "drizzle-orm/pg-core";
 import { companies } from "./companies.js";
+import { departments } from "./departments.js";
 
 export const budgetPolicies = pgTable(
   "budget_policies",
@@ -17,27 +18,21 @@ export const budgetPolicies = pgTable(
     isActive: boolean("is_active").notNull().default(true),
     createdByUserId: text("created_by_user_id"),
     updatedByUserId: text("updated_by_user_id"),
+    departmentId: uuid("department_id").references(() => departments.id, { onDelete: "set null" }),
+    sharedWith: jsonb("shared_with").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     companyScopeActiveIdx: index("budget_policies_company_scope_active_idx").on(
-      table.companyId,
-      table.scopeType,
-      table.scopeId,
-      table.isActive,
+      table.companyId, table.scopeType, table.scopeId, table.isActive,
     ),
     companyWindowIdx: index("budget_policies_company_window_idx").on(
-      table.companyId,
-      table.windowKind,
-      table.metric,
+      table.companyId, table.windowKind, table.metric,
     ),
     companyScopeMetricUniqueIdx: uniqueIndex("budget_policies_company_scope_metric_unique_idx").on(
-      table.companyId,
-      table.scopeType,
-      table.scopeId,
-      table.metric,
-      table.windowKind,
+      table.companyId, table.scopeType, table.scopeId, table.metric, table.windowKind,
     ),
+    departmentIdx: index("budget_policies_dept_idx").on(table.departmentId),
   }),
 );

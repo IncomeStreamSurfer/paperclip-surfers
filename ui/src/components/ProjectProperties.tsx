@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { AlertCircle, Archive, ArchiveRestore, Check, ExternalLink, Github, Loader2, Plus, Trash2, X } from "lucide-react";
+import { AlertCircle, Archive, ArchiveRestore, Check, ExternalLink, Github, Gitlab, Globe, Loader2, Plus, Trash2, X } from "lucide-react";
 import { ChoosePathButton } from "./PathInstructionsModal";
 import { DraftInput } from "./agent-config-primitives";
 import { InlineEditor } from "./InlineEditor";
@@ -42,6 +42,7 @@ export type ProjectConfigFieldKey =
   | "description"
   | "status"
   | "goals"
+  | "targetDate"
   | "execution_workspace_enabled"
   | "execution_workspace_default_mode"
   | "execution_workspace_base_ref"
@@ -343,17 +344,38 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
 
   const isAbsolutePath = (value: string) => value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
 
-  const isGitHubRepoUrl = (value: string) => {
+  const detectProvider = (value: string): { provider: string; icon: typeof Github; label: string } | null => {
     try {
       const parsed = new URL(value);
       const host = parsed.hostname.toLowerCase();
-      if (host !== "github.com" && host !== "www.github.com") return false;
       const segments = parsed.pathname.split("/").filter(Boolean);
-      return segments.length >= 2;
+      if (segments.length < 2) return null;
+
+      if (host === "github.com" || host === "www.github.com") {
+        return { provider: "github", icon: Github, label: "GitHub" };
+      }
+      if (host === "gitlab.com" || host === "www.gitlab.com" || host.endsWith(".gitlab.com")) {
+        return { provider: "gitlab", icon: Gitlab, label: "GitLab" };
+      }
+      if (host === "bitbucket.org" || host === "www.bitbucket.org") {
+        return { provider: "bitbucket", icon: Globe, label: "Bitbucket" };
+      }
+      if (host === "dev.azure.com") {
+        return { provider: "azure_devops", icon: Globe, label: "Azure DevOps" };
+      }
+      if (host.endsWith(".visualstudio.com")) {
+        return { provider: "azure_devops", icon: Globe, label: "Azure DevOps" };
+      }
+      if (segments.length >= 2) {
+        return { provider: host, icon: Globe, label: host };
+      }
+      return null;
     } catch {
-      return false;
+      return null;
     }
   };
+
+  const isValidRepoUrl = (value: string): boolean => detectProvider(value) !== null;
 
   const isSafeExternalUrl = (value: string | null | undefined) => {
     if (!value) return false;
@@ -385,7 +407,7 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
     return undefined;
   };
 
-  const persistCodebase = (patch: { cwd?: string | null; repoUrl?: string | null }) => {
+  const persistCodebase = (patch: { cwd?: string | null; repoUrl?: string | null; remoteProvider?: string }) => {
     const nextCwd = patch.cwd !== undefined ? patch.cwd : codebase.localFolder;
     const nextRepoUrl = patch.repoUrl !== undefined ? patch.repoUrl : codebase.repoUrl;
     if (!nextCwd && !nextRepoUrl) {
@@ -398,6 +420,7 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
     const data: Record<string, unknown> = {
       ...(patch.cwd !== undefined ? { cwd: patch.cwd } : {}),
       ...(patch.repoUrl !== undefined ? { repoUrl: patch.repoUrl } : {}),
+      ...(patch.remoteProvider !== undefined ? { remoteProvider: patch.remoteProvider } : {}),
       ...(deriveSourceType(nextCwd, nextRepoUrl) ? { sourceType: deriveSourceType(nextCwd, nextRepoUrl) } : {}),
       isPrimary: true,
     };
@@ -432,12 +455,13 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
       persistCodebase({ repoUrl: null });
       return;
     }
-    if (!isGitHubRepoUrl(repoUrl)) {
-      setWorkspaceError("Repo must use a valid GitHub repo URL.");
+    const detected = detectProvider(repoUrl);
+    if (!detected) {
+      setWorkspaceError("Repo must use a valid URL from GitHub, GitLab, Bitbucket, or Azure DevOps.");
       return;
     }
     setWorkspaceError(null);
-    persistCodebase({ repoUrl });
+    persistCodebase({ repoUrl, remoteProvider: detected.provider });
   };
 
   const clearLocalWorkspace = () => {
@@ -587,11 +611,14 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
         <PropertyRow label={<FieldLabel label="Updated" state="idle" />}>
           <span className="text-sm">{formatDate(project.updatedAt)}</span>
         </PropertyRow>
-        {project.targetDate && (
-          <PropertyRow label={<FieldLabel label="Target Date" state="idle" />}>
-            <span className="text-sm">{formatDate(project.targetDate)}</span>
-          </PropertyRow>
-        )}
+        <PropertyRow label={<FieldLabel label="Target Date" state={fieldState("targetDate")} />}>
+          <input
+            type="date"
+            className="text-sm bg-transparent border-none outline-none cursor-pointer hover:text-foreground text-muted-foreground [color-scheme:var(--color-scheme,light)]"
+            value={project.targetDate ? project.targetDate.slice(0, 10) : ""}
+            onChange={(e) => commitField("targetDate", { targetDate: e.target.value || null })}
+          />
+        </PropertyRow>
       </div>
 
       <Separator className="my-4" />
@@ -811,7 +838,7 @@ export function ProjectProperties({ project, onUpdate, onFieldUpdate, getFieldSa
                 className="w-full rounded border border-border bg-transparent px-2 py-1 text-xs outline-none"
                 value={workspaceRepoUrl}
                 onChange={(e) => setWorkspaceRepoUrl(e.target.value)}
-                placeholder="https://github.com/org/repo"
+                placeholder="https://github.com/org/repo, https://gitlab.com/org/repo, https://dev.azure.com/org/project"
               />
               <div className="flex items-center gap-2">
                 <Button

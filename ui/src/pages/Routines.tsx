@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, MoreHorizontal, Play, Plus, Repeat } from "l
 import { routinesApi } from "../api/routines";
 import { agentsApi } from "../api/agents";
 import { projectsApi } from "../api/projects";
+import { DeptScopeSelector } from "../components/DeptScopeSelector";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
 import { useToast } from "../context/ToastContext";
@@ -85,6 +86,10 @@ export function Routines() {
     concurrencyPolicy: "coalesce_if_active",
     catchUpPolicy: "skip_missed",
   });
+  const [deptScope, setDeptScope] = useState<{ departmentId: string | null; sharedWith: string[] }>({
+    departmentId: null,
+    sharedWith: [],
+  });
 
   useEffect(() => {
     setBreadcrumbs([{ label: "Routines" }]);
@@ -115,6 +120,7 @@ export function Routines() {
       routinesApi.create(selectedCompanyId!, {
         ...draft,
         description: draft.description.trim() || null,
+        departmentId: deptScope.departmentId,
       }),
     onSuccess: async (routine) => {
       setDraft({
@@ -126,6 +132,7 @@ export function Routines() {
         concurrencyPolicy: "coalesce_if_active",
         catchUpPolicy: "skip_missed",
       });
+      setDeptScope({ departmentId: null, sharedWith: [] });
       setComposerOpen(false);
       setAdvancedOpen(false);
       await queryClient.invalidateQueries({ queryKey: queryKeys.routines.list(selectedCompanyId!) });
@@ -460,6 +467,15 @@ export function Routines() {
                 </div>
               </CollapsibleContent>
             </Collapsible>
+          </div>
+
+          <div className="border-t border-border/60 px-5 py-3">
+            <DeptScopeSelector
+              companyId={selectedCompanyId!}
+              departmentId={deptScope.departmentId}
+              sharedWith={deptScope.sharedWith}
+              onChange={setDeptScope}
+            />
           </div>
 
           <div className="flex flex-col gap-3 border-t border-border/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">

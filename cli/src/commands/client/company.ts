@@ -63,6 +63,8 @@ const DEFAULT_EXPORT_INCLUDE: CompanyPortabilityInclude = {
   projects: false,
   issues: false,
   skills: false,
+  memories: false,
+  telemetry: false,
 };
 
 const DEFAULT_IMPORT_INCLUDE: CompanyPortabilityInclude = {
@@ -71,6 +73,8 @@ const DEFAULT_IMPORT_INCLUDE: CompanyPortabilityInclude = {
   projects: true,
   issues: true,
   skills: true,
+  memories: false,
+  telemetry: false,
 };
 
 const IMPORT_INCLUDE_OPTIONS: Array<{
@@ -138,12 +142,14 @@ function parseInclude(
 ): CompanyPortabilityInclude {
   if (!input || !input.trim()) return { ...fallback };
   const values = input.split(",").map((part) => part.trim().toLowerCase()).filter(Boolean);
-  const include = {
+  const include: CompanyPortabilityInclude = {
     company: values.includes("company"),
     agents: values.includes("agents"),
     projects: values.includes("projects"),
     issues: values.includes("issues") || values.includes("tasks"),
     skills: values.includes("skills"),
+    memories: values.includes("memories"),
+    telemetry: values.includes("telemetry"),
   };
   if (!include.company && !include.agents && !include.projects && !include.issues && !include.skills) {
     throw new Error("Invalid --include value. Use one or more of: company,agents,projects,issues,tasks,skills");

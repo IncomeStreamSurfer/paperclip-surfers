@@ -65,8 +65,13 @@ export const adapterLabels: Record<string, string> = {
   openclaw_gateway: "OpenClaw Gateway",
   cursor: "Cursor (local)",
   hermes_local: "Hermes Agent",
+  pi_local: "Pi (local)",
   process: "Process",
   http: "HTTP",
+  openai_api: "OpenAI API",
+  anthropic_api: "Anthropic API",
+  openrouter_api: "OpenRouter API",
+  github_copilot: "GitHub Copilot",
 };
 
 export const roleLabels = AGENT_ROLE_LABELS as Record<string, string>;

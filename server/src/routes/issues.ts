@@ -6,6 +6,7 @@ import {
   createIssueAttachmentMetadataSchema,
   createIssueWorkProductSchema,
   createIssueLabelSchema,
+  updateIssueLabelSchema,
   checkoutIssueSchema,
   createIssueSchema,
   linkIssueApprovalSchema,
@@ -19,6 +20,7 @@ import { validate } from "../middleware/validate.js";
 import {
   accessService,
   agentService,
+  emailService,
   executionWorkspaceService,
   goalService,
   heartbeatService,
@@ -26,6 +28,7 @@ import {
   issueService,
   documentService,
   logActivity,
+  messagingDispatchService,
   projectService,
   routineService,
   workProductService,
@@ -52,6 +55,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
   const workProductsSvc = workProductService(db);
   const documentsSvc = documentService(db);
   const routinesSvc = routineService(db);
+  const emailSvc = emailService(db);
   const upload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: MAX_ATTACHMENT_BYTES, files: 1 },
@@ -310,6 +314,34 @@ export function issueRoutes(db: Db, storage: StorageService) {
       details: { name: label.name, color: label.color },
     });
     res.status(201).json(label);
+  });
+
+  router.patch("/labels/:labelId", validate(updateIssueLabelSchema), async (req, res) => {
+    const labelId = req.params.labelId as string;
+    const existing = await svc.getLabelById(labelId);
+    if (!existing) {
+      res.status(404).json({ error: "Label not found" });
+      return;
+    }
+    assertCompanyAccess(req, existing.companyId);
+    const updated = await svc.updateLabel(labelId, req.body);
+    if (!updated) {
+      res.status(404).json({ error: "Label not found" });
+      return;
+    }
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId: updated.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "label.updated",
+      entityType: "label",
+      entityId: updated.id,
+      details: { name: updated.name, color: updated.color },
+    });
+    res.json(updated);
   });
 
   router.delete("/labels/:labelId", async (req, res) => {
@@ -713,6 +745,38 @@ export function issueRoutes(db: Db, storage: StorageService) {
     res.json(readState);
   });
 
+  router.post("/issues/:id/mark-unread", async (req, res) => {
+    const id = req.params.id as string;
+    const issue = await svc.getById(id);
+    if (!issue) {
+      res.status(404).json({ error: "Issue not found" });
+      return;
+    }
+    assertCompanyAccess(req, issue.companyId);
+    if (req.actor.type !== "board") {
+      res.status(403).json({ error: "Board authentication required" });
+      return;
+    }
+    if (!req.actor.userId) {
+      res.status(403).json({ error: "Board user context required" });
+      return;
+    }
+    await svc.markUnread(issue.companyId, issue.id, req.actor.userId);
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId: issue.companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "issue.unread_marked",
+      entityType: "issue",
+      entityId: issue.id,
+      details: { userId: req.actor.userId },
+    });
+    res.json({ ok: true });
+  });
+
   router.post("/issues/:id/inbox-archive", async (req, res) => {
     const id = req.params.id as string;
     const issue = await svc.getById(id);
@@ -884,6 +948,11 @@ export function issueRoutes(db: Db, storage: StorageService) {
       requestedByActorId: actor.actorId,
     });
 
+    // Fire new-issue messaging notification (fire-and-forget)
+    messagingDispatchService(db).notifyNewIssue(issue.id).catch((err) =>
+      logger.warn({ err, issueId: issue.id }, "failed to send new issue messaging notification"),
+    );
+
     res.status(201).json(issue);
   });
 
@@ -956,6 +1025,47 @@ export function issueRoutes(db: Db, storage: StorageService) {
       return;
     }
     await routinesSvc.syncRunStatusForIssue(issue.id);
+
+    // Fire blocked-issue email notification on status transition → blocked (fire-and-forget)
+    if (existing.status !== "blocked" && issue.status === "blocked") {
+      emailSvc.sendBlockedIssueNotification({
+        id: issue.id,
+        companyId: issue.companyId,
+        identifier: issue.identifier ?? issue.id,
+        title: issue.title,
+        assigneeUserId: issue.assigneeUserId,
+        createdByUserId: issue.createdByUserId,
+      }).catch((err) =>
+        logger.warn({ err, issueId: issue.id }, "failed to send blocked issue notification"),
+      );
+      messagingDispatchService(db).notifyIssueBlocked(issue.id).catch((err) =>
+        logger.warn({ err, issueId: issue.id }, "failed to send blocked issue messaging notification"),
+      );
+    }
+
+    // Fire completed-issue messaging notification on status transition → done (fire-and-forget)
+    if (existing.status !== "done" && issue.status === "done") {
+      messagingDispatchService(db).notifyIssueCompleted(issue.id).catch((err) =>
+        logger.warn({ err, issueId: issue.id }, "failed to send completed issue messaging notification"),
+      );
+    }
+
+    // Fire assigned-issue email notification when assigneeUserId changes (fire-and-forget)
+    if (
+      assigneeWillChange &&
+      issue.assigneeUserId &&
+      issue.assigneeUserId !== existing.assigneeUserId
+    ) {
+      emailSvc.sendAssignedNotification({
+        id: issue.id,
+        companyId: issue.companyId,
+        identifier: issue.identifier ?? issue.id,
+        title: issue.title,
+        assigneeUserId: issue.assigneeUserId,
+      }).catch((err) =>
+        logger.warn({ err, issueId: issue.id }, "failed to send assigned issue notification"),
+      );
+    }
 
     if (actor.runId) {
       await heartbeat.reportRunActivity(actor.runId).catch((err) =>

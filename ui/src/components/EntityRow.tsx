@@ -7,6 +7,7 @@ interface EntityRowProps {
   identifier?: string;
   title: string;
   subtitle?: string;
+  afterSubtitle?: ReactNode;
   trailing?: ReactNode;
   selected?: boolean;
   to?: string;
@@ -19,6 +20,7 @@ export function EntityRow({
   identifier,
   title,
   subtitle,
+  afterSubtitle,
   trailing,
   selected,
   to,
@@ -47,6 +49,9 @@ export function EntityRow({
         </div>
         {subtitle && (
           <p className="text-xs text-muted-foreground truncate mt-0.5">{subtitle}</p>
+        )}
+        {afterSubtitle && (
+          <div className="mt-0.5">{afterSubtitle}</div>
         )}
       </div>
       {trailing && <div className="flex items-center gap-2 shrink-0">{trailing}</div>}

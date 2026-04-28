@@ -140,6 +140,18 @@ export interface AvailablePluginExample {
   tag: "example";
 }
 
+export interface MarketplacePlugin {
+  packageName: string;
+  pluginKey: string;
+  displayName: string;
+  description: string;
+  author: string;
+  category: string;
+  tags: string[];
+  version?: string;
+  installed: boolean;
+}
+
 /**
  * Plugin management API client.
  *
@@ -170,6 +182,12 @@ export const pluginsApi = {
    */
   listExamples: () =>
     api.get<AvailablePluginExample[]>("/plugins/examples"),
+
+  /**
+   * List curated marketplace plugins available for installation.
+   */
+  listMarketplace: () =>
+    api.get<MarketplacePlugin[]>("/plugins/marketplace"),
 
   /**
    * Fetch a single plugin record by its UUID or plugin key.

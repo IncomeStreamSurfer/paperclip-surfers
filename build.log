@@ -1,0 +1,472 @@
+ Image paperclip-surfers-server Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 568B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.23kB done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/node:lts-trixie-slim
+#3 DONE 0.6s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 129B done
+#4 DONE 0.0s
+
+#5 [base 1/3] FROM docker.io/library/node:lts-trixie-slim@sha256:28fd420825d8e922eab0fd91740c7cf88ddbdc8116a2b20a82049f0c946feb03
+#5 resolve docker.io/library/node:lts-trixie-slim@sha256:28fd420825d8e922eab0fd91740c7cf88ddbdc8116a2b20a82049f0c946feb03 0.0s done
+#5 CACHED
+
+#6 [internal] load build context
+#6 transferring context: 102.80kB 0.1s done
+#6 DONE 0.1s
+
+#7 [base 2/3] RUN apt-get update   && apt-get install -y --no-install-recommends ca-certificates curl git   && rm -rf /var/lib/apt/lists/*
+#7 0.286 Get:1 http://deb.debian.org/debian trixie InRelease [140 kB]
+#7 0.320 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+#7 0.327 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+#7 0.346 Get:4 http://deb.debian.org/debian trixie/main amd64 Packages [9671 kB]
+#7 0.707 Get:5 http://deb.debian.org/debian trixie-updates/main amd64 Packages [5412 B]
+#7 0.707 Get:6 http://deb.debian.org/debian-security trixie-security/main amd64 Packages [125 kB]
+#7 1.217 Fetched 10.0 MB in 1s (10.3 MB/s)
+#7 1.217 Reading package lists...
+#7 1.699 Reading package lists...
+#7 2.155 Building dependency tree...
+#7 2.332 Reading state information...
+#7 2.594 The following additional packages will be installed:
+#7 2.595   git-man libbrotli1 libcom-err2 libcurl3t64-gnutls libcurl4t64 liberror-perl
+#7 2.595   libexpat1 libffi8 libgdbm-compat4t64 libgdbm6t64 libgnutls30t64
+#7 2.595   libgssapi-krb5-2 libidn2-0 libk5crypto3 libkeyutils1 libkrb5-3
+#7 2.595   libkrb5support0 libldap2 libnghttp2-14 libnghttp3-9 libngtcp2-16
+#7 2.595   libngtcp2-crypto-gnutls8 libp11-kit0 libperl5.40 libpsl5t64 librtmp1
+#7 2.596   libsasl2-2 libsasl2-modules-db libssh2-1t64 libtasn1-6 libunistring5 openssl
+#7 2.596   perl perl-modules-5.40
+#7 2.599 Suggested packages:
+#7 2.599   gettext-base git-doc git-email git-gui gitk gitweb git-cvs git-mediawiki
+#7 2.599   git-svn gdbm-l10n gnutls-bin krb5-doc krb5-user sensible-utils perl-doc
+#7 2.599   libterm-readline-gnu-perl | libterm-readline-perl-perl make
+#7 2.599   libtap-harness-archive-perl
+#7 2.599 Recommended packages:
+#7 2.599   bash-completion patch less ssh-client krb5-locales libldap-common
+#7 2.599   publicsuffix libsasl2-modules netbase
+#7 2.757 The following NEW packages will be installed:
+#7 2.757   ca-certificates curl git git-man libbrotli1 libcom-err2 libcurl3t64-gnutls
+#7 2.757   libcurl4t64 liberror-perl libexpat1 libffi8 libgdbm-compat4t64 libgdbm6t64
+#7 2.757   libgnutls30t64 libgssapi-krb5-2 libidn2-0 libk5crypto3 libkeyutils1
+#7 2.758   libkrb5-3 libkrb5support0 libldap2 libnghttp2-14 libnghttp3-9 libngtcp2-16
+#7 2.758   libngtcp2-crypto-gnutls8 libp11-kit0 libperl5.40 libpsl5t64 librtmp1
+#7 2.759   libsasl2-2 libsasl2-modules-db libssh2-1t64 libtasn1-6 libunistring5 openssl
+#7 2.759   perl perl-modules-5.40
+#7 2.824 0 upgraded, 37 newly installed, 0 to remove and 0 not upgraded.
+#7 2.824 Need to get 26.1 MB of archives.
+#7 2.824 After this operation, 124 MB of additional disk space will be used.
+#7 2.824 Get:1 http://deb.debian.org/debian trixie/main amd64 libexpat1 amd64 2.7.1-2 [108 kB]
+#7 2.858 Get:2 http://deb.debian.org/debian-security trixie-security/main amd64 openssl amd64 3.5.5-1~deb13u2 [1500 kB]
+#7 2.916 Get:3 http://deb.debian.org/debian trixie/main amd64 ca-certificates all 20250419 [162 kB]
+#7 2.928 Get:4 http://deb.debian.org/debian trixie/main amd64 perl-modules-5.40 all 5.40.1-6 [3019 kB]
+#7 3.089 Get:5 http://deb.debian.org/debian trixie/main amd64 libgdbm6t64 amd64 1.24-2 [75.2 kB]
+#7 3.091 Get:6 http://deb.debian.org/debian trixie/main amd64 libgdbm-compat4t64 amd64 1.24-2 [50.3 kB]
+#7 3.095 Get:7 http://deb.debian.org/debian trixie/main amd64 libperl5.40 amd64 5.40.1-6 [4341 kB]
+#7 3.292 Get:8 http://deb.debian.org/debian trixie/main amd64 perl amd64 5.40.1-6 [267 kB]
+#7 3.299 Get:9 http://deb.debian.org/debian trixie/main amd64 libbrotli1 amd64 1.1.0-2+b7 [307 kB]
+#7 3.306 Get:10 http://deb.debian.org/debian trixie/main amd64 libkrb5support0 amd64 1.21.3-5 [33.0 kB]
+#7 3.307 Get:11 http://deb.debian.org/debian trixie/main amd64 libcom-err2 amd64 1.47.2-3+b10 [25.0 kB]
+#7 3.308 Get:12 http://deb.debian.org/debian trixie/main amd64 libk5crypto3 amd64 1.21.3-5 [81.5 kB]
+#7 3.310 Get:13 http://deb.debian.org/debian trixie/main amd64 libkeyutils1 amd64 1.6.3-6 [9456 B]
+#7 3.310 Get:14 http://deb.debian.org/debian trixie/main amd64 libkrb5-3 amd64 1.21.3-5 [326 kB]
+#7 3.317 Get:15 http://deb.debian.org/debian trixie/main amd64 libgssapi-krb5-2 amd64 1.21.3-5 [138 kB]
+#7 3.320 Get:16 http://deb.debian.org/debian trixie/main amd64 libunistring5 amd64 1.3-2 [477 kB]
+#7 3.331 Get:17 http://deb.debian.org/debian trixie/main amd64 libidn2-0 amd64 2.3.8-2 [109 kB]
+#7 3.334 Get:18 http://deb.debian.org/debian trixie/main amd64 libsasl2-modules-db amd64 2.1.28+dfsg1-9 [19.8 kB]
+#7 3.334 Get:19 http://deb.debian.org/debian trixie/main amd64 libsasl2-2 amd64 2.1.28+dfsg1-9 [57.5 kB]
+#7 3.348 Get:20 http://deb.debian.org/debian trixie/main amd64 libldap2 amd64 2.6.10+dfsg-1 [194 kB]
+#7 3.355 Get:21 http://deb.debian.org/debian trixie/main amd64 libnghttp2-14 amd64 1.64.0-1.1 [76.0 kB]
+#7 3.358 Get:22 http://deb.debian.org/debian trixie/main amd64 libnghttp3-9 amd64 1.8.0-1 [67.7 kB]
+#7 3.361 Get:23 http://deb.debian.org/debian trixie/main amd64 libpsl5t64 amd64 0.21.2-1.1+b1 [57.2 kB]
+#7 3.362 Get:24 http://deb.debian.org/debian trixie/main amd64 libffi8 amd64 3.4.8-2 [24.1 kB]
+#7 3.363 Get:25 http://deb.debian.org/debian trixie/main amd64 libp11-kit0 amd64 0.25.5-3 [425 kB]
+#7 3.385 Get:26 http://deb.debian.org/debian trixie/main amd64 libtasn1-6 amd64 4.20.0-2 [49.9 kB]
+#7 3.386 Get:27 http://deb.debian.org/debian trixie/main amd64 libgnutls30t64 amd64 3.8.9-3+deb13u2 [1468 kB]
+#7 3.431 Get:28 http://deb.debian.org/debian trixie/main amd64 librtmp1 amd64 2.4+20151223.gitfa8646d.1-2+b5 [58.8 kB]
+#7 3.432 Get:29 http://deb.debian.org/debian trixie/main amd64 libssh2-1t64 amd64 1.11.1-1 [245 kB]
+#7 3.438 Get:30 http://deb.debian.org/debian trixie/main amd64 libcurl4t64 amd64 8.14.1-2+deb13u2 [391 kB]
+#7 3.447 Get:31 http://deb.debian.org/debian trixie/main amd64 curl amd64 8.14.1-2+deb13u2 [270 kB]
+#7 3.453 Get:32 http://deb.debian.org/debian trixie/main amd64 libngtcp2-16 amd64 1.11.0-1 [131 kB]
+#7 3.457 Get:33 http://deb.debian.org/debian trixie/main amd64 libngtcp2-crypto-gnutls8 amd64 1.11.0-1 [29.3 kB]
+#7 3.457 Get:34 http://deb.debian.org/debian trixie/main amd64 libcurl3t64-gnutls amd64 8.14.1-2+deb13u2 [383 kB]
+#7 3.476 Get:35 http://deb.debian.org/debian trixie/main amd64 liberror-perl all 0.17030-1 [26.9 kB]
+#7 3.479 Get:36 http://deb.debian.org/debian trixie/main amd64 git-man all 1:2.47.3-0+deb13u1 [2205 kB]
+#7 3.582 Get:37 http://deb.debian.org/debian trixie/main amd64 git amd64 1:2.47.3-0+deb13u1 [8862 kB]
+#7 4.031 debconf: unable to initialize frontend: Dialog
+#7 4.031 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#7 4.031 debconf: falling back to frontend: Readline
+#7 4.031 debconf: unable to initialize frontend: Readline
+#7 4.031 debconf: (Can't locate Term/ReadLine.pm in @INC (you may need to install the Term::ReadLine module) (@INC entries checked: /etc/perl /usr/local/lib/x86_64-linux-gnu/perl/5.40.1 /usr/local/share/perl/5.40.1 /usr/lib/x86_64-linux-gnu/perl5/5.40 /usr/share/perl5 /usr/lib/x86_64-linux-gnu/perl-base /usr/lib/x86_64-linux-gnu/perl/5.40 /usr/share/perl/5.40 /usr/local/lib/site_perl) at /usr/share/perl5/Debconf/FrontEnd/Readline.pm line 8, <STDIN> line 37.)
+#7 4.031 debconf: falling back to frontend: Teletype
+#7 4.038 debconf: unable to initialize frontend: Teletype
+#7 4.038 debconf: (This frontend requires a controlling tty.)
+#7 4.038 debconf: falling back to frontend: Noninteractive
+#7 5.037 Preconfiguring packages ...
+#7 5.108 Fetched 26.1 MB in 1s (23.3 MB/s)
+#7 5.132 Selecting previously unselected package libexpat1:amd64.
+#7 5.132 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 5021 files and directories currently installed.)
+#7 5.139 Preparing to unpack .../00-libexpat1_2.7.1-2_amd64.deb ...
+#7 5.145 Unpacking libexpat1:amd64 (2.7.1-2) ...
+#7 5.177 Selecting previously unselected package openssl.
+#7 5.179 Preparing to unpack .../01-openssl_3.5.5-1~deb13u2_amd64.deb ...
+#7 5.181 Unpacking openssl (3.5.5-1~deb13u2) ...
+#7 5.249 Selecting previously unselected package ca-certificates.
+#7 5.251 Preparing to unpack .../02-ca-certificates_20250419_all.deb ...
+#7 5.253 Unpacking ca-certificates (20250419) ...
+#7 5.311 Selecting previously unselected package perl-modules-5.40.
+#7 5.312 Preparing to unpack .../03-perl-modules-5.40_5.40.1-6_all.deb ...
+#7 5.314 Unpacking perl-modules-5.40 (5.40.1-6) ...
+#7 5.683 Selecting previously unselected package libgdbm6t64:amd64.
+#7 5.685 Preparing to unpack .../04-libgdbm6t64_1.24-2_amd64.deb ...
+#7 5.688 Unpacking libgdbm6t64:amd64 (1.24-2) ...
+#7 5.721 Selecting previously unselected package libgdbm-compat4t64:amd64.
+#7 5.722 Preparing to unpack .../05-libgdbm-compat4t64_1.24-2_amd64.deb ...
+#7 5.725 Unpacking libgdbm-compat4t64:amd64 (1.24-2) ...
+#7 5.753 Selecting previously unselected package libperl5.40:amd64.
+#7 5.754 Preparing to unpack .../06-libperl5.40_5.40.1-6_amd64.deb ...
+#7 5.757 Unpacking libperl5.40:amd64 (5.40.1-6) ...
+#7 6.023 Selecting previously unselected package perl.
+#7 6.024 Preparing to unpack .../07-perl_5.40.1-6_amd64.deb ...
+#7 6.027 Unpacking perl (5.40.1-6) ...
+#7 6.069 Selecting previously unselected package libbrotli1:amd64.
+#7 6.071 Preparing to unpack .../08-libbrotli1_1.1.0-2+b7_amd64.deb ...
+#7 6.074 Unpacking libbrotli1:amd64 (1.1.0-2+b7) ...
+#7 6.112 Selecting previously unselected package libkrb5support0:amd64.
+#7 6.114 Preparing to unpack .../09-libkrb5support0_1.21.3-5_amd64.deb ...
+#7 6.117 Unpacking libkrb5support0:amd64 (1.21.3-5) ...
+#7 6.150 Selecting previously unselected package libcom-err2:amd64.
+#7 6.152 Preparing to unpack .../10-libcom-err2_1.47.2-3+b10_amd64.deb ...
+#7 6.155 Unpacking libcom-err2:amd64 (1.47.2-3+b10) ...
+#7 6.185 Selecting previously unselected package libk5crypto3:amd64.
+#7 6.186 Preparing to unpack .../11-libk5crypto3_1.21.3-5_amd64.deb ...
+#7 6.189 Unpacking libk5crypto3:amd64 (1.21.3-5) ...
+#7 6.223 Selecting previously unselected package libkeyutils1:amd64.
+#7 6.224 Preparing to unpack .../12-libkeyutils1_1.6.3-6_amd64.deb ...
+#7 6.226 Unpacking libkeyutils1:amd64 (1.6.3-6) ...
+#7 6.257 Selecting previously unselected package libkrb5-3:amd64.
+#7 6.258 Preparing to unpack .../13-libkrb5-3_1.21.3-5_amd64.deb ...
+#7 6.261 Unpacking libkrb5-3:amd64 (1.21.3-5) ...
+#7 6.304 Selecting previously unselected package libgssapi-krb5-2:amd64.
+#7 6.305 Preparing to unpack .../14-libgssapi-krb5-2_1.21.3-5_amd64.deb ...
+#7 6.308 Unpacking libgssapi-krb5-2:amd64 (1.21.3-5) ...
+#7 6.340 Selecting previously unselected package libunistring5:amd64.
+#7 6.341 Preparing to unpack .../15-libunistring5_1.3-2_amd64.deb ...
+#7 6.344 Unpacking libunistring5:amd64 (1.3-2) ...
+#7 6.391 Selecting previously unselected package libidn2-0:amd64.
+#7 6.392 Preparing to unpack .../16-libidn2-0_2.3.8-2_amd64.deb ...
+#7 6.395 Unpacking libidn2-0:amd64 (2.3.8-2) ...
+#7 6.424 Selecting previously unselected package libsasl2-modules-db:amd64.
+#7 6.425 Preparing to unpack .../17-libsasl2-modules-db_2.1.28+dfsg1-9_amd64.deb ...
+#7 6.428 Unpacking libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+#7 6.458 Selecting previously unselected package libsasl2-2:amd64.
+#7 6.459 Preparing to unpack .../18-libsasl2-2_2.1.28+dfsg1-9_amd64.deb ...
+#7 6.461 Unpacking libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+#7 6.491 Selecting previously unselected package libldap2:amd64.
+#7 6.493 Preparing to unpack .../19-libldap2_2.6.10+dfsg-1_amd64.deb ...
+#7 6.495 Unpacking libldap2:amd64 (2.6.10+dfsg-1) ...
+#7 6.539 Selecting previously unselected package libnghttp2-14:amd64.
+#7 6.541 Preparing to unpack .../20-libnghttp2-14_1.64.0-1.1_amd64.deb ...
+#7 6.544 Unpacking libnghttp2-14:amd64 (1.64.0-1.1) ...
+#7 6.575 Selecting previously unselected package libnghttp3-9:amd64.
+#7 6.577 Preparing to unpack .../21-libnghttp3-9_1.8.0-1_amd64.deb ...
+#7 6.579 Unpacking libnghttp3-9:amd64 (1.8.0-1) ...
+#7 6.613 Selecting previously unselected package libpsl5t64:amd64.
+#7 6.614 Preparing to unpack .../22-libpsl5t64_0.21.2-1.1+b1_amd64.deb ...
+#7 6.618 Unpacking libpsl5t64:amd64 (0.21.2-1.1+b1) ...
+#7 6.648 Selecting previously unselected package libffi8:amd64.
+#7 6.649 Preparing to unpack .../23-libffi8_3.4.8-2_amd64.deb ...
+#7 6.652 Unpacking libffi8:amd64 (3.4.8-2) ...
+#7 6.681 Selecting previously unselected package libp11-kit0:amd64.
+#7 6.683 Preparing to unpack .../24-libp11-kit0_0.25.5-3_amd64.deb ...
+#7 6.685 Unpacking libp11-kit0:amd64 (0.25.5-3) ...
+#7 6.726 Selecting previously unselected package libtasn1-6:amd64.
+#7 6.728 Preparing to unpack .../25-libtasn1-6_4.20.0-2_amd64.deb ...
+#7 6.730 Unpacking libtasn1-6:amd64 (4.20.0-2) ...
+#7 6.760 Selecting previously unselected package libgnutls30t64:amd64.
+#7 6.762 Preparing to unpack .../26-libgnutls30t64_3.8.9-3+deb13u2_amd64.deb ...
+#7 6.764 Unpacking libgnutls30t64:amd64 (3.8.9-3+deb13u2) ...
+#7 6.823 Selecting previously unselected package librtmp1:amd64.
+#7 6.824 Preparing to unpack .../27-librtmp1_2.4+20151223.gitfa8646d.1-2+b5_amd64.deb ...
+#7 6.827 Unpacking librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+#7 6.857 Selecting previously unselected package libssh2-1t64:amd64.
+#7 6.859 Preparing to unpack .../28-libssh2-1t64_1.11.1-1_amd64.deb ...
+#7 6.862 Unpacking libssh2-1t64:amd64 (1.11.1-1) ...
+#7 6.895 Selecting previously unselected package libcurl4t64:amd64.
+#7 6.896 Preparing to unpack .../29-libcurl4t64_8.14.1-2+deb13u2_amd64.deb ...
+#7 6.899 Unpacking libcurl4t64:amd64 (8.14.1-2+deb13u2) ...
+#7 6.936 Selecting previously unselected package curl.
+#7 6.937 Preparing to unpack .../30-curl_8.14.1-2+deb13u2_amd64.deb ...
+#7 6.940 Unpacking curl (8.14.1-2+deb13u2) ...
+#7 6.978 Selecting previously unselected package libngtcp2-16:amd64.
+#7 6.979 Preparing to unpack .../31-libngtcp2-16_1.11.0-1_amd64.deb ...
+#7 6.982 Unpacking libngtcp2-16:amd64 (1.11.0-1) ...
+#7 7.015 Selecting previously unselected package libngtcp2-crypto-gnutls8:amd64.
+#7 7.017 Preparing to unpack .../32-libngtcp2-crypto-gnutls8_1.11.0-1_amd64.deb ...
+#7 7.021 Unpacking libngtcp2-crypto-gnutls8:amd64 (1.11.0-1) ...
+#7 7.056 Selecting previously unselected package libcurl3t64-gnutls:amd64.
+#7 7.057 Preparing to unpack .../33-libcurl3t64-gnutls_8.14.1-2+deb13u2_amd64.deb ...
+#7 7.060 Unpacking libcurl3t64-gnutls:amd64 (8.14.1-2+deb13u2) ...
+#7 7.099 Selecting previously unselected package liberror-perl.
+#7 7.101 Preparing to unpack .../34-liberror-perl_0.17030-1_all.deb ...
+#7 7.104 Unpacking liberror-perl (0.17030-1) ...
+#7 7.135 Selecting previously unselected package git-man.
+#7 7.136 Preparing to unpack .../35-git-man_1%3a2.47.3-0+deb13u1_all.deb ...
+#7 7.139 Unpacking git-man (1:2.47.3-0+deb13u1) ...
+#7 7.203 Selecting previously unselected package git.
+#7 7.204 Preparing to unpack .../36-git_1%3a2.47.3-0+deb13u1_amd64.deb ...
+#7 7.214 Unpacking git (1:2.47.3-0+deb13u1) ...
+#7 7.511 Setting up libexpat1:amd64 (2.7.1-2) ...
+#7 7.520 Setting up libkeyutils1:amd64 (1.6.3-6) ...
+#7 7.527 Setting up libgdbm6t64:amd64 (1.24-2) ...
+#7 7.535 Setting up libgdbm-compat4t64:amd64 (1.24-2) ...
+#7 7.542 Setting up libbrotli1:amd64 (1.1.0-2+b7) ...
+#7 7.550 Setting up libnghttp2-14:amd64 (1.64.0-1.1) ...
+#7 7.558 Setting up libcom-err2:amd64 (1.47.2-3+b10) ...
+#7 7.566 Setting up libkrb5support0:amd64 (1.21.3-5) ...
+#7 7.573 Setting up libsasl2-modules-db:amd64 (2.1.28+dfsg1-9) ...
+#7 7.581 Setting up libunistring5:amd64 (1.3-2) ...
+#7 7.589 Setting up libk5crypto3:amd64 (1.21.3-5) ...
+#7 7.597 Setting up libsasl2-2:amd64 (2.1.28+dfsg1-9) ...
+#7 7.605 Setting up libnghttp3-9:amd64 (1.8.0-1) ...
+#7 7.615 Setting up libffi8:amd64 (3.4.8-2) ...
+#7 7.622 Setting up perl-modules-5.40 (5.40.1-6) ...
+#7 7.629 Setting up libtasn1-6:amd64 (4.20.0-2) ...
+#7 7.638 Setting up git-man (1:2.47.3-0+deb13u1) ...
+#7 7.645 Setting up libngtcp2-16:amd64 (1.11.0-1) ...
+#7 7.652 Setting up libkrb5-3:amd64 (1.21.3-5) ...
+#7 7.660 Setting up libssh2-1t64:amd64 (1.11.1-1) ...
+#7 7.666 Setting up openssl (3.5.5-1~deb13u2) ...
+#7 7.679 Setting up libldap2:amd64 (2.6.10+dfsg-1) ...
+#7 7.687 Setting up libidn2-0:amd64 (2.3.8-2) ...
+#7 7.694 Setting up libperl5.40:amd64 (5.40.1-6) ...
+#7 7.701 Setting up ca-certificates (20250419) ...
+#7 7.767 debconf: unable to initialize frontend: Dialog
+#7 7.767 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#7 7.767 debconf: falling back to frontend: Readline
+#7 7.775 debconf: unable to initialize frontend: Readline
+#7 7.775 debconf: (This frontend requires a controlling tty.)
+#7 7.775 debconf: falling back to frontend: Teletype
+#7 7.780 debconf: unable to initialize frontend: Teletype
+#7 7.780 debconf: (This frontend requires a controlling tty.)
+#7 7.780 debconf: falling back to frontend: Noninteractive
+#7 8.408 Updating certificates in /etc/ssl/certs...
+#7 9.309 150 added, 0 removed; done.
+#7 9.335 Setting up perl (5.40.1-6) ...
+#7 9.349 Setting up libp11-kit0:amd64 (0.25.5-3) ...
+#7 9.356 Setting up libgssapi-krb5-2:amd64 (1.21.3-5) ...
+#7 9.365 Setting up libgnutls30t64:amd64 (3.8.9-3+deb13u2) ...
+#7 9.372 Setting up libpsl5t64:amd64 (0.21.2-1.1+b1) ...
+#7 9.379 Setting up liberror-perl (0.17030-1) ...
+#7 9.387 Setting up librtmp1:amd64 (2.4+20151223.gitfa8646d.1-2+b5) ...
+#7 9.402 Setting up libngtcp2-crypto-gnutls8:amd64 (1.11.0-1) ...
+#7 9.410 Setting up libcurl4t64:amd64 (8.14.1-2+deb13u2) ...
+#7 9.417 Setting up libcurl3t64-gnutls:amd64 (8.14.1-2+deb13u2) ...
+#7 9.424 Setting up git (1:2.47.3-0+deb13u1) ...
+#7 9.441 Setting up curl (8.14.1-2+deb13u2) ...
+#7 9.448 Processing triggers for libc-bin (2.41-12+deb13u2) ...
+#7 9.466 Processing triggers for ca-certificates (20250419) ...
+#7 9.473 Updating certificates in /etc/ssl/certs...
+#7 10.20 0 added, 0 removed; done.
+#7 10.20 Running hooks in /etc/ca-certificates/update.d...
+#7 10.20 done.
+#7 DONE 10.4s
+
+#8 [base 3/3] RUN corepack enable
+#8 DONE 0.4s
+
+#9 [deps  1/18] WORKDIR /app
+#9 DONE 0.0s
+
+#10 [deps  2/18] COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
+#10 DONE 0.1s
+
+#11 [deps  3/18] COPY cli/package.json cli/
+#11 DONE 0.0s
+
+#12 [deps  4/18] COPY server/package.json server/
+#12 DONE 0.0s
+
+#13 [deps  5/18] COPY ui/package.json ui/
+#13 DONE 0.0s
+
+#14 [deps  6/18] COPY packages/shared/package.json packages/shared/
+#14 DONE 0.0s
+
+#15 [deps  7/18] COPY packages/db/package.json packages/db/
+#15 DONE 0.0s
+
+#16 [deps  8/18] COPY packages/adapter-utils/package.json packages/adapter-utils/
+#16 DONE 0.0s
+
+#17 [deps  9/18] COPY packages/adapters/claude-local/package.json packages/adapters/claude-local/
+#17 DONE 0.0s
+
+#18 [deps 10/18] COPY packages/adapters/codex-local/package.json packages/adapters/codex-local/
+#18 DONE 0.0s
+
+#19 [deps 11/18] COPY packages/adapters/cursor-local/package.json packages/adapters/cursor-local/
+#19 DONE 0.0s
+
+#20 [deps 12/18] COPY packages/adapters/gemini-local/package.json packages/adapters/gemini-local/
+#20 DONE 0.0s
+
+#21 [deps 13/18] COPY packages/adapters/openclaw-gateway/package.json packages/adapters/openclaw-gateway/
+#21 DONE 0.0s
+
+#22 [deps 14/18] COPY packages/adapters/opencode-local/package.json packages/adapters/opencode-local/
+#22 DONE 0.0s
+
+#23 [deps 15/18] COPY packages/adapters/pi-local/package.json packages/adapters/pi-local/
+#23 DONE 0.0s
+
+#24 [deps 16/18] COPY packages/plugins/sdk/package.json packages/plugins/sdk/
+#24 DONE 0.0s
+
+#25 [deps 17/18] COPY patches/ patches/
+#25 DONE 0.0s
+
+#26 [deps 18/18] RUN pnpm install --frozen-lockfile
+#26 0.288 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-9.15.4.tgz
+#26 1.870 Scope: all 15 workspace projects
+#26 1.880 (node:7) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+#26 1.880 (Use `node --trace-deprecation ...` to show where the warning was created)
+#26 1.933 Lockfile is up to date, resolution step is skipped
+#26 1.994 Progress: resolved 1, reused 0, downloaded 0, added 0
+#26 2.137 Packages: +978
+#26 2.137 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+#26 3.008 Progress: resolved 978, reused 0, downloaded 47, added 10
+#26 3.200 
+#26 3.200    ╭───────────────────────────────────────────────────────────────────╮
+#26 3.200    │                                                                   │
+#26 3.200    │                Update available! 9.15.4 → 10.33.0.                │
+#26 3.200    │   Changelog: https://github.com/pnpm/pnpm/releases/tag/v10.33.0   │
+#26 3.200    │         Run "corepack install -g pnpm@10.33.0" to update.         │
+#26 3.200    │                                                                   │
+#26 3.200    ╰───────────────────────────────────────────────────────────────────╯
+#26 3.200 
+#26 4.009 Progress: resolved 978, reused 0, downloaded 143, added 148
+#26 5.008 Progress: resolved 978, reused 0, downloaded 189, added 194
+#26 6.009 Progress: resolved 978, reused 0, downloaded 231, added 236
+#26 7.008 Progress: resolved 978, reused 0, downloaded 421, added 426
+#26 8.009 Progress: resolved 978, reused 0, downloaded 472, added 477
+#26 9.008 Progress: resolved 978, reused 0, downloaded 528, added 533
+#26 10.01 Progress: resolved 978, reused 0, downloaded 718, added 723
+#26 11.01 Progress: resolved 978, reused 0, downloaded 894, added 898
+#26 12.01 Progress: resolved 978, reused 0, downloaded 970, added 975
+#26 12.13 Progress: resolved 978, reused 0, downloaded 973, added 978, done
+#26 12.62 .../@embedded-postgres/linux-x64 postinstall$ node scripts/hydrate-symlinks.js
+#26 12.65 .../sharp@0.34.5/node_modules/sharp install$ node install/check.js || npm run build
+#26 12.68 .../esbuild@0.18.20/node_modules/esbuild postinstall$ node install.js
+#26 12.68 .../esbuild@0.27.3/node_modules/esbuild postinstall$ node install.js
+#26 12.68 .../esbuild@0.25.12/node_modules/esbuild postinstall$ node install.js
+#26 12.75 .../@embedded-postgres/linux-x64 postinstall: Done
+#26 12.76 .../sharp@0.34.5/node_modules/sharp install: Done
+#26 12.76 .../esbuild@0.18.20/node_modules/esbuild postinstall: Done
+#26 12.78 .../esbuild@0.27.3/node_modules/esbuild postinstall: Done
+#26 12.80 .../esbuild@0.25.12/node_modules/esbuild postinstall: Done
+#26 13.31 .../es5-ext@0.10.64/node_modules/es5-ext postinstall$  node -e "try{require('./_postinstall')}catch(e){}" || exit 0
+#26 13.37 .../es5-ext@0.10.64/node_modules/es5-ext postinstall: Done
+#26 13.46  WARN  Failed to create bin at /app/server/node_modules/.bin/paperclip-plugin-dev-server. ENOENT: no such file or directory, open '/app/packages/plugins/sdk/dist/dev-cli.js'
+#26 13.64 
+#26 13.64 devDependencies:
+#26 13.64 + @playwright/test 1.58.2
+#26 13.64 + cross-env 10.1.0
+#26 13.64 + esbuild 0.27.3
+#26 13.64 + typescript 5.9.3
+#26 13.64 + vitest 3.2.4
+#26 13.64 
+#26 13.76  WARN  Failed to create bin at /app/server/node_modules/.bin/paperclip-plugin-dev-server. ENOENT: no such file or directory, open '/app/server/node_modules/@paperclipai/plugin-sdk/dist/dev-cli.js'
+#26 13.78 Done in 12.2s
+#26 DONE 15.1s
+
+#27 [build 2/7] COPY --from=deps /app /app
+#27 DONE 10.9s
+
+#28 [build 3/7] COPY . .
+#28 DONE 0.8s
+
+#29 [build 4/7] RUN pnpm --filter @paperclipai/ui build
+#29 0.317 ! Corepack is about to download https://registry.npmjs.org/pnpm/-/pnpm-9.15.4.tgz
+#29 1.924 
+#29 1.924 > @paperclipai/ui@0.3.1 build /app/ui
+#29 1.924 > tsc -b && vite build
+#29 1.924 
+#29 12.82 src/components/AgentPerformanceTab.tsx(138,15): error TS2551: Property 'agentId' does not exist on type 'KpiObservation'. Did you mean 'agentIds'?
+#29 12.82 src/components/AgentPerformanceTab.tsx(138,28): error TS2551: Property 'agentId' does not exist on type 'KpiObservation'. Did you mean 'agentIds'?
+#29 12.82 src/components/AgentPerformanceTab.tsx(143,48): error TS2339: Property 'completionRate' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(143,85): error TS2339: Property 'completionRate' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(152,42): error TS2339: Property 'durationMs' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(152,75): error TS2339: Property 'durationMs' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(214,28): error TS2339: Property 'completionRate' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(215,45): error TS2339: Property 'completionRate' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(222,28): error TS2339: Property 'durationMs' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(222,68): error TS2339: Property 'durationMs' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(225,28): error TS2339: Property 'errorCount' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(226,65): error TS2339: Property 'errorCount' does not exist on type 'AgentKpi'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(258,73): error TS2339: Property 'title' does not exist on type 'KpiObservation'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(261,85): error TS2339: Property 'severity' does not exist on type 'KpiObservation'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(263,30): error TS2339: Property 'severity' does not exist on type 'KpiObservation'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(269,84): error TS2339: Property 'content' does not exist on type 'KpiObservation'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(305,73): error TS2339: Property 'name' does not exist on type 'AgentExperiment'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(316,26): error TS2339: Property 'description' does not exist on type 'AgentExperiment'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(318,30): error TS2339: Property 'description' does not exist on type 'AgentExperiment'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(326,26): error TS2339: Property 'result' does not exist on type 'AgentExperiment'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(328,38): error TS2339: Property 'result' does not exist on type 'AgentExperiment'.
+#29 12.82 src/components/AgentPerformanceTab.tsx(398,19): error TS2561: Object literal may only specify known properties, but 'agentId' does not exist in type 'ObservationCreateRequest'. Did you mean to write 'agentIds'?
+#29 12.83 src/components/AgentPerformanceTab.tsx(480,19): error TS2322: Type 'string | null' is not assignable to type 'string'.
+#29 12.83   Type 'null' is not assignable to type 'string'.
+#29 12.83 src/pages/Analytics.tsx(125,34): error TS2339: Property 'agentTrends' does not exist on type 'CompanyAnalytics'.
+#29 12.83 src/pages/Analytics.tsx(201,35): error TS7006: Parameter 'trend' implicitly has an 'any' type.
+#29 12.83 src/pages/Analytics.tsx(233,37): error TS2551: Property 'agentId' does not exist on type 'KpiObservation'. Did you mean 'agentIds'?
+#29 12.83 src/pages/Analytics.tsx(234,51): error TS2551: Property 'agentId' does not exist on type 'KpiObservation'. Did you mean 'agentIds'?
+#29 12.83 src/pages/Analytics.tsx(241,75): error TS2339: Property 'title' does not exist on type 'KpiObservation'.
+#29 12.83 src/pages/Analytics.tsx(244,87): error TS2339: Property 'severity' does not exist on type 'KpiObservation'.
+#29 12.83 src/pages/Analytics.tsx(246,32): error TS2339: Property 'severity' does not exist on type 'KpiObservation'.
+#29 12.83 src/pages/Analytics.tsx(253,86): error TS2339: Property 'content' does not exist on type 'KpiObservation'.
+#29 12.83 src/pages/Analytics.tsx(336,19): error TS2353: Object literal may only specify known properties, and 'title' does not exist in type 'ObservationCreateRequest'.
+#29 12.83 src/pages/Analytics.tsx(400,65): error TS2339: Property 'name' does not exist on type 'AgentExperiment'.
+#29 12.83 src/pages/Analytics.tsx(411,18): error TS2339: Property 'description' does not exist on type 'AgentExperiment'.
+#29 12.83 src/pages/Analytics.tsx(413,22): error TS2339: Property 'description' does not exist on type 'AgentExperiment'.
+#29 12.83 src/pages/Analytics.tsx(416,18): error TS2339: Property 'result' does not exist on type 'AgentExperiment'.
+#29 12.83 src/pages/Analytics.tsx(418,30): error TS2339: Property 'result' does not exist on type 'AgentExperiment'.
+#29 12.94 /app/ui:
+#29 12.94  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @paperclipai/ui@0.3.1 build: `tsc -b && vite build`
+#29 12.94 Exit status 1
+#29 ERROR: process "/bin/sh -c pnpm --filter @paperclipai/ui build" did not complete successfully: exit code: 1
+------
+ > [build 4/7] RUN pnpm --filter @paperclipai/ui build:
+12.83 src/pages/Analytics.tsx(253,86): error TS2339: Property 'content' does not exist on type 'KpiObservation'.
+12.83 src/pages/Analytics.tsx(336,19): error TS2353: Object literal may only specify known properties, and 'title' does not exist in type 'ObservationCreateRequest'.
+12.83 src/pages/Analytics.tsx(400,65): error TS2339: Property 'name' does not exist on type 'AgentExperiment'.
+12.83 src/pages/Analytics.tsx(411,18): error TS2339: Property 'description' does not exist on type 'AgentExperiment'.
+12.83 src/pages/Analytics.tsx(413,22): error TS2339: Property 'description' does not exist on type 'AgentExperiment'.
+12.83 src/pages/Analytics.tsx(416,18): error TS2339: Property 'result' does not exist on type 'AgentExperiment'.
+12.83 src/pages/Analytics.tsx(418,30): error TS2339: Property 'result' does not exist on type 'AgentExperiment'.
+12.94 /app/ui:
+12.94  ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @paperclipai/ui@0.3.1 build: `tsc -b && vite build`
+12.94 Exit status 1
+------
+Dockerfile:32
+
+--------------------
+
+  30 |     COPY --from=deps /app /app
+
+  31 |     COPY . .
+
+  32 | >>> RUN pnpm --filter @paperclipai/ui build
+
+  33 |     RUN pnpm --filter @paperclipai/plugin-sdk build
+
+  34 |     RUN pnpm --filter @paperclipai/server build
+
+--------------------
+
+failed to solve: process "/bin/sh -c pnpm --filter @paperclipai/ui build" did not complete successfully: exit code: 1
+

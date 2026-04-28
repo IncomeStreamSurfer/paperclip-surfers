@@ -37,13 +37,23 @@ export function AgentSkillSelector({
     return skills.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
+        s.key.toLowerCase().includes(q) ||
         (s.description && s.description.toLowerCase().includes(q)),
     );
   }, [skills, search]);
 
-  function toggleSkill(skillName: string) {
+  const deduplicated = useMemo(() => {
+    const seen = new Set<string>();
+    return filtered.filter((skill) => {
+      if (seen.has(skill.key)) return false;
+      seen.add(skill.key);
+      return true;
+    });
+  }, [filtered]);
+
+  function toggleSkill(skillKey: string) {
     setLocalSelection((prev) =>
-      prev.includes(skillName) ? prev.filter((s) => s !== skillName) : [...prev, skillName],
+      prev.includes(skillKey) ? prev.filter((s) => s !== skillKey) : [...prev, skillKey],
     );
   }
 
@@ -76,7 +86,7 @@ export function AgentSkillSelector({
         />
       </div>
 
-      {filtered.length === 0 ? (
+      {deduplicated.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
           <Package className="h-8 w-8 text-muted-foreground/30 mb-2" />
           <p className="text-xs text-muted-foreground">
@@ -87,29 +97,32 @@ export function AgentSkillSelector({
         </div>
       ) : (
         <div className="space-y-1 max-h-80 overflow-y-auto">
-          {filtered.map((skill) => {
-            const isSelected = localSelection.includes(skill.name);
+          {deduplicated.map((skill) => {
+            const isSelected = localSelection.includes(skill.key);
             return (
               <Card
-                key={skill.id ?? skill.name}
+                key={skill.id ?? skill.key}
                 className={`p-3 cursor-pointer transition-colors hover:bg-muted/30 ${
                   isSelected ? "border-primary/50 bg-primary/5" : ""
                 }`}
-                onClick={() => toggleSkill(skill.name)}
+                onClick={() => toggleSkill(skill.key)}
               >
                 <div className="flex items-start gap-3">
                   <Checkbox
                     checked={isSelected}
-                    onCheckedChange={() => toggleSkill(skill.name)}
+                    onCheckedChange={() => toggleSkill(skill.key)}
                     className="mt-0.5"
                   />
                   <div className="flex-1 min-w-0">
                     <h4 className="text-sm font-medium truncate">{skill.name}</h4>
                     {skill.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                         {skill.description}
                       </p>
                     )}
+                    <p className="text-xs text-muted-foreground/60 font-mono mt-0.5 truncate">
+                      {skill.key}
+                    </p>
                   </div>
                 </div>
               </Card>

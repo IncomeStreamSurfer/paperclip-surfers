@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { NavLink, useLocation } from "@/lib/router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Plus, Star } from "lucide-react";
 import { useCompany } from "../context/CompanyContext";
 import { useDialog } from "../context/DialogContext";
 import { useSidebar } from "../context/SidebarContext";
@@ -19,12 +19,26 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import type { Agent } from "@paperclipai/shared";
+
 export function SidebarAgents() {
   const [open, setOpen] = useState(true);
   const { selectedCompanyId } = useCompany();
   const { openNewAgent } = useDialog();
-  const { isMobile, setSidebarOpen } = useSidebar();
+  const {
+    isMobile,
+    setSidebarOpen,
+    forcedSectionState,
+    favoriteAgentIds,
+    toggleFavoriteAgent,
+    isFavoriteAgent,
+  } = useSidebar();
   const location = useLocation();
+
+  useEffect(() => {
+    if (forcedSectionState !== null) {
+      setOpen(forcedSectionState.expanded);
+    }
+  }, [forcedSectionState]);
 
   const { data: agents } = useQuery({
     queryKey: queryKeys.agents.list(selectedCompanyId!),
@@ -51,12 +65,10 @@ export function SidebarAgents() {
     return counts;
   }, [liveRuns]);
 
-  const visibleAgents = useMemo(() => {
-    const filtered = (agents ?? []).filter(
-      (a: Agent) => a.status !== "terminated"
-    );
-    return filtered;
-  }, [agents]);
+  const visibleAgents = useMemo(
+    () => (agents ?? []).filter((a: Agent) => a.status !== "terminated"),
+    [agents],
+  );
   const currentUserId = session?.user?.id ?? session?.session?.userId ?? null;
   const { orderedAgents } = useAgentOrder({
     agents: visibleAgents,
@@ -64,10 +76,18 @@ export function SidebarAgents() {
     userId: currentUserId,
   });
 
+  // Starred agents float to the top, preserving relative order within each group
+  const displayAgents = useMemo(
+    () => [
+      ...orderedAgents.filter((a) => isFavoriteAgent(a.id)),
+      ...orderedAgents.filter((a) => !isFavoriteAgent(a.id)),
+    ],
+    [orderedAgents, isFavoriteAgent, favoriteAgentIds], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   const agentMatch = location.pathname.match(/^\/(?:[^/]+\/)?agents\/([^/]+)(?:\/([^/]+))?/);
   const activeAgentId = agentMatch?.[1] ?? null;
   const activeTab = agentMatch?.[2] ?? null;
-
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
@@ -76,11 +96,11 @@ export function SidebarAgents() {
           <CollapsibleTrigger className="flex items-center gap-1 flex-1 min-w-0">
             <ChevronRight
               className={cn(
-                "h-3 w-3 text-muted-foreground/60 transition-transform opacity-0 group-hover:opacity-100",
-                open && "rotate-90"
+                "h-3 w-3 text-muted-foreground transition-transform opacity-0 group-hover:opacity-100",
+                open && "rotate-90",
               )}
             />
-            <span className="text-[10px] font-medium uppercase tracking-widest font-mono text-muted-foreground/60">
+            <span className="text-[10px] font-medium uppercase tracking-widest font-mono text-muted-foreground">
               Agents
             </span>
           </CollapsibleTrigger>
@@ -89,7 +109,7 @@ export function SidebarAgents() {
               e.stopPropagation();
               openNewAgent();
             }}
-            className="flex items-center justify-center h-4 w-4 rounded text-muted-foreground/60 hover:text-foreground hover:bg-accent/50 transition-colors"
+            className="flex items-center justify-center h-4 w-4 rounded text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
             aria-label="New agent"
           >
             <Plus className="h-3 w-3" />
@@ -99,43 +119,55 @@ export function SidebarAgents() {
 
       <CollapsibleContent>
         <div className="flex flex-col gap-0.5 mt-0.5">
-          {orderedAgents.map((agent: Agent) => {
+          {displayAgents.map((agent: Agent) => {
             const runCount = liveCountByAgent.get(agent.id) ?? 0;
+            const isFav = isFavoriteAgent(agent.id);
             return (
-              <NavLink
-                key={agent.id}
-                to={activeTab ? `${agentUrl(agent)}/${activeTab}` : agentUrl(agent)}
-                onClick={() => {
-                  if (isMobile) setSidebarOpen(false);
-                }}
-                className={cn(
-                  "flex items-center gap-2.5 px-3 py-1.5 text-[13px] font-medium transition-colors",
-                  activeAgentId === agentRouteRef(agent)
-                    ? "bg-accent text-foreground"
-                    : "text-foreground/80 hover:bg-accent/50 hover:text-foreground"
-                )}
-              >
-                <AgentIcon icon={agent.icon} className="shrink-0 h-3.5 w-3.5 text-muted-foreground" />
-                <span className="flex-1 truncate">{agent.name}</span>
-                {(agent.pauseReason === "budget" || runCount > 0) && (
-                  <span className="ml-auto flex items-center gap-1.5 shrink-0">
-                    {agent.pauseReason === "budget" ? (
-                      <BudgetSidebarMarker title="Agent paused by budget" />
-                    ) : null}
-                    {runCount > 0 ? (
-                      <span className="relative flex h-2 w-2">
-                        <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
-                      </span>
-                    ) : null}
-                    {runCount > 0 ? (
-                      <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
-                        {runCount} live
-                      </span>
-                    ) : null}
-                  </span>
-                )}
-              </NavLink>
+              <div key={agent.id} className="group relative">
+                <NavLink
+                  to={activeTab ? `${agentUrl(agent)}/${activeTab}` : agentUrl(agent)}
+                  onClick={() => {
+                    if (isMobile) setSidebarOpen(false);
+                  }}
+                  className={cn(
+                    "flex items-center gap-2.5 px-3 py-1.5 pr-7 text-[13px] font-medium transition-colors",
+                    activeAgentId === agentRouteRef(agent)
+                      ? "bg-accent text-foreground"
+                      : "text-foreground/80 hover:bg-accent/50 hover:text-foreground",
+                  )}
+                >
+                  <AgentIcon icon={agent.icon} avatarUrl={agent.avatarUrl} className="shrink-0 h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="flex-1 truncate">{agent.name}</span>
+                  {(agent.pauseReason === "budget" || runCount > 0) && (
+                    <span className="flex items-center gap-1.5 shrink-0">
+                      {agent.pauseReason === "budget" ? (
+                        <BudgetSidebarMarker title="Agent paused by budget" />
+                      ) : null}
+                      {runCount > 0 ? (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                        </span>
+                      ) : null}
+                      {runCount > 0 ? (
+                        <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                          {runCount} live
+                        </span>
+                      ) : null}
+                    </span>
+                  )}
+                </NavLink>
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); toggleFavoriteAgent(agent.id); }}
+                  className={cn(
+                    "absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded transition-opacity",
+                    isFav ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                  )}
+                  title={isFav ? "Remove from favourites" : "Add to favourites"}
+                >
+                  <Star className={cn("h-3 w-3", isFav ? "fill-yellow-500 text-yellow-500" : "text-muted-foreground hover:text-yellow-500")} />
+                </button>
+              </div>
             );
           })}
         </div>

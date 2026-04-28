@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import type { Request, RequestHandler } from "express";
 import { and, eq, isNull } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { agentApiKeys, agents, companyMemberships, instanceUserRoles } from "@paperclipai/db";
+import { agentApiKeys, agents, authSessions, companyMemberships, instanceUserRoles, userProfiles } from "@paperclipai/db";
 import { verifyLocalAgentJwt } from "../agent-auth-jwt.js";
 import type { DeploymentMode } from "@paperclipai/shared";
 import type { BetterAuthSessionResult } from "../auth/better-auth.js";
@@ -42,7 +42,7 @@ export function actorMiddleware(db: Db, opts: ActorMiddlewareOptions): RequestHa
         }
         if (session?.user?.id) {
           const userId = session.user.id;
-          const [roleRow, memberships] = await Promise.all([
+          const [roleRow, memberships, sessionRow, profileRow] = await Promise.all([
             db
               .select({ id: instanceUserRoles.id })
               .from(instanceUserRoles)
@@ -58,7 +58,28 @@ export function actorMiddleware(db: Db, opts: ActorMiddlewareOptions): RequestHa
                   eq(companyMemberships.status, "active"),
                 ),
               ),
+            db
+              .select({ id: authSessions.id, createdAt: authSessions.createdAt })
+              .from(authSessions)
+              .where(eq(authSessions.userId, userId))
+              .then((rows) => rows[0] ?? null),
+            db
+              .select({ preferences: userProfiles.preferences })
+              .from(userProfiles)
+              .where(eq(userProfiles.userId, userId))
+              .then((rows) => rows[0] ?? null),
           ]);
+
+          // Enforce per-user login timeout if configured
+          const timeoutMinutes = profileRow?.preferences?.security?.loginTimeoutMinutes;
+          if (timeoutMinutes && timeoutMinutes > 0 && sessionRow?.createdAt) {
+            const ageMs = Date.now() - new Date(sessionRow.createdAt).getTime();
+            if (ageMs > timeoutMinutes * 60 * 1000) {
+              next();
+              return;
+            }
+          }
+
           req.actor = {
             type: "board",
             userId,

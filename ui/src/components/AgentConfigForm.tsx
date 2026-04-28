@@ -17,6 +17,7 @@ import {
 } from "@paperclipai/adapter-codex-local";
 import { DEFAULT_CURSOR_LOCAL_MODEL } from "@paperclipai/adapter-cursor-local";
 import { DEFAULT_GEMINI_LOCAL_MODEL } from "@paperclipai/adapter-gemini-local";
+import { DEFAULT_OPENCODE_MODEL } from "@paperclipai/adapter-opencode-local";
 import {
   Popover,
   PopoverContent,
@@ -53,6 +54,11 @@ import { shouldShowLegacyWorkingDirectoryField } from "../lib/legacy-agent-confi
 // so existing imports from this file keep working.
 export type { CreateConfigValues } from "@paperclipai/adapter-utils";
 import type { CreateConfigValues } from "@paperclipai/adapter-utils";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 /* ---- Props ---- */
 
@@ -759,6 +765,15 @@ export function AgentConfigForm(props: AgentConfigFormProps) {
                   : undefined}
                 detectModelLabel={adapterType === "hermes_local" ? "Detect from Hermes config" : undefined}
               />
+              {adapterType === "opencode_local" && (
+                <AISuggestionsButton
+                  onSelect={(modelId) => {
+                    isCreate
+                      ? set!({ model: modelId })
+                      : mark("adapterConfig", "model", modelId);
+                  }}
+                />
+              )}
               {fetchedModelsError && (
                 <p className="text-xs text-destructive">
                   {fetchedModelsError instanceof Error
@@ -1022,7 +1037,7 @@ function AdapterEnvironmentResult({ result }: { result: AdapterEnvironmentTestRe
 
 /* ---- Internal sub-components ---- */
 
-const ENABLED_ADAPTER_TYPES = new Set(["claude_local", "codex_local", "gemini_local", "opencode_local", "pi_local", "cursor", "hermes_local"]);
+const ENABLED_ADAPTER_TYPES = new Set(["claude_local", "codex_local", "gemini_local", "opencode_local", "pi_local", "cursor", "hermes_local", "process", "http", "openclaw_gateway", "openai_api", "anthropic_api", "openrouter_api", "github_copilot"]);
 
 /** Display list includes all real adapter types plus UI-only coming-soon entries. */
 const ADAPTER_DISPLAY_LIST: { value: string; label: string; comingSoon: boolean }[] = [
@@ -1484,9 +1499,7 @@ function ModelDropdown({
                 onOpenChange(false);
               }}
             >
-              <span className="block w-full text-left truncate font-mono text-xs" title={value}>
-                {value}
-              </span>
+              <Tooltip><TooltipTrigger asChild><span className="block w-full text-left truncate font-mono text-xs">{value}</span></TooltipTrigger><TooltipContent side="top" className="text-xs">{value}</TooltipContent></Tooltip>
               <span className="shrink-0 ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/15 text-green-400 border border-green-500/20">
                 current
               </span>
@@ -1503,9 +1516,7 @@ function ModelDropdown({
                 onOpenChange(false);
               }}
             >
-              <span className="block w-full text-left truncate font-mono text-xs" title={detectedModel}>
-                {detectedModel}
-              </span>
+              <Tooltip><TooltipTrigger asChild><span className="block w-full text-left truncate font-mono text-xs">{detectedModel}</span></TooltipTrigger><TooltipContent side="top" className="text-xs">{detectedModel}</TooltipContent></Tooltip>
               <span className="shrink-0 ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/20">
                 detected
               </span>
@@ -1561,9 +1572,7 @@ function ModelDropdown({
                       onOpenChange(false);
                     }}
                   >
-                    <span className="block w-full text-left truncate" title={m.id}>
-                      {groupByProvider ? extractModelName(m.id) : m.label}
-                    </span>
+                    <Tooltip><TooltipTrigger asChild><span className="block w-full text-left truncate">{groupByProvider ? extractModelName(m.id) : m.label}</span></TooltipTrigger><TooltipContent side="top" className="text-xs">{m.id}</TooltipContent></Tooltip>
                   </button>
                 ))}
               </div>
@@ -1628,5 +1637,176 @@ function ThinkingEffortDropdown({
         </PopoverContent>
       </Popover>
     </Field>
+  );
+}
+
+interface AISuggestion {
+  id: string;
+  provider: string;
+  label: string;
+  capabilities: string[];
+  rankScore: number;
+  installed?: boolean;
+}
+
+function AISuggestionsButton({ onSelect }: { onSelect: (modelId: string) => void }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [suggestions, setSuggestions] = useState<AISuggestion[]>([]);
+  const [available, setAvailable] = useState<AISuggestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [installing, setInstalling] = useState<string | null>(null);
+  const [useCase, setUseCase] = useState<string>("");
+  const { selectedCompanyId } = useCompany();
+
+  async function loadSuggestions(caseType: string) {
+    setLoading(true);
+    try {
+      const [suggestionsData, availableData] = await Promise.all([
+        agentsApi.modelSuggestions(caseType || undefined, selectedCompanyId ?? undefined),
+        agentsApi.getAvailableModels(),
+      ]);
+      setSuggestions(suggestionsData as AISuggestion[]);
+      setAvailable(availableData as AISuggestion[]);
+    } catch {
+      setSuggestions([]);
+      setAvailable([]);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleInstall(modelName: string) {
+    setInstalling(modelName);
+    try {
+      const result = await agentsApi.installModel(modelName);
+      if (result.success) {
+        await loadSuggestions(useCase);
+      }
+    } finally {
+      setInstalling(null);
+    }
+  }
+
+  function handleOpen(open: boolean) {
+    setIsOpen(open);
+    if (open && suggestions.length === 0) {
+      loadSuggestions(useCase);
+    }
+  }
+
+  function handleUseCaseChange(newUseCase: string) {
+    setUseCase(newUseCase);
+    loadSuggestions(newUseCase);
+  }
+
+  return (
+    <Popover open={isOpen} onOpenChange={handleOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-primary/10 hover:bg-primary/20 text-primary rounded-md transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Get AI Suggestions
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[500px] max-h-[500px] overflow-y-auto" align="start">
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Use Case:</span>
+            <select
+              value={useCase}
+              onChange={(e) => handleUseCaseChange(e.target.value)}
+              className="text-sm border rounded px-2 py-1"
+            >
+              <option value="">All Models</option>
+              <option value="code">Code</option>
+              <option value="reasoning">Reasoning</option>
+              <option value="fast">Fast</option>
+              <option value="general">General</option>
+            </select>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-4 text-muted-foreground">Loading suggestions...</div>
+          ) : (
+            <>
+              {suggestions.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Installed Models</h4>
+                  <div className="space-y-2">
+                    {suggestions.slice(0, 10).map((model) => (
+                      <div
+                        key={model.id}
+                        className="flex items-center justify-between p-2 rounded border hover:bg-accent/50"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{model.label}</div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="uppercase">{model.provider}</span>
+                            {model.capabilities.slice(0, 3).map((cap) => (
+                              <span key={cap} className="px-1.5 py-0.5 bg-secondary rounded">{cap}</span>
+                            ))}
+                            <span className="ml-auto">Score: {model.rankScore}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onSelect(model.id);
+                            setIsOpen(false);
+                          }}
+                          className="ml-2 px-2 py-1 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90"
+                        >
+                          Use
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {available.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-medium text-muted-foreground uppercase mb-2">Available to Install</h4>
+                  <div className="space-y-2">
+                    {available.slice(0, 10).map((model) => (
+                      <div
+                        key={model.id}
+                        className="flex items-center justify-between p-2 rounded border hover:bg-accent/50"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">{model.label}</div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="uppercase">{model.provider}</span>
+                            {model.capabilities.slice(0, 3).map((cap) => (
+                              <span key={cap} className="px-1.5 py-0.5 bg-secondary rounded">{cap}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleInstall(model.label)}
+                          disabled={installing === model.label}
+                          className="ml-2 px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                        >
+                          {installing === model.label ? "Installing..." : "Install"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {suggestions.length === 0 && available.length === 0 && (
+                <div className="text-center py-4 text-muted-foreground">No models found</div>
+              )}
+            </>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

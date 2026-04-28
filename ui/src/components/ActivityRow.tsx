@@ -107,12 +107,14 @@ export function ActivityRow({ event, agentMap, entityNameMap, entityTitleMap, cl
 
   const actor = event.actorType === "agent" ? agentMap.get(event.actorId) : null;
   const actorName = actor?.name ?? (event.actorType === "system" ? "System" : event.actorType === "user" ? "Board" : event.actorId || "Unknown");
+  const actorAvatar = actor?.avatarUrl ?? null;
 
   const inner = (
     <div className="flex gap-3">
       <p className="flex-1 min-w-0 truncate">
         <Identity
           name={actorName}
+          avatarUrl={actorAvatar}
           size="xs"
           className="align-baseline"
         />

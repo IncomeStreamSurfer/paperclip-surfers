@@ -1,6 +1,7 @@
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
+  authUsers,
   companyMemberships,
   instanceUserRoles,
   principalPermissionGrants,
@@ -81,6 +82,49 @@ export function accessService(db: Db) {
       .from(companyMemberships)
       .where(eq(companyMemberships.companyId, companyId))
       .orderBy(sql`${companyMemberships.createdAt} desc`);
+  }
+
+  async function listMembersWithDetails(companyId: string) {
+    const rows = await db
+      .select({
+        id: companyMemberships.id,
+        companyId: companyMemberships.companyId,
+        principalType: companyMemberships.principalType,
+        principalId: companyMemberships.principalId,
+        membershipRole: companyMemberships.membershipRole,
+        status: companyMemberships.status,
+        createdAt: companyMemberships.createdAt,
+        updatedAt: companyMemberships.updatedAt,
+        userName: authUsers.name,
+        userEmail: authUsers.email,
+      })
+      .from(companyMemberships)
+      .leftJoin(
+        authUsers,
+        and(
+          eq(companyMemberships.principalType, "user"),
+          eq(companyMemberships.principalId, authUsers.id),
+        ),
+      )
+      .where(eq(companyMemberships.companyId, companyId))
+      .orderBy(sql`${companyMemberships.createdAt} desc`);
+
+    const grants = await db
+      .select()
+      .from(principalPermissionGrants)
+      .where(eq(principalPermissionGrants.companyId, companyId));
+
+    const grantsByPrincipal = new Map<string, string[]>();
+    for (const grant of grants) {
+      const key = `${grant.principalType}:${grant.principalId}`;
+      if (!grantsByPrincipal.has(key)) grantsByPrincipal.set(key, []);
+      grantsByPrincipal.get(key)!.push(grant.permissionKey);
+    }
+
+    return rows.map((m) => ({
+      ...m,
+      permissions: grantsByPrincipal.get(`${m.principalType}:${m.principalId}`) ?? [],
+    }));
   }
 
   async function listActiveUserMemberships(companyId: string) {
@@ -352,11 +396,52 @@ export function accessService(db: Db) {
       principalType,
       principalId,
       permissionKey,
-      scope,
+       scope,
       grantedByUserId,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+  }
+
+  async function listAllUsers() {
+    const users = await db
+      .select({
+        id: authUsers.id,
+        name: authUsers.name,
+        email: authUsers.email,
+        banned: authUsers.banned,
+        createdAt: authUsers.createdAt,
+        updatedAt: authUsers.updatedAt,
+      })
+      .from(authUsers)
+      .orderBy(authUsers.createdAt);
+
+    const adminRows = await db
+      .select({ userId: instanceUserRoles.userId })
+      .from(instanceUserRoles)
+      .where(eq(instanceUserRoles.role, "instance_admin"));
+
+    const adminSet = new Set(adminRows.map((r) => r.userId));
+
+    return users.map((u) => ({ ...u, isInstanceAdmin: adminSet.has(u.id) }));
+  }
+
+  async function banUser(userId: string) {
+    const [updated] = await db
+      .update(authUsers)
+      .set({ banned: true, updatedAt: new Date() })
+      .where(eq(authUsers.id, userId))
+      .returning();
+    return updated ?? null;
+  }
+
+  async function unbanUser(userId: string) {
+    const [updated] = await db
+      .update(authUsers)
+      .set({ banned: false, updatedAt: new Date() })
+      .where(eq(authUsers.id, userId))
+      .returning();
+    return updated ?? null;
   }
 
   return {
@@ -366,6 +451,7 @@ export function accessService(db: Db) {
     getMembership,
     ensureMembership,
     listMembers,
+    listMembersWithDetails,
     listActiveUserMemberships,
     copyActiveUserMemberships,
     setMemberPermissions,
@@ -376,5 +462,8 @@ export function accessService(db: Db) {
     setPrincipalGrants,
     listPrincipalGrants,
     setPrincipalPermission,
+    listAllUsers,
+    banUser,
+    unbanUser,
   };
 }

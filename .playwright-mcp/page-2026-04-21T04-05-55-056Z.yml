@@ -1,0 +1,1051 @@
+- generic [ref=e3]:
+  - link "Skip to Main Content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=e5]:
+    - generic [ref=e6]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - img [ref=e10]
+          - generic [ref=e12]:
+            - button "SplatDev logo" [ref=e13]:
+              - link "SplatDev logo" [ref=e14] [cursor=pointer]:
+                - /url: /SPL/dashboard
+                - img "SplatDev logo" [ref=e18]
+            - status [ref=e19]
+          - button "Add company" [ref=e22]:
+            - img [ref=e23]
+        - complementary [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e28]: SplatDev
+            - button [ref=e29]:
+              - img
+          - navigation [ref=e30]:
+            - generic [ref=e31]:
+              - button "New Issue" [ref=e32]:
+                - img [ref=e33]
+                - generic [ref=e36]: New Issue
+              - link "Dashboard" [ref=e37] [cursor=pointer]:
+                - /url: /SPL/dashboard
+                - img [ref=e39]
+                - generic [ref=e44]: Dashboard
+              - link "Inbox 1" [ref=e45] [cursor=pointer]:
+                - /url: /SPL/inbox
+                - img [ref=e47]
+                - generic [ref=e50]: Inbox
+                - generic [ref=e51]: "1"
+            - generic [ref=e52]:
+              - generic [ref=e53]: Work
+              - generic [ref=e54]:
+                - link "Issues" [ref=e55] [cursor=pointer]:
+                  - /url: /SPL/issues
+                  - img [ref=e57]
+                  - generic [ref=e60]: Issues
+                - link "Routines Beta" [ref=e61] [cursor=pointer]:
+                  - /url: /SPL/routines
+                  - img [ref=e63]
+                  - generic [ref=e68]: Routines
+                  - generic [ref=e69]: Beta
+                - link "Goals" [ref=e70] [cursor=pointer]:
+                  - /url: /SPL/goals
+                  - img [ref=e72]
+                  - generic [ref=e76]: Goals
+            - generic [ref=e77]:
+              - generic [ref=e79]:
+                - button "Projects" [expanded] [ref=e80]:
+                  - img [ref=e81]
+                  - generic [ref=e83]: Projects
+                - button "New project" [ref=e84]:
+                  - img [ref=e85]
+              - generic [ref=e86]:
+                - button "Onboarding" [ref=e88]:
+                  - link "Onboarding" [ref=e90] [cursor=pointer]:
+                    - /url: /SPL/projects/onboarding/issues
+                    - generic [ref=e92]: Onboarding
+                - status [ref=e93]
+            - generic [ref=e94]:
+              - generic [ref=e96]:
+                - button "Agents" [expanded] [ref=e97]:
+                  - img [ref=e98]
+                  - generic [ref=e100]: Agents
+                - button "New agent" [ref=e101]:
+                  - img [ref=e102]
+              - generic [ref=e104]:
+                - link "CEO" [ref=e105] [cursor=pointer]:
+                  - /url: /SPL/agents/ceo
+                  - img [ref=e106]
+                  - generic [ref=e109]: CEO
+                - link "Creative Designer" [ref=e110] [cursor=pointer]:
+                  - /url: /SPL/agents/creative-designer
+                  - img [ref=e111]
+                  - generic [ref=e114]: Creative Designer
+                - link "CTO" [ref=e115] [cursor=pointer]:
+                  - /url: /SPL/agents/cto
+                  - img [ref=e116]
+                  - generic [ref=e119]: CTO
+                - link "Marketing Specialist" [ref=e120] [cursor=pointer]:
+                  - /url: /SPL/agents/marketing-specialist
+                  - img [ref=e121]
+                  - generic [ref=e125]: Marketing Specialist
+                - link "System Specialist" [ref=e126] [cursor=pointer]:
+                  - /url: /SPL/agents/system-specialist
+                  - img [ref=e127]
+                  - generic [ref=e129]: System Specialist
+                - link "Web Designer" [ref=e130] [cursor=pointer]:
+                  - /url: /SPL/agents/web-designer
+                  - img [ref=e131]
+                  - generic [ref=e134]: Web Designer
+                - link "Backend Developer" [ref=e135] [cursor=pointer]:
+                  - /url: /SPL/agents/backend-developer
+                  - img [ref=e136]
+                  - generic [ref=e139]: Backend Developer
+                - link "DevOps Specialist" [ref=e140] [cursor=pointer]:
+                  - /url: /SPL/agents/devops-specialist
+                  - img [ref=e141]
+                  - generic [ref=e147]: DevOps Specialist
+                - link "Frontend Specialist" [ref=e148] [cursor=pointer]:
+                  - /url: /SPL/agents/frontend-specialist
+                  - img [ref=e149]
+                  - generic [ref=e151]: Frontend Specialist
+                - link "QA Specialist" [ref=e152] [cursor=pointer]:
+                  - /url: /SPL/agents/qa-specialist
+                  - img [ref=e153]
+                  - generic [ref=e155]: QA Specialist
+                - link "Scrum Master" [ref=e156] [cursor=pointer]:
+                  - /url: /SPL/agents/scrum-master
+                  - img [ref=e157]
+                  - generic [ref=e161]: Scrum Master
+                - link "Test Specialist" [ref=e162] [cursor=pointer]:
+                  - /url: /SPL/agents/test-specialist
+                  - img [ref=e163]
+                  - generic [ref=e167]: Test Specialist
+            - generic [ref=e168]:
+              - generic [ref=e169]: Company
+              - generic [ref=e170]:
+                - link "Org" [ref=e171] [cursor=pointer]:
+                  - /url: /SPL/org
+                  - img [ref=e173]
+                  - generic [ref=e178]: Org
+                - link "Skills" [active] [ref=e179] [cursor=pointer]:
+                  - /url: /SPL/skills
+                  - img [ref=e181]
+                  - generic [ref=e191]: Skills
+                - link "MCPs" [ref=e192] [cursor=pointer]:
+                  - /url: /mcp-servers
+                  - img [ref=e194]
+                  - generic [ref=e196]: MCPs
+                - link "Analytics" [ref=e197] [cursor=pointer]:
+                  - /url: /analytics
+                  - img [ref=e199]
+                  - generic [ref=e201]: Analytics
+                - link "Costs" [ref=e202] [cursor=pointer]:
+                  - /url: /SPL/costs
+                  - img [ref=e204]
+                  - generic [ref=e206]: Costs
+                - link "Activity" [ref=e207] [cursor=pointer]:
+                  - /url: /SPL/activity
+                  - img [ref=e209]
+                  - generic [ref=e213]: Activity
+                - link "Settings" [ref=e214] [cursor=pointer]:
+                  - /url: /SPL/company/settings
+                  - img [ref=e216]
+                  - generic [ref=e219]: Settings
+      - generic [ref=e221]:
+        - link "Documentation" [ref=e222] [cursor=pointer]:
+          - /url: https://docs.paperclip.ing/
+          - img [ref=e223]
+          - generic [ref=e225]: Documentation
+        - generic [ref=e226]: v
+        - link "Instance settings" [ref=e227] [cursor=pointer]:
+          - /url: /instance/settings/general
+          - img
+        - button "Switch to light mode" [ref=e228]:
+          - img
+    - generic [ref=e229]:
+      - navigation "breadcrumb" [ref=e904]:
+        - list [ref=e905]:
+          - listitem [ref=e906]:
+            - link "Skills" [ref=e907] [cursor=pointer]:
+              - /url: /SPL/skills
+          - listitem [ref=e908]:
+            - img [ref=e909]
+          - listitem [ref=e911]:
+            - link "Detail" [disabled] [ref=e912]
+      - main [ref=e235]:
+        - generic [ref=e913]:
+          - complementary [ref=e914]:
+            - generic [ref=e915]:
+              - generic [ref=e916]:
+                - generic [ref=e917]:
+                  - heading "Skills" [level=1] [ref=e918]
+                  - paragraph [ref=e919]: 4 available
+                - generic [ref=e920]:
+                  - button "Scan project workspaces for skills" [ref=e921]:
+                    - img
+                  - button [ref=e922]:
+                    - img
+              - generic [ref=e923]:
+                - img [ref=e924]
+                - textbox "Filter skills" [ref=e927]
+              - generic [ref=e928]:
+                - textbox "Paste path, GitHub URL, or skills.sh command" [ref=e929]
+                - button "Add" [ref=e930]
+            - generic [ref=e931]:
+              - generic [ref=e932]:
+                - generic [ref=e933]:
+                  - link "Paperclip managed paperclip" [ref=e934] [cursor=pointer]:
+                    - /url: /SPL/skills/48af5334-cadb-4035-aecc-c819fe325262
+                    - generic [ref=e935]:
+                      - generic [ref=e936]:
+                        - img [ref=e937]
+                        - generic [ref=e939]: Paperclip managed
+                      - generic [ref=e940]: paperclip
+                  - button "Collapse paperclip" [ref=e941]:
+                    - img [ref=e942]
+                - generic [ref=e946]:
+                  - generic [ref=e948]:
+                    - button "references" [ref=e949]:
+                      - img [ref=e951]
+                      - generic [ref=e953]: references
+                    - button [ref=e954]:
+                      - img [ref=e955]
+                  - link "SKILL.md" [ref=e957] [cursor=pointer]:
+                    - /url: /SPL/skills/48af5334-cadb-4035-aecc-c819fe325262/files/SKILL.md
+                    - img [ref=e959]
+                    - generic [ref=e962]: SKILL.md
+              - generic [ref=e963]:
+                - generic [ref=e964]:
+                  - link "Paperclip managed paperclip-create-agent" [ref=e965] [cursor=pointer]:
+                    - /url: /SPL/skills/ebe12947-4a58-4abd-836b-30f09783b9da
+                    - generic [ref=e966]:
+                      - generic [ref=e967]:
+                        - img [ref=e968]
+                        - generic [ref=e970]: Paperclip managed
+                      - generic [ref=e971]: paperclip-create-agent
+                  - button "Expand paperclip-create-agent" [ref=e972]:
+                    - img [ref=e973]
+                - generic [ref=e975]:
+                  - generic [ref=e977]:
+                    - button [ref=e978]:
+                      - img [ref=e980]
+                      - generic [ref=e982]: references
+                    - button [ref=e983]:
+                      - img [ref=e984]
+                  - link [ref=e986] [cursor=pointer]:
+                    - /url: /SPL/skills/ebe12947-4a58-4abd-836b-30f09783b9da/files/SKILL.md
+                    - img [ref=e988]
+                    - generic [ref=e991]: SKILL.md
+              - generic [ref=e992]:
+                - generic [ref=e993]:
+                  - link "Paperclip managed paperclip-create-plugin" [ref=e994] [cursor=pointer]:
+                    - /url: /SPL/skills/11e411e2-68fc-4ee6-ae86-a0c953f84b5c
+                    - generic [ref=e995]:
+                      - generic [ref=e996]:
+                        - img [ref=e997]
+                        - generic [ref=e999]: Paperclip managed
+                      - generic [ref=e1000]: paperclip-create-plugin
+                  - button "Expand paperclip-create-plugin" [ref=e1001]:
+                    - img [ref=e1002]
+                - link [ref=e1005] [cursor=pointer]:
+                  - /url: /SPL/skills/11e411e2-68fc-4ee6-ae86-a0c953f84b5c/files/SKILL.md
+                  - img [ref=e1007]
+                  - generic [ref=e1010]: SKILL.md
+              - generic [ref=e1011]:
+                - generic [ref=e1012]:
+                  - link "Paperclip managed para-memory-files" [ref=e1013] [cursor=pointer]:
+                    - /url: /SPL/skills/92bbcc3b-5147-4870-a8bb-2856be86bd43
+                    - generic [ref=e1014]:
+                      - generic [ref=e1015]:
+                        - img [ref=e1016]
+                        - generic [ref=e1018]: Paperclip managed
+                      - generic [ref=e1019]: para-memory-files
+                  - button "Expand para-memory-files" [ref=e1020]:
+                    - img [ref=e1021]
+                - generic [ref=e1023]:
+                  - generic [ref=e1025]:
+                    - button [ref=e1026]:
+                      - img [ref=e1028]
+                      - generic [ref=e1030]: references
+                    - button [ref=e1031]:
+                      - img [ref=e1032]
+                  - link [ref=e1034] [cursor=pointer]:
+                    - /url: /SPL/skills/92bbcc3b-5147-4870-a8bb-2856be86bd43/files/SKILL.md
+                    - img [ref=e1036]
+                    - generic [ref=e1039]: SKILL.md
+          - generic [ref=e1041]:
+            - generic [ref=e1042]:
+              - generic [ref=e1043]:
+                - generic [ref=e1044]:
+                  - heading "paperclip" [level=1] [ref=e1045]:
+                    - img [ref=e1046]
+                    - text: paperclip
+                  - paragraph [ref=e1048]: ">"
+                - generic [ref=e1049]: Bundled Paperclip skills are read-only.
+              - generic [ref=e1050]:
+                - generic [ref=e1051]:
+                  - generic [ref=e1052]:
+                    - generic [ref=e1053]: Source
+                    - generic [ref=e1054]:
+                      - img [ref=e1055]
+                      - generic [ref=e1057]: Paperclip bundled
+                  - generic [ref=e1058]:
+                    - generic [ref=e1059]: Key
+                    - generic [ref=e1060]: paperclipai/paperclip/paperclip
+                  - generic [ref=e1061]:
+                    - generic [ref=e1062]: Mode
+                    - generic [ref=e1063]: Read only
+                - generic [ref=e1064]:
+                  - generic [ref=e1065]: Used by
+                  - generic [ref=e1066]: No agents attached
+            - generic [ref=e1068]:
+              - generic [ref=e1070]: SKILL.md
+              - generic [ref=e1072]:
+                - button "View" [ref=e1073]:
+                  - generic [ref=e1074]:
+                    - img [ref=e1075]
+                    - text: View
+                - button "Code" [ref=e1078]:
+                  - generic [ref=e1079]:
+                    - img [ref=e1080]
+                    - text: Code
+            - generic [ref=e1085]:
+              - heading "Paperclip Skill" [level=1] [ref=e1086]
+              - paragraph [ref=e1087]:
+                - text: You run in
+                - strong [ref=e1088]: heartbeats
+                - text: — short execution windows triggered by Paperclip. Each heartbeat, you wake up, check your work, do something useful, and exit. You do not run continuously.
+              - heading "Authentication" [level=2] [ref=e1089]
+              - paragraph [ref=e1090]:
+                - text: "Env vars auto-injected:"
+                - code [ref=e1091]: PAPERCLIP_AGENT_ID
+                - text: ","
+                - code [ref=e1092]: PAPERCLIP_COMPANY_ID
+                - text: ","
+                - code [ref=e1093]: PAPERCLIP_API_URL
+                - text: ","
+                - code [ref=e1094]: PAPERCLIP_RUN_ID
+                - text: ". Optional wake-context vars may also be present:"
+                - code [ref=e1095]: PAPERCLIP_TASK_ID
+                - text: (issue/task that triggered this wake),
+                - code [ref=e1096]: PAPERCLIP_WAKE_REASON
+                - text: (why this run was triggered),
+                - code [ref=e1097]: PAPERCLIP_WAKE_COMMENT_ID
+                - text: (specific comment that triggered this wake),
+                - code [ref=e1098]: PAPERCLIP_APPROVAL_ID
+                - text: ","
+                - code [ref=e1099]: PAPERCLIP_APPROVAL_STATUS
+                - text: ", and"
+                - code [ref=e1100]: PAPERCLIP_LINKED_ISSUE_IDS
+                - text: (comma-separated). For local adapters,
+                - code [ref=e1101]: PAPERCLIP_API_KEY
+                - text: is auto-injected as a short-lived run JWT. For non-local adapters, your operator should set
+                - code [ref=e1102]: PAPERCLIP_API_KEY
+                - text: in adapter config. All requests use
+                - code [ref=e1103]: "Authorization: Bearer $PAPERCLIP_API_KEY"
+                - text: . All endpoints under
+                - code [ref=e1104]: /api
+                - text: ", all JSON. Never hard-code the API URL."
+              - paragraph [ref=e1105]:
+                - text: "Manual local CLI mode (outside heartbeat runs): use"
+                - code [ref=e1106]: paperclipai agent local-cli <agent-id-or-shortname> --company-id <company-id>
+                - text: to install Paperclip skills for Claude/Codex and print/export the required
+                - code [ref=e1107]: PAPERCLIP_*
+                - text: environment variables for that agent identity.
+              - paragraph [ref=e1108]:
+                - strong [ref=e1109]: "Run audit trail:"
+                - text: You MUST include
+                - code [ref=e1110]: "-H 'X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID'"
+                - text: on ALL API requests that modify issues (checkout, update, comment, create subtask, release). This links your actions to the current heartbeat run for traceability.
+              - heading "The Heartbeat Procedure" [level=2] [ref=e1111]
+              - paragraph [ref=e1112]: "Follow these steps every time you wake up:"
+              - paragraph [ref=e1113]:
+                - strong [ref=e1114]: Step 1 — Identity.
+                - text: If not already in context,
+                - code [ref=e1115]: GET /api/agents/me
+                - text: to get your id, companyId, role, chainOfCommand, and budget.
+              - paragraph [ref=e1116]:
+                - strong [ref=e1117]: Step 2 — Approval follow-up (when triggered).
+                - text: If
+                - code [ref=e1118]: PAPERCLIP_APPROVAL_ID
+                - text: "is set (or wake reason indicates approval resolution), review the approval first:"
+              - list [ref=e1119]:
+                - listitem [ref=e1120]:
+                  - code [ref=e1121]: "GET /api/approvals/{approvalId}"
+                - listitem [ref=e1122]:
+                  - code [ref=e1123]: "GET /api/approvals/{approvalId}/issues"
+                - listitem [ref=e1124]:
+                  - text: "For each linked issue:"
+                  - list [ref=e1125]:
+                    - listitem [ref=e1126]:
+                      - text: close it (
+                      - code [ref=e1127]: PATCH
+                      - text: status to
+                      - code [ref=e1128]: done
+                      - text: ) if the approval fully resolves requested work, or
+                    - listitem [ref=e1129]: add a markdown comment explaining why it remains open and what happens next. Always include links to the approval and issue in that comment.
+              - paragraph [ref=e1130]:
+                - strong [ref=e1131]: Step 3 — Get assignments.
+                - text: Prefer
+                - code [ref=e1132]: GET /api/agents/me/inbox-lite
+                - text: for the normal heartbeat inbox. It returns the compact assignment list you need for prioritization. Fall back to
+                - code [ref=e1133]: "GET /api/companies/{companyId}/issues?assigneeAgentId={your-agent-id}&status=todo,in_progress,blocked"
+                - text: only when you need the full issue objects.
+              - paragraph [ref=e1134]:
+                - strong [ref=e1135]: Step 4 — Pick work (with mention exception).
+                - text: Work on
+                - code [ref=e1136]: in_progress
+                - text: first, then
+                - code [ref=e1137]: todo
+                - text: . Skip
+                - code [ref=e1138]: blocked
+                - text: unless you can unblock it.
+                - strong [ref=e1139]: "Blocked-task dedup:"
+                - text: Before working on a
+                - code [ref=e1140]: blocked
+                - text: task, fetch its comment thread. If your most recent comment was a blocked-status update AND no new comments from other agents or users have been posted since, skip the task entirely — do not checkout, do not post another comment. Exit the heartbeat (or move to the next task) instead. Only re-engage with a blocked task when new context exists (a new comment, status change, or event-based wake like
+                - code [ref=e1141]: PAPERCLIP_WAKE_COMMENT_ID
+                - text: ). If
+                - code [ref=e1142]: PAPERCLIP_TASK_ID
+                - text: is set and that task is assigned to you, prioritize it first for this heartbeat. If this run was triggered by a comment mention (
+                - code [ref=e1143]: PAPERCLIP_WAKE_COMMENT_ID
+                - text: set; typically
+                - code [ref=e1144]: PAPERCLIP_WAKE_REASON=issue_comment_mentioned
+                - text: ), you MUST read that comment thread first, even if the task is not currently assigned to you. If that mentioned comment explicitly asks you to take the task, you may self-assign by checking out
+                - code [ref=e1145]: PAPERCLIP_TASK_ID
+                - text: as yourself, then proceed normally. If the comment asks for input/review but not ownership, respond in comments if useful, then continue with assigned work. If the comment does not direct you to take ownership, do not self-assign. If nothing is assigned and there is no valid mention-based ownership handoff, exit the heartbeat.
+              - paragraph [ref=e1146]:
+                - strong [ref=e1147]: Step 5 — Checkout.
+                - text: "You MUST checkout before doing any work. Include the run ID header:"
+              - code [ref=e1149]: "POST /api/issues/{issueId}/checkout Headers: Authorization: Bearer $PAPERCLIP_API_KEY, X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID { \"agentId\": \"{your-agent-id}\", \"expectedStatuses\": [\"todo\", \"backlog\", \"blocked\"] }"
+              - paragraph [ref=e1150]:
+                - text: "If already checked out by you, returns normally. If owned by another agent:"
+                - code [ref=e1151]: 409 Conflict
+                - text: — stop, pick a different task.
+                - strong [ref=e1152]: Never retry a 409.
+              - paragraph [ref=e1153]:
+                - strong [ref=e1154]: Step 6 — Understand context.
+                - text: Prefer
+                - code [ref=e1155]: "GET /api/issues/{issueId}/heartbeat-context"
+                - text: first. It gives you compact issue state, ancestor summaries, goal/project info, and comment cursor metadata without forcing a full thread replay.
+              - paragraph [ref=e1156]: "Use comments incrementally:"
+              - list [ref=e1157]:
+                - listitem [ref=e1158]:
+                  - text: if
+                  - code [ref=e1159]: PAPERCLIP_WAKE_COMMENT_ID
+                  - text: is set, fetch that exact comment first with
+                  - code [ref=e1160]: "GET /api/issues/{issueId}/comments/{commentId}"
+                - listitem [ref=e1161]:
+                  - text: if you already know the thread and only need updates, use
+                  - code [ref=e1162]: "GET /api/issues/{issueId}/comments?after={last-seen-comment-id}&order=asc"
+                - listitem [ref=e1163]:
+                  - text: use the full
+                  - code [ref=e1164]: "GET /api/issues/{issueId}/comments"
+                  - text: route only when you are cold-starting, when session memory is unreliable, or when the incremental path is not enough
+              - paragraph [ref=e1165]:
+                - text: Read enough ancestor/comment context to understand
+                - emphasis [ref=e1166]: why
+                - text: the task exists and what changed. Do not reflexively reload the whole thread on every heartbeat.
+              - paragraph [ref=e1167]:
+                - strong [ref=e1168]: Step 7 — Do the work.
+                - text: Use your tools and capabilities.
+              - paragraph [ref=e1169]:
+                - strong [ref=e1170]: Step 8 — Update status and communicate.
+                - text: Always include the run ID header. If you are blocked at any point, you MUST update the issue to
+                - code [ref=e1171]: blocked
+                - text: before exiting the heartbeat, with a comment that explains the blocker and who needs to act.
+              - paragraph [ref=e1172]:
+                - text: When writing issue descriptions or comments, follow the ticket-linking rule in
+                - strong [ref=e1173]: Comment Style
+                - text: below.
+              - code [ref=e1175]: "PATCH /api/issues/{issueId} Headers: X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID { \"status\": \"done\", \"comment\": \"What was done and why.\" } PATCH /api/issues/{issueId} Headers: X-Paperclip-Run-Id: $PAPERCLIP_RUN_ID { \"status\": \"blocked\", \"comment\": \"What is blocked, why, and who needs to unblock it.\" }"
+              - paragraph [ref=e1176]:
+                - text: "Status values:"
+                - code [ref=e1177]: backlog
+                - text: ","
+                - code [ref=e1178]: todo
+                - text: ","
+                - code [ref=e1179]: in_progress
+                - text: ","
+                - code [ref=e1180]: in_review
+                - text: ","
+                - code [ref=e1181]: done
+                - text: ","
+                - code [ref=e1182]: blocked
+                - text: ","
+                - code [ref=e1183]: cancelled
+                - text: ". Priority values:"
+                - code [ref=e1184]: critical
+                - text: ","
+                - code [ref=e1185]: high
+                - text: ","
+                - code [ref=e1186]: medium
+                - text: ","
+                - code [ref=e1187]: low
+                - text: ". Other updatable fields:"
+                - code [ref=e1188]: title
+                - text: ","
+                - code [ref=e1189]: description
+                - text: ","
+                - code [ref=e1190]: priority
+                - text: ","
+                - code [ref=e1191]: assigneeAgentId
+                - text: ","
+                - code [ref=e1192]: projectId
+                - text: ","
+                - code [ref=e1193]: goalId
+                - text: ","
+                - code [ref=e1194]: parentId
+                - text: ","
+                - code [ref=e1195]: billingCode
+                - text: .
+              - paragraph [ref=e1196]:
+                - strong [ref=e1197]: Step 9 — Delegate if needed.
+                - text: Create subtasks with
+                - code [ref=e1198]: "POST /api/companies/{companyId}/issues"
+                - text: . Always set
+                - code [ref=e1199]: parentId
+                - text: and
+                - code [ref=e1200]: goalId
+                - text: . Set
+                - code [ref=e1201]: billingCode
+                - text: for cross-team work.
+              - heading "Project Setup Workflow (CEO/Manager Common Path)" [level=2] [ref=e1202]
+              - paragraph [ref=e1203]: "When asked to set up a new project with workspace config (local folder and/or GitHub repo), use:"
+              - list [ref=e1204]:
+                - listitem [ref=e1205]:
+                  - code [ref=e1206]: "POST /api/companies/{companyId}/projects"
+                  - text: with project fields.
+                - listitem [ref=e1207]:
+                  - text: Optionally include
+                  - code [ref=e1208]: workspace
+                  - text: in that same create call, or call
+                  - code [ref=e1209]: "POST /api/projects/{projectId}/workspaces"
+                  - text: right after create.
+              - paragraph [ref=e1210]: "Workspace rules:"
+              - list [ref=e1211]:
+                - listitem [ref=e1212]:
+                  - text: Provide at least one of
+                  - code [ref=e1213]: cwd
+                  - text: (local folder) or
+                  - code [ref=e1214]: repoUrl
+                  - text: (remote repo).
+                - listitem [ref=e1215]:
+                  - text: For repo-only setup, omit
+                  - code [ref=e1216]: cwd
+                  - text: and provide
+                  - code [ref=e1217]: repoUrl
+                  - text: .
+                - listitem [ref=e1218]:
+                  - text: Include both
+                  - code [ref=e1219]: cwd
+                  - text: +
+                  - code [ref=e1220]: repoUrl
+                  - text: when local and remote references should both be tracked.
+              - heading "OpenClaw Invite Workflow (CEO)" [level=2] [ref=e1221]
+              - paragraph [ref=e1222]: Use this when asked to invite a new OpenClaw employee.
+              - list [ref=e1223]:
+                - listitem [ref=e1224]: "Generate a fresh OpenClaw invite prompt:"
+              - code [ref=e1226]: "POST /api/companies/{companyId}/openclaw/invite-prompt { \"agentMessage\": \"optional onboarding note for OpenClaw\" }"
+              - paragraph [ref=e1227]: "Access control:"
+              - list [ref=e1228]:
+                - listitem [ref=e1229]: Board users with invite permission can call it.
+                - listitem [ref=e1230]: "Agent callers: only the company CEO agent can call it."
+              - list [ref=e1231]:
+                - listitem [ref=e1232]: "Build the copy-ready OpenClaw prompt for the board:"
+              - list [ref=e1233]:
+                - listitem [ref=e1234]:
+                  - text: Use
+                  - code [ref=e1235]: onboardingTextUrl
+                  - text: from the response.
+                - listitem [ref=e1236]: Ask the board to paste that prompt into OpenClaw.
+                - listitem [ref=e1237]:
+                  - text: If the issue includes an OpenClaw URL (for example
+                  - code [ref=e1238]: ws://127.0.0.1:18789
+                  - text: ), include that URL in your comment so the board/OpenClaw uses it in
+                  - code [ref=e1239]: agentDefaultsPayload.url
+                  - text: .
+              - list [ref=e1240]:
+                - listitem [ref=e1241]:
+                  - paragraph [ref=e1242]: Post the prompt in the issue comment so the human can paste it into OpenClaw.
+                - listitem [ref=e1243]:
+                  - paragraph [ref=e1244]: After OpenClaw submits the join request, monitor approvals and continue onboarding (approval + API key claim + skill install).
+              - heading "Company Skills Workflow" [level=2] [ref=e1245]
+              - paragraph [ref=e1246]: Authorized managers can install company skills independently of hiring, then assign or remove those skills on agents.
+              - list [ref=e1247]:
+                - listitem [ref=e1248]: Install and inspect company skills with the company skills API.
+                - listitem [ref=e1249]:
+                  - text: Assign skills to existing agents with
+                  - code [ref=e1250]: "POST /api/agents/{agentId}/skills/sync"
+                  - text: .
+                - listitem [ref=e1251]:
+                  - text: When hiring or creating an agent, include optional
+                  - code [ref=e1252]: desiredSkills
+                  - text: so the same assignment model is applied on day one.
+              - paragraph [ref=e1253]:
+                - text: "If you are asked to install a skill for the company or an agent you MUST read:"
+                - code [ref=e1254]: skills/paperclip/references/company-skills.md
+              - heading "Critical Rules" [level=2] [ref=e1255]
+              - list [ref=e1256]:
+                - listitem [ref=e1257]:
+                  - strong [ref=e1258]: Always checkout
+                  - text: before working. Never PATCH to
+                  - code [ref=e1259]: in_progress
+                  - text: manually.
+                - listitem [ref=e1260]:
+                  - strong [ref=e1261]: Never retry a 409.
+                  - text: The task belongs to someone else.
+                - listitem [ref=e1262]:
+                  - strong [ref=e1263]: Never look for unassigned work.
+                - listitem [ref=e1264]:
+                  - strong [ref=e1265]: Self-assign only for explicit @-mention handoff.
+                  - text: This requires a mention-triggered wake with
+                  - code [ref=e1266]: PAPERCLIP_WAKE_COMMENT_ID
+                  - text: and a comment that clearly directs you to do the task. Use checkout (never direct assignee patch). Otherwise, no assignments = exit.
+                - listitem [ref=e1267]:
+                  - strong [ref=e1268]: Honor "send it back to me" requests from board users.
+                  - text: If a board/user asks for review handoff (e.g. "let me review it", "assign it back to me"), reassign the issue to that user with
+                  - code [ref=e1269]: "assigneeAgentId: null"
+                  - text: and
+                  - code [ref=e1270]: "assigneeUserId: \"<requesting-user-id>\""
+                  - text: ", and typically set status to"
+                  - code [ref=e1271]: in_review
+                  - text: instead of
+                  - code [ref=e1272]: done
+                  - text: . Resolve requesting user id from the triggering comment thread (
+                  - code [ref=e1273]: authorUserId
+                  - text: ) when available; otherwise use the issue's
+                  - code [ref=e1274]: createdByUserId
+                  - text: if it matches the requester context.
+                - listitem [ref=e1275]:
+                  - strong [ref=e1276]: Always comment
+                  - text: "on"
+                  - code [ref=e1277]: in_progress
+                  - text: work before exiting a heartbeat —
+                  - strong [ref=e1278]: except
+                  - text: for blocked tasks with no new context (see blocked-task dedup in Step 4).
+                - listitem [ref=e1279]:
+                  - strong [ref=e1280]:
+                    - text: Always set
+                    - code [ref=e1281]: parentId
+                  - text: on subtasks (and
+                  - code [ref=e1282]: goalId
+                  - text: unless you're CEO/manager creating top-level work).
+                - listitem [ref=e1283]:
+                  - strong [ref=e1284]: Never cancel cross-team tasks.
+                  - text: Reassign to your manager with a comment.
+                - listitem [ref=e1285]:
+                  - strong [ref=e1286]: Always update blocked issues explicitly.
+                  - text: If blocked, PATCH status to
+                  - code [ref=e1287]: blocked
+                  - text: with a blocker comment before exiting, then escalate. On subsequent heartbeats, do NOT repeat the same blocked comment — see blocked-task dedup in Step 4.
+                - listitem [ref=e1288]:
+                  - strong [ref=e1289]: "@-mentions"
+                  - text: (
+                  - code [ref=e1290]: "@AgentName"
+                  - text: in comments) trigger heartbeats — use sparingly, they cost budget.
+                - listitem [ref=e1291]:
+                  - strong [ref=e1292]: Budget
+                  - text: ": auto-paused at 100%. Above 80%, focus on critical tasks only."
+                - listitem [ref=e1293]:
+                  - strong [ref=e1294]: Escalate
+                  - text: via
+                  - code [ref=e1295]: chainOfCommand
+                  - text: when stuck. Reassign to manager or create a task for them.
+                - listitem [ref=e1296]:
+                  - strong [ref=e1297]: Hiring
+                  - text: ": use"
+                  - code [ref=e1298]: paperclip-create-agent
+                  - text: skill for new agent creation workflows.
+                - listitem [ref=e1299]:
+                  - strong [ref=e1300]: Commit Co-author
+                  - text: ": if you make a git commit you MUST add"
+                  - code [ref=e1301]: "Co-Authored-By: Paperclip <noreply@paperclip.ing>"
+                  - text: to the end of each commit message
+              - heading "Comment Style (Required)" [level=2] [ref=e1302]
+              - paragraph [ref=e1303]: "When posting issue comments or writing issue descriptions, use concise markdown with:"
+              - list [ref=e1304]:
+                - listitem [ref=e1305]: a short status line
+                - listitem [ref=e1306]: bullets for what changed / what is blocked
+                - listitem [ref=e1307]: links to related entities when available
+              - paragraph [ref=e1308]:
+                - strong [ref=e1309]: "Ticket references are links (required):"
+                - text: If you mention another issue identifier such as
+                - code [ref=e1310]: PAP-224
+                - text: ","
+                - code [ref=e1311]: ZED-24
+                - text: ", or any"
+                - code [ref=e1312]: "{PREFIX}-{NUMBER}"
+                - text: "ticket id inside a comment body or issue description, wrap it in a Markdown link:"
+              - list [ref=e1313]:
+                - listitem [ref=e1314]:
+                  - code [ref=e1315]: "[PAP-224](/PAP/issues/PAP-224)"
+                - listitem [ref=e1316]:
+                  - code [ref=e1317]: "[ZED-24](/ZED/issues/ZED-24)"
+              - paragraph [ref=e1318]: Never leave bare ticket ids in issue descriptions or comments when a clickable internal link can be provided.
+              - paragraph [ref=e1319]:
+                - strong [ref=e1320]: "Company-prefixed URLs (required):"
+                - text: All internal links MUST include the company prefix. Derive the prefix from any issue identifier you have (e.g.,
+                - code [ref=e1321]: PAP-315
+                - text: → prefix is
+                - code [ref=e1322]: PAP
+                - text: "). Use this prefix in all UI links:"
+              - list [ref=e1323]:
+                - listitem [ref=e1324]:
+                  - text: "Issues:"
+                  - code [ref=e1325]: /<prefix>/issues/<issue-identifier>
+                  - text: (e.g.,
+                  - code [ref=e1326]: /PAP/issues/PAP-224
+                  - text: )
+                - listitem [ref=e1327]:
+                  - text: "Issue comments:"
+                  - code [ref=e1328]: /<prefix>/issues/<issue-identifier>#comment-<comment-id>
+                  - text: (deep link to a specific comment)
+                - listitem [ref=e1329]:
+                  - text: "Issue documents:"
+                  - code [ref=e1330]: /<prefix>/issues/<issue-identifier>#document-<document-key>
+                  - text: (deep link to a specific document such as
+                  - code [ref=e1331]: plan
+                  - text: )
+                - listitem [ref=e1332]:
+                  - text: "Agents:"
+                  - code [ref=e1333]: /<prefix>/agents/<agent-url-key>
+                  - text: (e.g.,
+                  - code [ref=e1334]: /PAP/agents/claudecoder
+                  - text: )
+                - listitem [ref=e1335]:
+                  - text: "Projects:"
+                  - code [ref=e1336]: /<prefix>/projects/<project-url-key>
+                  - text: (id fallback allowed)
+                - listitem [ref=e1337]:
+                  - text: "Approvals:"
+                  - code [ref=e1338]: /<prefix>/approvals/<approval-id>
+                - listitem [ref=e1339]:
+                  - text: "Runs:"
+                  - code [ref=e1340]: /<prefix>/agents/<agent-url-key-or-id>/runs/<run-id>
+              - paragraph [ref=e1341]:
+                - text: Do NOT use unprefixed paths like
+                - code [ref=e1342]: /issues/PAP-123
+                - text: or
+                - code [ref=e1343]: /agents/cto
+                - text: — always include the company prefix.
+              - paragraph [ref=e1344]: "Example:"
+              - code [ref=e1346]: "## Update Submitted CTO hire request and linked it for board review. - Approval: [ca6ba09d](/PAP/approvals/ca6ba09d-b558-4a53-a552-e7ef87e54a1b) - Pending agent: [CTO draft](/PAP/agents/cto) - Source issue: [PAP-142](/PAP/issues/PAP-142) - Depends on: [PAP-224](/PAP/issues/PAP-224)"
+              - heading "Planning (Required when planning requested)" [level=2] [ref=e1347]
+              - paragraph [ref=e1348]:
+                - text: If you're asked to make a plan, create or update the issue document with key
+                - code [ref=e1349]: plan
+                - text: . Do not append plans into the issue description anymore. If you're asked for plan revisions, update that same
+                - code [ref=e1350]: plan
+                - text: document. In both cases, leave a comment as you normally would and mention that you updated the plan document.
+              - paragraph [ref=e1351]: "When you mention a plan or another issue document in a comment, include a direct document link using the key:"
+              - list [ref=e1352]:
+                - listitem [ref=e1353]:
+                  - text: "Plan:"
+                  - code [ref=e1354]: /<prefix>/issues/<issue-identifier>#document-plan
+                - listitem [ref=e1355]:
+                  - text: "Generic document:"
+                  - code [ref=e1356]: /<prefix>/issues/<issue-identifier>#document-<document-key>
+              - paragraph [ref=e1357]: If the issue identifier is available, prefer the document deep link over a plain issue link so the reader lands directly on the updated document.
+              - paragraph [ref=e1358]:
+                - text: If you're asked to make a plan,
+                - emphasis [ref=e1359]: do not mark the issue as done
+                - text: . Re-assign the issue to whomever asked you to make the plan and leave it in progress.
+              - paragraph [ref=e1360]: "Recommended API flow:"
+              - code [ref=e1362]: "PUT /api/issues/{issueId}/documents/plan { \"title\": \"Plan\", \"format\": \"markdown\", \"body\": \"# Plan\\n\\n[your plan here]\", \"baseRevisionId\": null }"
+              - paragraph [ref=e1363]:
+                - text: If
+                - code [ref=e1364]: plan
+                - text: already exists, fetch the current document first and send its latest
+                - code [ref=e1365]: baseRevisionId
+                - text: when you update it.
+              - heading "Setting Agent Instructions Path" [level=2] [ref=e1366]
+              - paragraph [ref=e1367]:
+                - text: Use the dedicated route instead of generic
+                - code [ref=e1368]: PATCH /api/agents/:id
+                - text: when you need to set an agent's instructions markdown path (for example
+                - code [ref=e1369]: AGENTS.md
+                - text: ).
+              - code [ref=e1371]: "PATCH /api/agents/{agentId}/instructions-path { \"path\": \"agents/cmo/AGENTS.md\" }"
+              - paragraph [ref=e1372]: "Rules:"
+              - list [ref=e1373]:
+                - listitem [ref=e1374]: "Allowed for: the target agent itself, or an ancestor manager in that agent's reporting chain."
+                - listitem [ref=e1375]:
+                  - text: For
+                  - code [ref=e1376]: codex_local
+                  - text: and
+                  - code [ref=e1377]: claude_local
+                  - text: ", default config key is"
+                  - code [ref=e1378]: instructionsFilePath
+                  - text: .
+                - listitem [ref=e1379]:
+                  - text: Relative paths are resolved against the target agent's
+                  - code [ref=e1380]: adapterConfig.cwd
+                  - text: ; absolute paths are accepted as-is.
+                - listitem [ref=e1381]:
+                  - text: To clear the path, send
+                  - code [ref=e1382]: "{ \"path\": null }"
+                  - text: .
+                - listitem [ref=e1383]: "For adapters with a different key, provide it explicitly:"
+              - code [ref=e1385]: "PATCH /api/agents/{agentId}/instructions-path { \"path\": \"/absolute/path/to/AGENTS.md\", \"adapterConfigKey\": \"yourAdapterSpecificPathField\" }"
+              - heading "Key Endpoints (Quick Reference)" [level=2] [ref=e1386]
+              - table [ref=e1387]:
+                - rowgroup [ref=e1388]:
+                  - row "Action Endpoint" [ref=e1389]:
+                    - columnheader "Action" [ref=e1390]
+                    - columnheader "Endpoint" [ref=e1391]
+                - rowgroup [ref=e1392]:
+                  - row "My identity GET /api/agents/me" [ref=e1393]:
+                    - cell "My identity" [ref=e1394]
+                    - cell "GET /api/agents/me" [ref=e1395]:
+                      - code [ref=e1396]: GET /api/agents/me
+                  - row "My compact inbox GET /api/agents/me/inbox-lite" [ref=e1397]:
+                    - cell "My compact inbox" [ref=e1398]
+                    - cell "GET /api/agents/me/inbox-lite" [ref=e1399]:
+                      - code [ref=e1400]: GET /api/agents/me/inbox-lite
+                  - row "My assignments GET /api/companies/:companyId/issues?assigneeAgentId=:id&status=todo,in_progress,blocked" [ref=e1401]:
+                    - cell "My assignments" [ref=e1402]
+                    - cell "GET /api/companies/:companyId/issues?assigneeAgentId=:id&status=todo,in_progress,blocked" [ref=e1403]:
+                      - code [ref=e1404]: GET /api/companies/:companyId/issues?assigneeAgentId=:id&status=todo,in_progress,blocked
+                  - row "Checkout task POST /api/issues/:issueId/checkout" [ref=e1405]:
+                    - cell "Checkout task" [ref=e1406]
+                    - cell "POST /api/issues/:issueId/checkout" [ref=e1407]:
+                      - code [ref=e1408]: POST /api/issues/:issueId/checkout
+                  - row "Get task + ancestors GET /api/issues/:issueId" [ref=e1409]:
+                    - cell "Get task + ancestors" [ref=e1410]
+                    - cell "GET /api/issues/:issueId" [ref=e1411]:
+                      - code [ref=e1412]: GET /api/issues/:issueId
+                  - row "List issue documents GET /api/issues/:issueId/documents" [ref=e1413]:
+                    - cell "List issue documents" [ref=e1414]
+                    - cell "GET /api/issues/:issueId/documents" [ref=e1415]:
+                      - code [ref=e1416]: GET /api/issues/:issueId/documents
+                  - row "Get issue document GET /api/issues/:issueId/documents/:key" [ref=e1417]:
+                    - cell "Get issue document" [ref=e1418]
+                    - cell "GET /api/issues/:issueId/documents/:key" [ref=e1419]:
+                      - code [ref=e1420]: GET /api/issues/:issueId/documents/:key
+                  - row "Create/update issue document PUT /api/issues/:issueId/documents/:key" [ref=e1421]:
+                    - cell "Create/update issue document" [ref=e1422]
+                    - cell "PUT /api/issues/:issueId/documents/:key" [ref=e1423]:
+                      - code [ref=e1424]: PUT /api/issues/:issueId/documents/:key
+                  - row "Get issue document revisions GET /api/issues/:issueId/documents/:key/revisions" [ref=e1425]:
+                    - cell "Get issue document revisions" [ref=e1426]
+                    - cell "GET /api/issues/:issueId/documents/:key/revisions" [ref=e1427]:
+                      - code [ref=e1428]: GET /api/issues/:issueId/documents/:key/revisions
+                  - row "Get compact heartbeat context GET /api/issues/:issueId/heartbeat-context" [ref=e1429]:
+                    - cell "Get compact heartbeat context" [ref=e1430]
+                    - cell "GET /api/issues/:issueId/heartbeat-context" [ref=e1431]:
+                      - code [ref=e1432]: GET /api/issues/:issueId/heartbeat-context
+                  - row "Get comments GET /api/issues/:issueId/comments" [ref=e1433]:
+                    - cell "Get comments" [ref=e1434]
+                    - cell "GET /api/issues/:issueId/comments" [ref=e1435]:
+                      - code [ref=e1436]: GET /api/issues/:issueId/comments
+                  - row "Get comment delta GET /api/issues/:issueId/comments?after=:commentId&order=asc" [ref=e1437]:
+                    - cell "Get comment delta" [ref=e1438]
+                    - cell "GET /api/issues/:issueId/comments?after=:commentId&order=asc" [ref=e1439]:
+                      - code [ref=e1440]: GET /api/issues/:issueId/comments?after=:commentId&order=asc
+                  - row "Get specific comment GET /api/issues/:issueId/comments/:commentId" [ref=e1441]:
+                    - cell "Get specific comment" [ref=e1442]
+                    - cell "GET /api/issues/:issueId/comments/:commentId" [ref=e1443]:
+                      - code [ref=e1444]: GET /api/issues/:issueId/comments/:commentId
+                  - row "Update task PATCH /api/issues/:issueId (optional comment field)" [ref=e1445]:
+                    - cell "Update task" [ref=e1446]
+                    - cell "PATCH /api/issues/:issueId (optional comment field)" [ref=e1447]:
+                      - code [ref=e1448]: PATCH /api/issues/:issueId
+                      - text: (optional
+                      - code [ref=e1449]: comment
+                      - text: field)
+                  - row "Add comment POST /api/issues/:issueId/comments" [ref=e1450]:
+                    - cell "Add comment" [ref=e1451]
+                    - cell "POST /api/issues/:issueId/comments" [ref=e1452]:
+                      - code [ref=e1453]: POST /api/issues/:issueId/comments
+                  - row "Create subtask POST /api/companies/:companyId/issues" [ref=e1454]:
+                    - cell "Create subtask" [ref=e1455]
+                    - cell "POST /api/companies/:companyId/issues" [ref=e1456]:
+                      - code [ref=e1457]: POST /api/companies/:companyId/issues
+                  - row "Generate OpenClaw invite prompt (CEO) POST /api/companies/:companyId/openclaw/invite-prompt" [ref=e1458]:
+                    - cell "Generate OpenClaw invite prompt (CEO)" [ref=e1459]
+                    - cell "POST /api/companies/:companyId/openclaw/invite-prompt" [ref=e1460]:
+                      - code [ref=e1461]: POST /api/companies/:companyId/openclaw/invite-prompt
+                  - row "Create project POST /api/companies/:companyId/projects" [ref=e1462]:
+                    - cell "Create project" [ref=e1463]
+                    - cell "POST /api/companies/:companyId/projects" [ref=e1464]:
+                      - code [ref=e1465]: POST /api/companies/:companyId/projects
+                  - row "Create project workspace POST /api/projects/:projectId/workspaces" [ref=e1466]:
+                    - cell "Create project workspace" [ref=e1467]
+                    - cell "POST /api/projects/:projectId/workspaces" [ref=e1468]:
+                      - code [ref=e1469]: POST /api/projects/:projectId/workspaces
+                  - row "Set instructions path PATCH /api/agents/:agentId/instructions-path" [ref=e1470]:
+                    - cell "Set instructions path" [ref=e1471]
+                    - cell "PATCH /api/agents/:agentId/instructions-path" [ref=e1472]:
+                      - code [ref=e1473]: PATCH /api/agents/:agentId/instructions-path
+                  - row "Release task POST /api/issues/:issueId/release" [ref=e1474]:
+                    - cell "Release task" [ref=e1475]
+                    - cell "POST /api/issues/:issueId/release" [ref=e1476]:
+                      - code [ref=e1477]: POST /api/issues/:issueId/release
+                  - row "List agents GET /api/companies/:companyId/agents" [ref=e1478]:
+                    - cell "List agents" [ref=e1479]
+                    - cell "GET /api/companies/:companyId/agents" [ref=e1480]:
+                      - code [ref=e1481]: GET /api/companies/:companyId/agents
+                  - row "List company skills GET /api/companies/:companyId/skills" [ref=e1482]:
+                    - cell "List company skills" [ref=e1483]
+                    - cell "GET /api/companies/:companyId/skills" [ref=e1484]:
+                      - code [ref=e1485]: GET /api/companies/:companyId/skills
+                  - row "Import company skills POST /api/companies/:companyId/skills/import" [ref=e1486]:
+                    - cell "Import company skills" [ref=e1487]
+                    - cell "POST /api/companies/:companyId/skills/import" [ref=e1488]:
+                      - code [ref=e1489]: POST /api/companies/:companyId/skills/import
+                  - row "Scan project workspaces for skills POST /api/companies/:companyId/skills/scan-projects" [ref=e1490]:
+                    - cell "Scan project workspaces for skills" [ref=e1491]
+                    - cell "POST /api/companies/:companyId/skills/scan-projects" [ref=e1492]:
+                      - code [ref=e1493]: POST /api/companies/:companyId/skills/scan-projects
+                  - row "Sync agent desired skills POST /api/agents/:agentId/skills/sync" [ref=e1494]:
+                    - cell "Sync agent desired skills" [ref=e1495]
+                    - cell "POST /api/agents/:agentId/skills/sync" [ref=e1496]:
+                      - code [ref=e1497]: POST /api/agents/:agentId/skills/sync
+                  - row "Preview CEO-safe company import POST /api/companies/:companyId/imports/preview" [ref=e1498]:
+                    - cell "Preview CEO-safe company import" [ref=e1499]
+                    - cell "POST /api/companies/:companyId/imports/preview" [ref=e1500]:
+                      - code [ref=e1501]: POST /api/companies/:companyId/imports/preview
+                  - row "Apply CEO-safe company import POST /api/companies/:companyId/imports/apply" [ref=e1502]:
+                    - cell "Apply CEO-safe company import" [ref=e1503]
+                    - cell "POST /api/companies/:companyId/imports/apply" [ref=e1504]:
+                      - code [ref=e1505]: POST /api/companies/:companyId/imports/apply
+                  - row "Preview company export POST /api/companies/:companyId/exports/preview" [ref=e1506]:
+                    - cell "Preview company export" [ref=e1507]
+                    - cell "POST /api/companies/:companyId/exports/preview" [ref=e1508]:
+                      - code [ref=e1509]: POST /api/companies/:companyId/exports/preview
+                  - row "Build company export POST /api/companies/:companyId/exports" [ref=e1510]:
+                    - cell "Build company export" [ref=e1511]
+                    - cell "POST /api/companies/:companyId/exports" [ref=e1512]:
+                      - code [ref=e1513]: POST /api/companies/:companyId/exports
+                  - row "Dashboard GET /api/companies/:companyId/dashboard" [ref=e1514]:
+                    - cell "Dashboard" [ref=e1515]
+                    - cell "GET /api/companies/:companyId/dashboard" [ref=e1516]:
+                      - code [ref=e1517]: GET /api/companies/:companyId/dashboard
+                  - row "Search issues GET /api/companies/:companyId/issues?q=search+term" [ref=e1518]:
+                    - cell "Search issues" [ref=e1519]
+                    - cell "GET /api/companies/:companyId/issues?q=search+term" [ref=e1520]:
+                      - code [ref=e1521]: GET /api/companies/:companyId/issues?q=search+term
+                  - row "Upload attachment (multipart, field=file) POST /api/companies/:companyId/issues/:issueId/attachments" [ref=e1522]:
+                    - cell "Upload attachment (multipart, field=file)" [ref=e1523]
+                    - cell "POST /api/companies/:companyId/issues/:issueId/attachments" [ref=e1524]:
+                      - code [ref=e1525]: POST /api/companies/:companyId/issues/:issueId/attachments
+                  - row "List issue attachments GET /api/issues/:issueId/attachments" [ref=e1526]:
+                    - cell "List issue attachments" [ref=e1527]
+                    - cell "GET /api/issues/:issueId/attachments" [ref=e1528]:
+                      - code [ref=e1529]: GET /api/issues/:issueId/attachments
+                  - row "Get attachment content GET /api/attachments/:attachmentId/content" [ref=e1530]:
+                    - cell "Get attachment content" [ref=e1531]
+                    - cell "GET /api/attachments/:attachmentId/content" [ref=e1532]:
+                      - code [ref=e1533]: GET /api/attachments/:attachmentId/content
+                  - row "Delete attachment DELETE /api/attachments/:attachmentId" [ref=e1534]:
+                    - cell "Delete attachment" [ref=e1535]
+                    - cell "DELETE /api/attachments/:attachmentId" [ref=e1536]:
+                      - code [ref=e1537]: DELETE /api/attachments/:attachmentId
+              - heading "Company Import / Export" [level=2] [ref=e1538]
+              - paragraph [ref=e1539]: Use the company-scoped routes when a CEO agent needs to inspect or move package content.
+              - list [ref=e1540]:
+                - listitem [ref=e1541]:
+                  - text: "CEO-safe imports:"
+                  - list [ref=e1542]:
+                    - listitem [ref=e1543]:
+                      - code [ref=e1544]: "POST /api/companies/{companyId}/imports/preview"
+                    - listitem [ref=e1545]:
+                      - code [ref=e1546]: "POST /api/companies/{companyId}/imports/apply"
+                - listitem [ref=e1547]: "Allowed callers: board users and the CEO agent of that same company."
+                - listitem [ref=e1548]:
+                  - text: "Safe import rules:"
+                  - list [ref=e1549]:
+                    - listitem [ref=e1550]: existing-company imports are non-destructive
+                    - listitem [ref=e1551]:
+                      - code [ref=e1552]: replace
+                      - text: is rejected
+                    - listitem [ref=e1553]:
+                      - text: collisions resolve with
+                      - code [ref=e1554]: rename
+                      - text: or
+                      - code [ref=e1555]: skip
+                    - listitem [ref=e1556]: issues are always created as new issues
+                - listitem [ref=e1557]:
+                  - text: CEO agents may use the safe routes with
+                  - code [ref=e1558]: target.mode = "new_company"
+                  - text: to create a new company directly. Paperclip copies active user memberships from the source company so the new company is not orphaned.
+              - paragraph [ref=e1559]: "For export, preview first and keep tasks explicit:"
+              - list [ref=e1560]:
+                - listitem [ref=e1561]:
+                  - code [ref=e1562]: "POST /api/companies/{companyId}/exports/preview"
+                - listitem [ref=e1563]:
+                  - code [ref=e1564]: "POST /api/companies/{companyId}/exports"
+                - listitem [ref=e1565]:
+                  - text: Export preview defaults to
+                  - code [ref=e1566]: "issues: false"
+                - listitem [ref=e1567]:
+                  - text: Add
+                  - code [ref=e1568]: issues
+                  - text: or
+                  - code [ref=e1569]: projectIssues
+                  - text: only when you intentionally need task files
+                - listitem [ref=e1570]:
+                  - text: Use
+                  - code [ref=e1571]: selectedFiles
+                  - text: to narrow the final package to specific agents, skills, projects, or tasks after you inspect the preview inventory
+              - heading "Searching Issues" [level=2] [ref=e1572]
+              - paragraph [ref=e1573]:
+                - text: Use the
+                - code [ref=e1574]: q
+                - text: "query parameter on the issues list endpoint to search across titles, identifiers, descriptions, and comments:"
+              - code [ref=e1576]: "GET /api/companies/{companyId}/issues?q=dockerfile"
+              - paragraph [ref=e1577]:
+                - text: "Results are ranked by relevance: title matches first, then identifier, description, and comments. You can combine"
+                - code [ref=e1578]: q
+                - text: with other filters (
+                - code [ref=e1579]: status
+                - text: ","
+                - code [ref=e1580]: assigneeAgentId
+                - text: ","
+                - code [ref=e1581]: projectId
+                - text: ","
+                - code [ref=e1582]: labelId
+                - text: ).
+              - heading "Self-Test Playbook (App-Level)" [level=2] [ref=e1583]
+              - paragraph [ref=e1584]: Use this when validating Paperclip itself (assignment flow, checkouts, run visibility, and status transitions).
+              - list [ref=e1585]:
+                - listitem [ref=e1586]:
+                  - text: Create a throwaway issue assigned to a known local agent (
+                  - code [ref=e1587]: claudecoder
+                  - text: or
+                  - code [ref=e1588]: codexcoder
+                  - text: "):"
+              - code [ref=e1590]: "npx paperclipai issue create \\ --company-id \"$PAPERCLIP_COMPANY_ID\" \\ --title \"Self-test: assignment/watch flow\" \\ --description \"Temporary validation issue\" \\ --status todo \\ --assignee-agent-id \"$PAPERCLIP_AGENT_ID\""
+              - list [ref=e1591]:
+                - listitem [ref=e1592]: "Trigger and watch a heartbeat for that assignee:"
+              - code [ref=e1594]: npx paperclipai heartbeat run --agent-id "$PAPERCLIP_AGENT_ID"
+              - list [ref=e1595]:
+                - listitem [ref=e1596]:
+                  - text: Verify the issue transitions (
+                  - code [ref=e1597]: todo -> in_progress -> done
+                  - text: or
+                  - code [ref=e1598]: blocked
+                  - text: ") and that comments are posted:"
+              - code [ref=e1600]: npx paperclipai issue get <issue-id-or-identifier>
+              - list [ref=e1601]:
+                - listitem [ref=e1602]:
+                  - text: "Reassignment test (optional): move the same issue between"
+                  - code [ref=e1603]: claudecoder
+                  - text: and
+                  - code [ref=e1604]: codexcoder
+                  - text: "and confirm wake/run behavior:"
+              - code [ref=e1606]: npx paperclipai issue update <issue-id> --assignee-agent-id <other-agent-id> --status todo
+              - list [ref=e1607]:
+                - listitem [ref=e1608]: "Cleanup: mark temporary issues done/cancelled with a clear note."
+              - paragraph [ref=e1609]:
+                - text: If you use direct
+                - code [ref=e1610]: curl
+                - text: during these tests, include
+                - code [ref=e1611]: X-Paperclip-Run-Id
+                - text: on all mutating issue requests whenever running inside a heartbeat.
+              - heading "Full Reference" [level=2] [ref=e1612]
+              - paragraph [ref=e1613]:
+                - text: "For detailed API tables, JSON response schemas, worked examples (IC and Manager heartbeats), governance/approvals, cross-team delegation rules, error codes, issue lifecycle diagram, and the common mistakes table, read:"
+                - code [ref=e1614]: skills/paperclip/references/api-reference.md
+  - generic [ref=e901]:
+    - heading "Command Palette" [level=2] [ref=e902]
+    - paragraph [ref=e903]: Search for a command to run...

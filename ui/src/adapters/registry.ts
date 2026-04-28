@@ -9,6 +9,10 @@ import { piLocalUIAdapter } from "./pi-local";
 import { openClawGatewayUIAdapter } from "./openclaw-gateway";
 import { processUIAdapter } from "./process";
 import { httpUIAdapter } from "./http";
+import { openAIApiUIAdapter } from "./openai-api";
+import { anthropicApiUIAdapter } from "./anthropic-api";
+import { openRouterApiUIAdapter } from "./openrouter-api";
+import { gitHubCopilotUIAdapter } from "./github-copilot";
 
 const uiAdapters: UIAdapterModule[] = [
   claudeLocalUIAdapter,
@@ -21,6 +25,10 @@ const uiAdapters: UIAdapterModule[] = [
   openClawGatewayUIAdapter,
   processUIAdapter,
   httpUIAdapter,
+  openAIApiUIAdapter,
+  anthropicApiUIAdapter,
+  openRouterApiUIAdapter,
+  gitHubCopilotUIAdapter,
 ];
 
 const adaptersByType = new Map<string, UIAdapterModule>(

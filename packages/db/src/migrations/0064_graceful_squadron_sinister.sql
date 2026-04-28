@@ -1,0 +1,1 @@
+ALTER TABLE "departments" ADD COLUMN "mcp_keys" jsonb DEFAULT '[]'::jsonb;

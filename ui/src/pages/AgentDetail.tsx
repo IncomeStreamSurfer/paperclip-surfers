@@ -30,7 +30,7 @@ import { PageTabBar } from "../components/PageTabBar";
 import { adapterLabels, roleLabels, help } from "../components/agent-config-primitives";
 import { MarkdownEditor } from "../components/MarkdownEditor";
 import { assetsApi } from "../api/assets";
-import { getUIAdapter, buildTranscript } from "../adapters";
+import { getUIAdapter, buildTranscript, type TranscriptEntry } from "../adapters";
 import { StatusBadge } from "../components/StatusBadge";
 import { agentStatusDot, agentStatusDotDefault } from "../lib/status-colors";
 import { MarkdownBody } from "../components/MarkdownBody";
@@ -48,6 +48,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -70,15 +78,23 @@ import {
   Copy,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   ArrowLeft,
   HelpCircle,
   FolderOpen,
+  Camera,
+  CircleDot,
+  Activity,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { AgentIcon, AgentIconPicker } from "../components/AgentIconPicker";
+import { AvatarGeneratorPanel } from "../components/AvatarGeneratorPanel";
+import { RunTimelineView } from "../components/RunTimelineView";
 import { RunTranscriptView, type TranscriptMode } from "../components/transcript/RunTranscriptView";
+import { useLiveRunTranscripts } from "../components/transcript/useLiveRunTranscripts";
+import { latestActivityPreview } from "../components/ActiveAgentsPanel";
 import {
   isUuidLike,
   type Agent,
@@ -169,6 +185,7 @@ const sourceLabels: Record<string, string> = {
   assignment: "Assignment",
   on_demand: "On-demand",
   automation: "Automation",
+  replay: "Replay",
 };
 
 const LIVE_SCROLL_BOTTOM_TOLERANCE_PX = 32;
@@ -735,6 +752,34 @@ export function AgentDetail() {
     },
   });
 
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const updateAvatar = useMutation({
+    mutationFn: async (file: File) => {
+      if (!resolvedCompanyId) throw new Error("No company selected");
+      const asset = await assetsApi.uploadImage(resolvedCompanyId, file, `agents/${agentLookupRef}/avatar`);
+      return agentsApi.update(agentLookupRef, { avatarUrl: asset.contentPath }, resolvedCompanyId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(routeAgentRef) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agentLookupRef) });
+      if (resolvedCompanyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+      }
+    },
+  });
+
+  const clearAvatar = useMutation({
+    mutationFn: () => agentsApi.update(agentLookupRef, { avatarUrl: null }, resolvedCompanyId ?? undefined),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(routeAgentRef) });
+      queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agentLookupRef) });
+      if (resolvedCompanyId) {
+        queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+      }
+    },
+  });
+
   const resetTaskSession = useMutation({
     mutationFn: (taskKey: string | null) =>
       agentsApi.resetSession(agentLookupRef, taskKey, resolvedCompanyId ?? undefined),
@@ -819,15 +864,88 @@ export function AgentDetail() {
     <div className={cn("space-y-6", isMobile && showConfigActionBar && "pb-24")}>
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-3 min-w-0">
-          <AgentIconPicker
-            value={agent.icon}
-            onChange={(icon) => updateIcon.mutate(icon)}
-          >
-            <button className="shrink-0 flex items-center justify-center h-12 w-12 rounded-lg bg-accent hover:bg-accent/80 transition-colors">
-              <AgentIcon icon={agent.icon} className="h-6 w-6" />
-            </button>
-          </AgentIconPicker>
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="flex flex-col gap-1.5 shrink-0">
+          <div className="relative group">
+            {/* Hidden file input for avatar upload */}
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) updateAvatar.mutate(file);
+                e.target.value = "";
+              }}
+            />
+            {agent.avatarUrl ? (
+              /* When avatar is set: show image with camera overlay on hover */
+              <button
+                className="shrink-0 h-12 w-12 rounded-lg overflow-hidden relative"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Change avatar"
+              >
+                <AgentIcon
+                  icon={agent.icon}
+                  avatarUrl={agent.avatarUrl}
+                  className="h-12 w-12"
+                />
+                <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                  <Camera className="h-4 w-4 text-white" />
+                </span>
+              </button>
+            ) : (
+              /* When no avatar: icon picker with camera overlay */
+              <AgentIconPicker
+                value={agent.icon}
+                onChange={(icon) => updateIcon.mutate(icon)}
+              >
+                <button
+                  className="shrink-0 flex items-center justify-center h-12 w-12 rounded-lg bg-accent hover:bg-accent/80 transition-colors relative"
+                  title="Change icon"
+                >
+                  <AgentIcon icon={agent.icon} className="h-6 w-6" />
+                  <span className="absolute -bottom-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-background border border-border opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="h-3 w-3 text-muted-foreground" />
+                  </span>
+                </button>
+              </AgentIconPicker>
+            )}
+            {/* Upload photo button (always visible as small overlay) */}
+            {!agent.avatarUrl && (
+              <button
+                className="absolute -bottom-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-background border border-border hover:bg-accent transition-colors"
+                onClick={() => avatarInputRef.current?.click()}
+                title="Upload avatar photo"
+              >
+                <Camera className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
+            {/* Remove avatar button */}
+            {agent.avatarUrl && (
+              <button
+                className="absolute -bottom-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-background border border-border hover:bg-destructive/10 transition-colors"
+                onClick={() => clearAvatar.mutate()}
+                title="Remove avatar"
+              >
+                <XCircle className="h-3 w-3 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+          {/* AI avatar generator */}
+          <AvatarGeneratorPanel
+            agentId={agent.id}
+            companyId={resolvedCompanyId ?? undefined}
+            onGenerated={() => {
+              queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(routeAgentRef) });
+              queryClient.invalidateQueries({ queryKey: queryKeys.agents.detail(agentLookupRef) });
+              if (resolvedCompanyId) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.agents.list(resolvedCompanyId) });
+              }
+            }}
+          />
+          </div>
           <div className="min-w-0">
             <h2 className="text-2xl font-bold truncate">{agent.name}</h2>
             <p className="text-sm text-muted-foreground truncate">
@@ -1164,6 +1282,7 @@ function LatestRunCard({ runs, agentId }: { runs: HeartbeatRun[]; agentId: strin
             run.invocationSource === "timer" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
               : run.invocationSource === "assignment" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
               : run.invocationSource === "on_demand" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"
+              : run.invocationSource === "replay" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
               : "bg-muted text-muted-foreground"
           )}>
             {sourceLabels[run.invocationSource] ?? run.invocationSource}
@@ -2796,52 +2915,90 @@ function AgentSkillsTab({
 
 /* ---- Runs Tab ---- */
 
-function RunListItem({ run, isSelected, agentId }: { run: HeartbeatRun; isSelected: boolean; agentId: string }) {
+function runIssueId(run: HeartbeatRun): string | null {
+  const ctx = run.contextSnapshot;
+  if (!ctx || typeof ctx !== "object") return null;
+  const id = (ctx as Record<string, unknown>).issueId;
+  return typeof id === "string" && id ? id : null;
+}
+
+function RunListItem({
+  run,
+  isSelected,
+  agentId,
+  transcript,
+}: {
+  run: HeartbeatRun;
+  isSelected: boolean;
+  agentId: string;
+  transcript: import("../adapters").TranscriptEntry[];
+}) {
   const statusInfo = runStatusIcons[run.status] ?? { icon: Clock, color: "text-neutral-400" };
   const StatusIcon = statusInfo.icon;
   const metrics = runMetrics(run);
   const summary = run.resultJson
     ? String((run.resultJson as Record<string, unknown>).summary ?? (run.resultJson as Record<string, unknown>).result ?? "")
     : run.error ?? "";
+  const isLive = run.status === "running" || run.status === "queued";
+  const linkedIssueId = runIssueId(run);
 
   return (
-    <Link
-      to={isSelected ? `/agents/${agentId}/runs` : `/agents/${agentId}/runs/${run.id}`}
+    <div
       className={cn(
-        "flex flex-col gap-1 w-full px-3 py-2.5 text-left border-b border-border last:border-b-0 transition-colors no-underline text-inherit",
+        "flex flex-col w-full border-b border-border last:border-b-0 transition-colors",
         isSelected ? "bg-accent/40" : "hover:bg-accent/20",
       )}
     >
-      <div className="flex items-center gap-2">
-        <StatusIcon className={cn("h-3.5 w-3.5 shrink-0", statusInfo.color, run.status === "running" && "animate-spin")} />
-        <span className="font-mono text-xs text-muted-foreground">
-          {run.id.slice(0, 8)}
-        </span>
-        <span className={cn(
-          "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
-          run.invocationSource === "timer" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
-            : run.invocationSource === "assignment" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
-            : run.invocationSource === "on_demand" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"
-            : "bg-muted text-muted-foreground"
-        )}>
-          {sourceLabels[run.invocationSource] ?? run.invocationSource}
-        </span>
-        <span className="ml-auto text-[11px] text-muted-foreground shrink-0">
-          {relativeTime(run.createdAt)}
-        </span>
-      </div>
-      {summary && (
-        <span className="text-xs text-muted-foreground truncate pl-5.5">
-          {summary.slice(0, 60)}
-        </span>
-      )}
-      {(metrics.totalTokens > 0 || metrics.cost > 0) && (
-        <div className="flex items-center gap-2 pl-5.5 text-[11px] text-muted-foreground tabular-nums">
-          {metrics.totalTokens > 0 && <span>{formatTokens(metrics.totalTokens)} tok</span>}
-          {metrics.cost > 0 && <span>${metrics.cost.toFixed(3)}</span>}
+      <Link
+        to={isSelected ? `/agents/${agentId}/runs` : `/agents/${agentId}/runs/${run.id}`}
+        className="flex flex-col gap-1 w-full px-3 py-2.5 text-left no-underline text-inherit"
+      >
+        <div className="flex items-center gap-2">
+          <StatusIcon className={cn("h-3.5 w-3.5 shrink-0", statusInfo.color, run.status === "running" && "animate-spin")} />
+          <span className="font-mono text-xs text-muted-foreground">
+            {run.id.slice(0, 8)}
+          </span>
+          <span className={cn(
+            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
+            run.invocationSource === "timer" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+              : run.invocationSource === "assignment" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
+              : run.invocationSource === "on_demand" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"
+              : run.invocationSource === "replay" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+              : "bg-muted text-muted-foreground"
+          )}>
+            {sourceLabels[run.invocationSource] ?? run.invocationSource}
+          </span>
+          <span className="ml-auto text-[11px] text-muted-foreground shrink-0">
+            {relativeTime(run.createdAt)}
+          </span>
         </div>
-      )}
-    </Link>
+        {linkedIssueId && (
+          <div className="flex items-center gap-1.5 pl-5.5">
+            <CircleDot className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground truncate">
+              Issue {linkedIssueId.slice(0, 8)}
+            </span>
+          </div>
+        )}
+        {summary && (
+          <span className="text-xs text-muted-foreground truncate pl-5.5">
+            {summary.slice(0, 60)}
+          </span>
+        )}
+        {transcript.length > 0 && (
+          <span className="text-[11px] text-cyan-600 dark:text-cyan-400 truncate pl-5.5 flex items-center gap-1">
+            <Activity className={cn("h-2.5 w-2.5", isLive && "animate-pulse")} />
+            {latestActivityPreview(transcript) ?? (isLive ? "Working…" : "Recent activity")}
+          </span>
+        )}
+        {(metrics.totalTokens > 0 || metrics.cost > 0) && (
+          <div className="flex items-center gap-2 pl-5.5 text-[11px] text-muted-foreground tabular-nums">
+            {metrics.totalTokens > 0 && <span>{formatTokens(metrics.totalTokens)} tok</span>}
+            {metrics.cost > 0 && <span>${metrics.cost.toFixed(3)}</span>}
+          </div>
+        )}
+      </Link>
+    </div>
   );
 }
 
@@ -2861,6 +3018,31 @@ function RunsTab({
   adapterType: string;
 }) {
   const { isMobile } = useSidebar();
+  // Only pass active runs + the 10 most recent runs to useLiveRunTranscripts.
+  // Passing all historical runs triggers a parallel log-fetch for every run on mount.
+  const liveRuns = useMemo(() => {
+    const sorted = [...runs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const active = sorted.filter((r) => r.status === "running" || r.status === "queued");
+    const selected = [...new Map([...active, ...sorted.slice(0, 10)].map((r) => [r.id, r])).values()];
+    return selected.map((run) => ({
+      id: run.id,
+      status: run.status,
+      invocationSource: run.invocationSource,
+      triggerDetail: run.triggerDetail,
+      startedAt: run.startedAt ? new Date(run.startedAt).toISOString() : null,
+      finishedAt: run.finishedAt ? new Date(run.finishedAt).toISOString() : null,
+      createdAt: new Date(run.createdAt).toISOString(),
+      agentId: run.agentId,
+      agentName: "",
+      adapterType,
+      issueId: null,
+    }));
+  }, [runs, adapterType]);
+
+  const { transcriptByRun } = useLiveRunTranscripts({
+    runs: liveRuns,
+    companyId,
+  });
 
   if (runs.length === 0) {
     return <p className="text-sm text-muted-foreground">No runs yet.</p>;
@@ -2894,7 +3076,13 @@ function RunsTab({
     return (
       <div className="border border-border rounded-lg overflow-x-hidden">
         {sorted.map((run) => (
-          <RunListItem key={run.id} run={run} isSelected={false} agentId={agentRouteId} />
+          <RunListItem
+            key={run.id}
+            run={run}
+            isSelected={false}
+            agentId={agentRouteId}
+            transcript={transcriptByRun.get(run.id) ?? []}
+          />
         ))}
       </div>
     );
@@ -2906,11 +3094,17 @@ function RunsTab({
       {/* Left: run list — border stretches full height, content sticks */}
       <div className={cn(
         "shrink-0 border border-border rounded-lg",
-        selectedRun ? "w-72" : "w-full",
+        selectedRun ? "w-80" : "w-full",
       )}>
         <div className="sticky top-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 2rem)" }}>
         {sorted.map((run) => (
-          <RunListItem key={run.id} run={run} isSelected={run.id === effectiveRunId} agentId={agentRouteId} />
+          <RunListItem
+            key={run.id}
+            run={run}
+            isSelected={run.id === effectiveRunId}
+            agentId={agentRouteId}
+            transcript={transcriptByRun.get(run.id) ?? []}
+          />
         ))}
         </div>
       </div>
@@ -2939,6 +3133,9 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
   const metrics = runMetrics(run);
   const [sessionOpen, setSessionOpen] = useState(false);
   const [claudeLoginResult, setClaudeLoginResult] = useState<ClaudeLoginResult | null>(null);
+
+  // detailTranscript is fed by LogViewer via onTranscript — avoids a duplicate WebSocket.
+  const [detailTranscript, setDetailTranscript] = useState<TranscriptEntry[]>([]);
 
   useEffect(() => {
     setClaudeLoginResult(null);
@@ -3018,6 +3215,25 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
     },
   });
 
+  const { data: timelineEvents } = useQuery({
+    queryKey: ["heartbeat-run-events", run.id],
+    queryFn: () => heartbeatsApi.events(run.id, 0, 500),
+    enabled: !!run.id,
+  });
+
+  const canReplayRun = (run.status === "failed" || run.status === "timed_out") && !!run.contextSnapshot;
+  const [replayDialogOpen, setReplayDialogOpen] = useState(false);
+  const [replayModel, setReplayModel] = useState("");
+  const replayRun = useMutation({
+    mutationFn: () => heartbeatsApi.replay(run.id, replayModel || undefined),
+    onSuccess: (newRun) => {
+      setReplayDialogOpen(false);
+      setReplayModel("");
+      queryClient.invalidateQueries({ queryKey: queryKeys.heartbeats(run.companyId, run.agentId) });
+      navigate(`/agents/${agentRouteId}/runs/${newRun.id}`);
+    },
+  });
+
   const { data: touchedIssues } = useQuery({
     queryKey: queryKeys.runIssues(run.id),
     queryFn: () => activityApi.issuesForRun(run.id),
@@ -3075,52 +3291,119 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
   const sessionChanged = run.sessionIdBefore && run.sessionIdAfter && run.sessionIdBefore !== run.sessionIdAfter;
   const sessionId = run.sessionIdAfter || run.sessionIdBefore;
   const hasNonZeroExit = run.exitCode !== null && run.exitCode !== 0;
+  const [detailsOpen, setDetailsOpen] = useState(true);
+
+  const primaryIssueId = runIssueId(run);
+  const { data: primaryIssue } = useQuery({
+    queryKey: ["issue", primaryIssueId],
+    queryFn: () => issuesApi.get(primaryIssueId!),
+    enabled: !!primaryIssueId,
+  });
 
   return (
     <div className="space-y-4 min-w-0">
-      {/* Run summary card */}
+      {/* Run summary card — collapsible */}
       <div className="border border-border rounded-lg overflow-hidden">
-        <div className="flex flex-col sm:flex-row">
-          {/* Left column: status + timing */}
-          <div className="flex-1 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <StatusBadge status={run.status} />
-              {(run.status === "running" || run.status === "queued") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive text-xs h-6 px-2"
-                  onClick={() => cancelRun.mutate()}
-                  disabled={cancelRun.isPending}
+        <button
+          onClick={() => setDetailsOpen((v) => !v)}
+          className="flex items-center gap-1.5 w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronRight className={cn("h-3 w-3 transition-transform", detailsOpen && "rotate-90")} />
+          Run details
+          {isRunning && (
+            <span className="flex items-center gap-1 text-cyan-400 ml-2">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400" />
+              </span>
+              Live
+            </span>
+          )}
+          <span className="ml-auto font-mono text-[10px]">{run.id.slice(0, 8)}</span>
+        </button>
+        {detailsOpen && (
+          <div>
+            {/* Issue link inside run details */}
+            {primaryIssue && (
+              <div className="px-4 pt-3">
+                <Link
+                  to={`/issues/${primaryIssue.identifier ?? primaryIssue.id}`}
+                  className="flex items-center justify-between w-full px-3 py-2 text-sm border border-border rounded-lg hover:bg-accent/20 transition-colors no-underline text-inherit"
                 >
-                  {cancelRun.isPending ? "Cancelling…" : "Cancel"}
-                </Button>
-              )}
-              {canResumeLostRun && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => resumeRun.mutate()}
-                  disabled={resumeRun.isPending}
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  {resumeRun.isPending ? "Resuming…" : "Resume"}
-                </Button>
-              )}
-              {canRetryRun && !canResumeLostRun && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => retryRun.mutate()}
-                  disabled={retryRun.isPending}
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  {retryRun.isPending ? "Retrying…" : "Retry"}
-                </Button>
-              )}
-            </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatusBadge status={primaryIssue.status} />
+                    <span className="truncate">{primaryIssue.title}</span>
+                  </div>
+                  <span className="font-mono text-muted-foreground shrink-0 ml-2 text-xs">{primaryIssue.identifier ?? primaryIssue.id.slice(0, 8)}</span>
+                </Link>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row">
+              {/* Left column: status + timing */}
+              <div className="flex-1 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={run.status} />
+                  {run.invocationSource === "replay" && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                      Replay
+                      {run.retryOfRunId && (
+                        <Link
+                          to={`/agents/${agentRouteId}/runs/${run.retryOfRunId}`}
+                          className="underline hover:no-underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          original
+                        </Link>
+                      )}
+                    </span>
+                  )}
+                  {(run.status === "running" || run.status === "queued") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive text-xs h-6 px-2"
+                      onClick={() => cancelRun.mutate()}
+                      disabled={cancelRun.isPending}
+                    >
+                      {cancelRun.isPending ? "Cancelling…" : "Cancel"}
+                    </Button>
+                  )}
+                  {canResumeLostRun && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 px-2"
+                      onClick={() => resumeRun.mutate()}
+                      disabled={resumeRun.isPending}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                      {resumeRun.isPending ? "Resuming…" : "Resume"}
+                    </Button>
+                  )}
+                  {canRetryRun && !canResumeLostRun && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 px-2"
+                      onClick={() => retryRun.mutate()}
+                      disabled={retryRun.isPending}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                      {retryRun.isPending ? "Retrying…" : "Retry"}
+                    </Button>
+                  )}
+                  {canReplayRun && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 px-2"
+                      onClick={() => setReplayDialogOpen(true)}
+                      disabled={replayRun.isPending}
+                    >
+                      {replayRun.isPending ? "Replaying…" : "Replay"}
+                    </Button>
+                  )}
+                </div>
             {resumeRun.isError && (
               <div className="text-xs text-destructive">
                 {resumeRun.error instanceof Error ? resumeRun.error.message : "Failed to resume run"}
@@ -3291,6 +3574,8 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
           </div>
         )}
       </div>
+    )}
+    </div>
 
       {/* Issues touched by this run */}
       {touchedIssues && touchedIssues.length > 0 && (
@@ -3330,8 +3615,75 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
         </div>
       )}
 
+      {/* Replay dialog */}
+      <Dialog open={replayDialogOpen} onOpenChange={(open) => !open && setReplayDialogOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Replay Run</DialogTitle>
+            <DialogDescription>
+              Re-run with the same context but optionally a different model. Only available for failed or timed-out runs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Model override <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <Input
+                placeholder="e.g. claude-sonnet-4-5, gpt-4o, openai/gpt-4o"
+                value={replayModel}
+                onChange={(e) => setReplayModel(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Leave empty to use the agent&apos;s currently configured model.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReplayDialogOpen(false)} disabled={replayRun.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={() => replayRun.mutate()} disabled={replayRun.isPending}>
+              {replayRun.isPending ? "Replaying…" : "Start Replay"}
+            </Button>
+          </DialogFooter>
+          {replayRun.isError && (
+            <div className="px-6 pb-4 text-xs text-destructive">
+              {replayRun.error instanceof Error ? replayRun.error.message : "Failed to replay run"}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Timeline waterfall */}
+      {timelineEvents && timelineEvents.length > 0 && (
+        <RunTimelineView run={run} events={timelineEvents} />
+      )}
+
+      {/* Live stream accordion — expanded when run is active */}
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg">
+          <ChevronRight className="h-3 w-3 transition-transform ui-open:rotate-90" />
+          <Activity className={cn("h-3.5 w-3.5", isRunning && "animate-pulse text-cyan-400")} />
+          <span>Live stream</span>
+          {detailTranscript.length > 0 && (
+            <span className="text-[11px] text-muted-foreground ml-auto">
+              {latestActivityPreview(detailTranscript)}
+            </span>
+          )}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-1">
+          <RunTranscriptView
+            entries={detailTranscript}
+            mode="nice"
+            streaming={isRunning}
+            emptyMessage="Waiting for output…"
+          />
+        </CollapsibleContent>
+      </Collapsible>
+
       {/* Log viewer */}
-      <LogViewer run={run} adapterType={adapterType} />
+      <LogViewer run={run} adapterType={adapterType} onTranscript={setDetailTranscript} />
       <ScrollToBottom />
     </div>
   );
@@ -3339,7 +3691,9 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
 
 /* ---- Log Viewer ---- */
 
-function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: string }) {
+const MAX_LOG_LINES = 500;
+
+function LogViewer({ run, adapterType, onTranscript }: { run: HeartbeatRun; adapterType: string; onTranscript?: (t: TranscriptEntry[]) => void }) {
   const [events, setEvents] = useState<HeartbeatRunEvent[]>([]);
   const [logLines, setLogLines] = useState<Array<{ ts: string; stream: "stdout" | "stderr" | "system"; chunk: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -3358,10 +3712,18 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     distanceFromBottom: Number.POSITIVE_INFINITY,
   });
   const isLive = run.status === "running" || run.status === "queued";
+  const maxSeqRef = useRef(0);
   const { data: workspaceOperations = [] } = useQuery({
     queryKey: queryKeys.runWorkspaceOperations(run.id),
     queryFn: () => heartbeatsApi.workspaceOperations(run.id),
     refetchInterval: isLive ? 2000 : false,
+  });
+
+  const primaryIssueId = runIssueId(run);
+  const { data: primaryIssue } = useQuery({
+    queryKey: ["issue", primaryIssueId],
+    queryFn: () => issuesApi.get(primaryIssueId!),
+    enabled: !!primaryIssueId,
   });
 
   function isRunLogUnavailable(err: unknown): boolean {
@@ -3396,7 +3758,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     }
 
     if (parsed.length > 0) {
-      setLogLines((prev) => [...prev, ...parsed]);
+      setLogLines((prev) => [...prev, ...parsed].slice(-MAX_LOG_LINES));
     }
   }
 
@@ -3409,6 +3771,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
   useEffect(() => {
     if (initialEvents) {
       setEvents(initialEvents);
+      maxSeqRef.current = initialEvents.reduce((max, e) => Math.max(max, e.seq), 0);
       setLoading(false);
     }
   }, [initialEvents]);
@@ -3552,18 +3915,19 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
   useEffect(() => {
     if (!isLive || isStreamingConnected) return;
     const interval = setInterval(async () => {
-      const maxSeq = events.length > 0 ? Math.max(...events.map((e) => e.seq)) : 0;
       try {
-        const newEvents = await heartbeatsApi.events(run.id, maxSeq, 100);
+        const newEvents = await heartbeatsApi.events(run.id, maxSeqRef.current, 100);
         if (newEvents.length > 0) {
-          setEvents((prev) => [...prev, ...newEvents]);
+          maxSeqRef.current = newEvents.reduce((max, e) => Math.max(max, e.seq), maxSeqRef.current);
+          setEvents((prev) => [...prev, ...newEvents].slice(-500));
         }
       } catch {
         // ignore polling errors
       }
     }, 2000);
     return () => clearInterval(interval);
-  }, [run.id, isLive, isStreamingConnected, events]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run.id, isLive, isStreamingConnected]);
 
   // Poll shell log for running runs
   useEffect(() => {
@@ -3632,7 +3996,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
           const streamRaw = asNonEmptyString(payload.stream);
           const stream = streamRaw === "stderr" || streamRaw === "system" ? streamRaw : "stdout";
           const ts = asNonEmptyString((payload as Record<string, unknown>).ts) ?? event.createdAt;
-          setLogLines((prev) => [...prev, { ts, stream, chunk }]);
+          setLogLines((prev) => ([...prev, { ts, stream, chunk }] as typeof prev).slice(-MAX_LOG_LINES));
           return;
         }
 
@@ -3669,7 +4033,8 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
 
         setEvents((prev) => {
           if (prev.some((existing) => existing.seq === seq)) return prev;
-          return [...prev, liveEvent];
+          if (seq > maxSeqRef.current) maxSeqRef.current = seq;
+          return [...prev, liveEvent].slice(-500);
         });
       };
 
@@ -3704,6 +4069,8 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     queryFn: () => instanceSettingsApi.getGeneral(),
   }).data?.censorUsernameInLogs === true;
 
+  const [invocationOpen, setInvocationOpen] = useState(false);
+
   const adapterInvokePayload = useMemo(() => {
     const evt = events.find((e) => e.eventType === "adapter.invoke");
     return redactPathValue(asRecord(evt?.payload ?? null), censorUsernameInLogs);
@@ -3714,6 +4081,10 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     () => buildTranscript(logLines, adapter.parseStdoutLine, { censorUsernameInLogs }),
     [adapter, censorUsernameInLogs, logLines],
   );
+
+  useEffect(() => {
+    onTranscript?.(transcript);
+  }, [transcript, onTranscript]);
 
   useEffect(() => {
     setTranscriptMode("nice");
@@ -3741,75 +4112,6 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
 
   return (
     <div className="space-y-3">
-      <WorkspaceOperationsSection
-        operations={workspaceOperations}
-        censorUsernameInLogs={censorUsernameInLogs}
-      />
-      {adapterInvokePayload && (
-        <div className="rounded-lg border border-border bg-background/60 p-3 space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">Invocation</div>
-          {typeof adapterInvokePayload.adapterType === "string" && (
-            <div className="text-xs"><span className="text-muted-foreground">Adapter: </span>{adapterInvokePayload.adapterType}</div>
-          )}
-          {typeof adapterInvokePayload.cwd === "string" && (
-            <div className="text-xs break-all"><span className="text-muted-foreground">Working dir: </span><span className="font-mono">{adapterInvokePayload.cwd}</span></div>
-          )}
-          {typeof adapterInvokePayload.command === "string" && (
-            <div className="text-xs break-all">
-              <span className="text-muted-foreground">Command: </span>
-              <span className="font-mono">
-                {[
-                  adapterInvokePayload.command,
-                  ...(Array.isArray(adapterInvokePayload.commandArgs)
-                    ? adapterInvokePayload.commandArgs.filter((v): v is string => typeof v === "string")
-                    : []),
-                ].join(" ")}
-              </span>
-            </div>
-          )}
-          {Array.isArray(adapterInvokePayload.commandNotes) && adapterInvokePayload.commandNotes.length > 0 && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Command notes</div>
-              <ul className="list-disc pl-5 space-y-1">
-                {adapterInvokePayload.commandNotes
-                  .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-                  .map((note, idx) => (
-                    <li key={`${idx}-${note}`} className="text-xs break-all font-mono">
-                      {note}
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          )}
-          {adapterInvokePayload.prompt !== undefined && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Prompt</div>
-              <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
-                {typeof adapterInvokePayload.prompt === "string"
-                  ? redactPathText(adapterInvokePayload.prompt, censorUsernameInLogs)
-                  : JSON.stringify(redactPathValue(adapterInvokePayload.prompt, censorUsernameInLogs), null, 2)}
-              </pre>
-            </div>
-          )}
-          {adapterInvokePayload.context !== undefined && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Context</div>
-              <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(redactPathValue(adapterInvokePayload.context, censorUsernameInLogs), null, 2)}
-              </pre>
-            </div>
-          )}
-          {adapterInvokePayload.env !== undefined && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Environment</div>
-              <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap font-mono">
-                {formatEnvForDisplay(adapterInvokePayload.env, censorUsernameInLogs)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">
           Transcript ({transcript.length})
@@ -3863,6 +4165,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
           entries={transcript}
           mode={transcriptMode}
           streaming={isLive}
+          issueIdentifier={primaryIssue?.identifier ?? undefined}
           emptyMessage={run.logRef ? "Waiting for transcript..." : "No persisted transcript for this run."}
         />
         {logError && (
@@ -3872,6 +4175,87 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
         )}
         <div ref={logEndRef} />
       </div>
+
+      <WorkspaceOperationsSection
+        operations={workspaceOperations}
+        censorUsernameInLogs={censorUsernameInLogs}
+      />
+
+      {adapterInvokePayload && (
+        <div className="rounded-lg border border-border bg-background/60 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setInvocationOpen((v) => !v)}
+            className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronRight className={cn("h-3 w-3 transition-transform", invocationOpen && "rotate-90")} />
+            Invocation
+          </button>
+          {invocationOpen && (
+            <div className="px-3 pb-3 space-y-2">
+              {typeof adapterInvokePayload.adapterType === "string" && (
+                <div className="text-xs"><span className="text-muted-foreground">Adapter: </span>{adapterInvokePayload.adapterType}</div>
+              )}
+              {typeof adapterInvokePayload.cwd === "string" && (
+                <div className="text-xs break-all"><span className="text-muted-foreground">Working dir: </span><span className="font-mono">{adapterInvokePayload.cwd}</span></div>
+              )}
+              {typeof adapterInvokePayload.command === "string" && (
+                <div className="text-xs break-all">
+                  <span className="text-muted-foreground">Command: </span>
+                  <span className="font-mono">
+                    {[
+                      adapterInvokePayload.command,
+                      ...(Array.isArray(adapterInvokePayload.commandArgs)
+                        ? adapterInvokePayload.commandArgs.filter((v): v is string => typeof v === "string")
+                        : []),
+                    ].join(" ")}
+                  </span>
+                </div>
+              )}
+              {Array.isArray(adapterInvokePayload.commandNotes) && adapterInvokePayload.commandNotes.length > 0 && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Command notes</div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {adapterInvokePayload.commandNotes
+                      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+                      .map((note, idx) => (
+                        <li key={`${idx}-${note}`} className="text-xs break-all font-mono">
+                          {note}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+              {adapterInvokePayload.prompt !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Prompt</div>
+                  <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
+                    {typeof adapterInvokePayload.prompt === "string"
+                      ? redactPathText(adapterInvokePayload.prompt, censorUsernameInLogs)
+                      : JSON.stringify(redactPathValue(adapterInvokePayload.prompt, censorUsernameInLogs), null, 2)}
+                  </pre>
+                </div>
+              )}
+              {adapterInvokePayload.context !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Context</div>
+                  <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(redactPathValue(adapterInvokePayload.context, censorUsernameInLogs), null, 2)}
+                  </pre>
+                </div>
+              )}
+              {adapterInvokePayload.env !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Environment</div>
+                  <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap font-mono">
+                    {formatEnvForDisplay(adapterInvokePayload.env, censorUsernameInLogs)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {(run.status === "failed" || run.status === "timed_out") && (
         <div className="rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-950/20 p-3 space-y-2">

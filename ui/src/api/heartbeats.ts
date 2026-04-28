@@ -27,10 +27,11 @@ export interface LiveRunForIssue {
 }
 
 export const heartbeatsApi = {
-  list: (companyId: string, agentId?: string, limit?: number) => {
+  list: (companyId: string, agentId?: string, limit?: number, days?: number) => {
     const searchParams = new URLSearchParams();
     if (agentId) searchParams.set("agentId", agentId);
     if (limit) searchParams.set("limit", String(limit));
+    if (days) searchParams.set("days", String(days));
     const qs = searchParams.toString();
     return api.get<HeartbeatRun[]>(`/companies/${companyId}/heartbeat-runs${qs ? `?${qs}` : ""}`);
   },
@@ -50,6 +51,8 @@ export const heartbeatsApi = {
       `/workspace-operations/${operationId}/log?offset=${encodeURIComponent(String(offset))}&limitBytes=${encodeURIComponent(String(limitBytes))}`,
     ),
   cancel: (runId: string) => api.post<void>(`/heartbeat-runs/${runId}/cancel`, {}),
+  replay: (runId: string, model?: string) =>
+    api.post<HeartbeatRun>(`/heartbeat-runs/${runId}/replay`, { model: model ?? null }),
   liveRunsForIssue: (issueId: string) =>
     api.get<LiveRunForIssue[]>(`/issues/${issueId}/live-runs`),
   activeRunForIssue: (issueId: string) =>

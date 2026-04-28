@@ -13,6 +13,15 @@ import {
 } from "lucide-react";
 
 export type TranscriptMode = "nice" | "raw";
+
+const COMMENT_UUID_RE = /\bcomment[s]?\s+([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/gi;
+
+function linkCommentRefs(text: string, issueIdentifier?: string): string {
+  return text.replace(COMMENT_UUID_RE, (_, uuid: string) => {
+    const href = issueIdentifier ? `/issues/${issueIdentifier}#comment-${uuid}` : `#comment-${uuid}`;
+    return `comment [${uuid.slice(0, 8)}…](${href})`;
+  });
+}
 export type TranscriptDensity = "comfortable" | "compact";
 
 interface RunTranscriptViewProps {
@@ -25,6 +34,8 @@ interface RunTranscriptViewProps {
   emptyMessage?: string;
   className?: string;
   thinkingClassName?: string;
+  /** When provided, "comment UUID" patterns in text are linked to this issue's comment thread */
+  issueIdentifier?: string;
 }
 
 type TranscriptBlock =
@@ -1207,6 +1218,7 @@ export function RunTranscriptView({
   emptyMessage = "No transcript yet.",
   className,
   thinkingClassName,
+  issueIdentifier,
 }: RunTranscriptViewProps) {
   const blocks = useMemo(() => normalizeTranscript(entries, streaming), [entries, streaming]);
   const visibleBlocks = limit ? blocks.slice(-limit) : blocks;
@@ -1235,7 +1247,12 @@ export function RunTranscriptView({
           key={`${block.type}-${block.ts}-${index}`}
           className={cn(index === visibleBlocks.length - 1 && streaming && "animate-in fade-in slide-in-from-bottom-1 duration-300")}
         >
-          {block.type === "message" && <TranscriptMessageBlock block={block} density={density} />}
+          {block.type === "message" && (
+            <TranscriptMessageBlock
+              block={{ ...block, text: linkCommentRefs(block.text, issueIdentifier) }}
+              density={density}
+            />
+          )}
           {block.type === "thinking" && (
             <TranscriptThinkingBlock block={block} density={density} className={thinkingClassName} />
           )}

@@ -16,8 +16,10 @@ import {
   budgetService,
   companyPortabilityService,
   companyService,
+  issueService,
   logActivity,
 } from "../services/index.js";
+import { seedDefaultMcps } from "../services/seed-mcps.js";
 import type { StorageService } from "../storage/types.js";
 import { assertBoard, assertCompanyAccess, getActorInfo } from "./authz.js";
 
@@ -217,6 +219,10 @@ export function companyRoutes(db: Db, storage?: StorageService) {
     }
     const company = await svc.create(req.body);
     await access.ensureMembership(company.id, "user", req.actor.userId ?? "local-board", "owner", "active");
+    // Seed default labels for every new company
+    await issueService(db).seedDefaultLabels(company.id);
+    // Seed default MCP servers for every new company
+    await seedDefaultMcps(db, company.id);
     await logActivity(db, {
       companyId: company.id,
       actorType: "user",
@@ -269,6 +275,17 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       res.status(404).json({ error: "Company not found" });
       return;
     }
+
+    // Pause agents when archiving via PATCH
+    if (body.status === "archived") {
+      const activeAgents = await agents.list(companyId);
+      await Promise.allSettled(
+        activeAgents
+          .filter((a) => a.status !== "paused")
+          .map((a) => agents.pause(a.id, "system")),
+      );
+    }
+
     await logActivity(db, {
       companyId,
       actorType: actor.actorType,
@@ -320,6 +337,35 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       actorType: "user",
       actorId: req.actor.userId ?? "board",
       action: "company.archived",
+      entityType: "company",
+      entityId: companyId,
+    });
+
+    // Pause all non-terminated agents so they stop picking up work
+    const activeAgents = await agents.list(companyId);
+    await Promise.allSettled(
+      activeAgents
+        .filter((a) => a.status !== "paused")
+        .map((a) => agents.pause(a.id, "system")),
+    );
+
+    res.json(company);
+  });
+
+  router.post("/:companyId/unarchive", async (req, res) => {
+    assertBoard(req);
+    const companyId = req.params.companyId as string;
+    assertCompanyAccess(req, companyId);
+    const company = await svc.update(companyId, { status: "active" });
+    if (!company) {
+      res.status(404).json({ error: "Company not found" });
+      return;
+    }
+    await logActivity(db, {
+      companyId,
+      actorType: "user",
+      actorId: req.actor.userId ?? "board",
+      action: "company.unarchived",
       entityType: "company",
       entityId: companyId,
     });

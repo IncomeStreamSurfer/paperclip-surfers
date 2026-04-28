@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Clock3, FlaskConical, Puzzle, Settings, SlidersHorizontal } from "lucide-react";
-import { NavLink } from "@/lib/router";
+import { ArrowLeft, Bell, Clock3, DollarSign, FlaskConical, KeyRound, Puzzle, Settings, SlidersHorizontal, Store, Users } from "lucide-react";
+import { Link, NavLink } from "@/lib/router";
 import { pluginsApi } from "@/api/plugins";
 import { queryKeys } from "@/lib/queryKeys";
 import { SidebarNavItem } from "./SidebarNavItem";
@@ -13,7 +13,7 @@ export function InstanceSidebar() {
 
   return (
     <aside className="w-60 h-full min-h-0 border-r border-border bg-background flex flex-col">
-      <div className="flex items-center gap-2 px-3 h-12 shrink-0">
+      <div className="flex items-center gap-2 px-3 h-12 shrink-0 border-b border-border">
         <Settings className="h-4 w-4 text-muted-foreground shrink-0 ml-1" />
         <span className="flex-1 text-sm font-bold text-foreground truncate">
           Instance Settings
@@ -25,7 +25,12 @@ export function InstanceSidebar() {
           <SidebarNavItem to="/instance/settings/general" label="General" icon={SlidersHorizontal} end />
           <SidebarNavItem to="/instance/settings/heartbeats" label="Heartbeats" icon={Clock3} end />
           <SidebarNavItem to="/instance/settings/experimental" label="Experimental" icon={FlaskConical} />
+          <SidebarNavItem to="/instance/settings/notifications" label="Notifications" icon={Bell} end />
+          <SidebarNavItem to="/instance/settings/users" label="Users" icon={Users} end />
+          <SidebarNavItem to="/instance/settings/cli-auth" label="CLI Auth" icon={KeyRound} end />
+          <SidebarNavItem to="/instance/settings/pricing" label="Pricing" icon={DollarSign} end />
           <SidebarNavItem to="/instance/settings/plugins" label="Plugins" icon={Puzzle} />
+          <SidebarNavItem to="/marketplace" label="Marketplace" icon={Store} end />
           {(plugins ?? []).length > 0 ? (
             <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l border-border/70 pl-3">
               {(plugins ?? []).map((plugin) => (
@@ -48,6 +53,17 @@ export function InstanceSidebar() {
           ) : null}
         </div>
       </nav>
+
+      {/* Back to business */}
+      <div className="shrink-0 border-t border-border px-3 py-2">
+        <Link
+          to="/"
+          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 shrink-0" />
+          Return to Business
+        </Link>
+      </div>
     </aside>
   );
 }

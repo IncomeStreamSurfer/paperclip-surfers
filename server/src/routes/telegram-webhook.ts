@@ -1,0 +1,253 @@
+import { Router, type Request, type Response } from "express";
+import { timingSafeEqual } from "node:crypto";
+import type { Db } from "@paperclipai/db";
+import { messagingProviders, issues, heartbeatRuns, agents, approvals, issueApprovals } from "@paperclipai/db";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { logger } from "../middleware/logger.js";
+import { logActivity } from "../services/index.js";
+
+interface TelegramUpdate {
+  update_id: number;
+  message?: {
+    message_id: number;
+    chat: { id: number; type: string };
+    text?: string;
+    from?: { id: number; username?: string };
+    date: number;
+  };
+  callback_query?: {
+    id: string;
+    from: { id: number; username?: string };
+    message?: { chat: { id: number } };
+    data?: string;
+  };
+}
+
+export function telegramWebhookRoutes(db: Db) {
+  const router = Router();
+
+  router.post("/webhooks/telegram/:webhookToken", async (req: Request, res: Response) => {
+    const webhookToken = req.params.webhookToken as string;
+    const update = req.body as TelegramUpdate;
+
+    // Acknowledge quickly so Telegram doesn't retry
+    res.status(200).json({ ok: true });
+
+    const messageText = update.message?.text ?? update.callback_query?.data;
+    const chatId = update.message?.chat.id ?? update.callback_query?.message?.chat.id;
+    if (!messageText || chatId === undefined) return;
+
+    // Look up the provider by opaque webhook token (not company UUID)
+    const allTelegramProviders = await db
+      .select()
+      .from(messagingProviders)
+      .where(eq(messagingProviders.provider, "telegram"));
+
+    const providerRow = allTelegramProviders.find((p) => {
+      const cfg = p.config as Record<string, unknown>;
+      return cfg.webhookToken === webhookToken;
+    }) ?? null;
+
+    if (!providerRow?.enabled) return;
+    const companyId = providerRow.companyId;
+
+    const config = providerRow.config as { botToken?: string; chatId?: string; webhookSecret?: string; webhookToken?: string };
+
+    // Always require webhook secret validation. Reject unauthenticated requests.
+    // Return 200 before validating so Telegram doesn't retry, but do not process commands.
+    if (!config.webhookSecret) {
+      logger.warn({ companyId }, "telegram webhook: no webhookSecret configured; ignoring request");
+      return;
+    }
+    const incomingSecret = req.headers["x-telegram-bot-api-secret-token"];
+    if (typeof incomingSecret !== "string") {
+      logger.warn({ companyId }, "telegram webhook: missing X-Telegram-Bot-Api-Secret-Token header");
+      return;
+    }
+    try {
+      const expected = Buffer.from(config.webhookSecret, "utf8");
+      const incoming = Buffer.from(incomingSecret, "utf8");
+      if (expected.length !== incoming.length || !timingSafeEqual(expected, incoming)) {
+        logger.warn({ companyId }, "telegram webhook: secret token mismatch");
+        return;
+      }
+    } catch {
+      return;
+    }
+
+    if (!config.chatId || String(chatId) !== config.chatId) return;
+
+    const command = messageText.trim().toLowerCase();
+
+    try {
+      if (command === "/status" || command === "/status@paperclipbot") {
+        await handleStatusCommand(db, companyId, chatId, config.botToken!);
+      } else if (command === "/issues" || command === "/issues@paperclipbot") {
+        await handleIssuesCommand(db, companyId, chatId, config.botToken!);
+      } else if (command.startsWith("/complete ") || command.startsWith("/complete@paperclipbot ")) {
+        const issueId = command.split(" ")[1];
+        await handleCompleteCommand(db, companyId, chatId, config.botToken!, issueId);
+      } else if (command === "/help" || command === "/help@paperclipbot") {
+        await sendTelegramMessage(config.botToken!, chatId, buildHelpText());
+      }
+    } catch (err) {
+      logger.warn({ err, companyId, command }, "telegram webhook command failed");
+      await sendTelegramMessage(config.botToken!, chatId, "❌ Sorry, something went wrong processing that command.").catch(() => {});
+    }
+  });
+
+  return router;
+}
+
+async function handleStatusCommand(db: Db, companyId: string, chatId: number, botToken: string) {
+  const openIssues = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(issues)
+    .where(and(eq(issues.companyId, companyId), eq(issues.status, "open")))
+    .then((rows) => Number(rows[0]?.count ?? 0));
+
+  const inProgressIssues = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(issues)
+    .where(and(eq(issues.companyId, companyId), eq(issues.status, "in_progress")))
+    .then((rows) => Number(rows[0]?.count ?? 0));
+
+  const blockedIssues = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(issues)
+    .where(and(eq(issues.companyId, companyId), eq(issues.status, "blocked")))
+    .then((rows) => Number(rows[0]?.count ?? 0));
+
+  const activeRuns = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(heartbeatRuns)
+    .innerJoin(agents, eq(heartbeatRuns.agentId, agents.id))
+    .where(and(eq(agents.companyId, companyId), eq(heartbeatRuns.status, "running")))
+    .then((rows) => Number(rows[0]?.count ?? 0));
+
+  const text = `📊 *Company Status*\\n\\n🟡 Open: ${openIssues}\\n🔵 In Progress: ${inProgressIssues}\\n🚫 Blocked: ${blockedIssues}\\n🤖 Active Runs: ${activeRuns}`;
+  await sendTelegramMessage(botToken, chatId, text);
+}
+
+async function handleIssuesCommand(db: Db, companyId: string, chatId: number, botToken: string) {
+  const recentIssues = await db
+    .select({
+      id: issues.id,
+      identifier: issues.identifier,
+      title: issues.title,
+      status: issues.status,
+      priority: issues.priority,
+    })
+    .from(issues)
+    .where(eq(issues.companyId, companyId))
+    .orderBy(desc(issues.createdAt))
+    .limit(10);
+
+  if (recentIssues.length === 0) {
+    await sendTelegramMessage(botToken, chatId, "📭 No issues found for this company.");
+    return;
+  }
+
+  const lines = recentIssues.map((issue) => {
+    const statusEmoji = issue.status === "done" ? "✅" : issue.status === "blocked" ? "🚫" : issue.status === "in_progress" ? "🔵" : "🟡";
+    return `${statusEmoji} *${escapeMarkdown(issue.title)}*\\nID: \`${issue.identifier ?? issue.id.slice(0, 8)}\` | Priority: ${issue.priority}`;
+  });
+
+  const text = `📋 *Recent Issues*\\n\\n${lines.join("\\n\\n")}`;
+  await sendTelegramMessage(botToken, chatId, text);
+}
+
+async function handleCompleteCommand(db: Db, companyId: string, chatId: number, botToken: string, issueIdentifier: string) {
+  if (!issueIdentifier) {
+    await sendTelegramMessage(botToken, chatId, "⚠️ Please provide an issue ID or identifier. Example: `/complete PROJ-42`");
+    return;
+  }
+
+  const issue = await db
+    .select()
+    .from(issues)
+    .where(and(eq(issues.companyId, companyId), eq(issues.identifier, issueIdentifier)))
+    .then((rows) => rows[0] ?? null);
+
+  if (!issue) {
+    await sendTelegramMessage(botToken, chatId, `❌ Issue \`${escapeMarkdown(issueIdentifier)}\` not found.`);
+    return;
+  }
+
+  if (issue.status === "done") {
+    await sendTelegramMessage(botToken, chatId, `✅ Issue \`${escapeMarkdown(issueIdentifier)}\` is already completed.`);
+    return;
+  }
+
+  // Check approval gates — reject if any linked approval is pending or in_progress
+  const linkedApprovalIds = await db
+    .select({ approvalId: issueApprovals.approvalId })
+    .from(issueApprovals)
+    .where(eq(issueApprovals.issueId, issue.id))
+    .then((rows) => rows.map((r) => r.approvalId));
+
+  if (linkedApprovalIds.length > 0) {
+    const activeApprovals = await db
+      .select({ id: approvals.id, status: approvals.status })
+      .from(approvals)
+      .where(and(inArray(approvals.id, linkedApprovalIds), inArray(approvals.status, ["pending", "in_progress"])));
+
+    if (activeApprovals.length > 0) {
+      await sendTelegramMessage(
+        botToken,
+        chatId,
+        `🚫 Issue \`${escapeMarkdown(issueIdentifier)}\` has pending approvals and cannot be completed via Telegram.`,
+      );
+      return;
+    }
+  }
+
+  await db
+    .update(issues)
+    .set({ status: "done", completedAt: new Date() })
+    .where(eq(issues.id, issue.id));
+
+  await logActivity(db, {
+    companyId,
+    actorType: "system",
+    actorId: "telegram-webhook",
+    agentId: null,
+    action: "issue.status_changed",
+    entityType: "issue",
+    entityId: issue.id,
+    details: { previousStatus: issue.status, newStatus: "done", via: "telegram" },
+  }).catch((err) => logger.warn({ err, issueId: issue.id }, "failed to log telegram complete activity"));
+
+  await sendTelegramMessage(botToken, chatId, `✅ Issue \`${escapeMarkdown(issueIdentifier)}\` has been marked as completed.`);
+}
+
+function buildHelpText(): string {
+  return (
+    `🤖 *Paperclip Bot Commands*\\n\\n` +
+    `/status — Show company dashboard stats\\n` +
+    `/issues — List recent issues\\n` +
+    `/complete <issue-id> — Mark an issue as done\\n` +
+    `/help — Show this message\\n\\n` +
+    `Issue IDs can be either the human-readable identifier (e.g. PROJ-42) or the short UUID.`
+  );
+}
+
+function escapeMarkdown(text: string): string {
+  return text.replace(/[_*\[\]()~`>#+\-=|{}.!]/g, "\\$&");
+}
+
+async function sendTelegramMessage(botToken: string, chatId: number, text: string): Promise<void> {
+  const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: "MarkdownV2",
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Telegram API error ${res.status}: ${body}`);
+  }
+}

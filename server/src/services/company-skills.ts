@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { and, asc, eq } from "drizzle-orm";
@@ -1192,6 +1193,11 @@ function resolveRequestedSkillKeysOrThrow(
   skills: CompanySkill[],
   requestedReferences: string[],
 ) {
+  // If the list contains the wildcard, return it as-is — it is expanded at runtime by resolvePaperclipDesiredSkillNames.
+  if (requestedReferences.includes("*")) {
+    return ["*"];
+  }
+
   const missing = new Set<string>();
   const ambiguous = new Set<string>();
   const resolved = new Set<string>();
@@ -1701,6 +1707,62 @@ export function companySkillService(db: Db) {
     };
   }
 
+  async function generateSkill(
+    companyId: string,
+    input: { name: string; description: string; agentRole?: string },
+  ): Promise<CompanySkill> {
+    const ollamaHost = (process.env.OLLAMA_HOST ?? "http://192.168.68.230:11434").replace(/\/$/, "");
+    const model = process.env.DEFAULT_MODEL ?? "dagbs/deepseek-coder-v2-lite-instruct:latest";
+    const timeoutMs = parseInt(process.env.SKILL_GENERATE_TIMEOUT_MS ?? "120000", 10);
+
+    // Load the bundled create-skill SKILL.md as system context
+    let templateContext = "";
+    for (const root of resolveBundledSkillsRoot()) {
+      const candidate = path.resolve(root, "paperclip-create-skill", "SKILL.md");
+      const content = await fs.readFile(candidate, "utf8").catch(() => null);
+      if (content) { templateContext = content; break; }
+    }
+
+    const systemPrompt =
+      "You are an expert Paperclip skill author.\n" +
+      "Your job is to write a complete, well-structured SKILL.md file for a Paperclip AI agent.\n" +
+      "Respond with ONLY the raw SKILL.md content — no code fences, no preamble, no commentary.\n\n" +
+      (templateContext ? `Reference guide:\n\n${templateContext}` : "");
+
+    const agentLine = input.agentRole ? ` for a ${input.agentRole} agent` : "";
+    const userPrompt =
+      `Write a SKILL.md file${agentLine} with the following details:\n\n` +
+      `Name: ${input.name}\n` +
+      `Description: ${input.description}\n\n` +
+      "Include: front-matter (name + description), Purpose, Workflow (numbered steps), and Output sections.\n" +
+      "Keep it concise, specific, and immediately actionable.";
+
+    const resp = await fetch(`${ollamaHost}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+      }),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+
+    if (!resp.ok) throw new Error(`Ollama request failed (HTTP ${resp.status})`);
+    const data = (await resp.json()) as { message?: { content?: string }; error?: string };
+    const markdown = data.message?.content?.trim();
+    if (!markdown) throw new Error(data.error ?? "Ollama returned empty response");
+
+    return createLocalSkill(companyId, {
+      name: input.name,
+      description: input.description,
+      markdown,
+    });
+  }
+
   async function createLocalSkill(companyId: string, input: CompanySkillCreateRequest): Promise<CompanySkill> {
     const slug = normalizeSkillSlug(input.slug ?? input.name) ?? "skill";
     const managedRoot = resolveManagedSkillsRoot(companyId);
@@ -2039,6 +2101,7 @@ export function companySkillService(db: Db) {
     const skills = await listFull(companyId);
 
     const out: PaperclipSkillEntry[] = [];
+    const PAPERCLIP_CORE_KEY = "paperclipai/paperclip/paperclip";
     for (const skill of skills) {
       const sourceKind = asString(getSkillMeta(skill).sourceKind);
       let source = normalizeSkillDirectory(skill);
@@ -2049,14 +2112,14 @@ export function companySkillService(db: Db) {
       }
       if (!source) continue;
 
-      const required = sourceKind === "paperclip_bundled";
+      const required = skill.key === PAPERCLIP_CORE_KEY;
       out.push({
         key: skill.key,
         runtimeName: buildSkillRuntimeName(skill.key, skill.slug),
         source,
         required,
         requiredReason: required
-          ? "Bundled Paperclip skills are always available for local adapters."
+          ? "The core Paperclip skill is required for all local adapters."
           : null,
       });
     }
@@ -2326,6 +2389,51 @@ export function companySkillService(db: Db) {
     return skill;
   }
 
+  async function syncFromClaudeCode(companyId: string): Promise<{ imported: number; sources: string[] }> {
+    const home = os.homedir();
+    const skillDirs: string[] = [];
+
+    // User-authored skills in ~/.claude/skills/
+    const userSkillsDir = path.join(home, ".claude", "skills");
+    if (await fs.access(userSkillsDir).then(() => true).catch(() => false)) {
+      skillDirs.push(userSkillsDir);
+    }
+
+    // Plugin-provided skills from ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/skills/
+    const pluginCacheDir = path.join(home, ".claude", "plugins", "cache");
+    if (await fs.access(pluginCacheDir).then(() => true).catch(() => false)) {
+      const marketplaces = await fs.readdir(pluginCacheDir).catch(() => [] as string[]);
+      for (const marketplace of marketplaces) {
+        const marketplaceDir = path.join(pluginCacheDir, marketplace);
+        const plugins = await fs.readdir(marketplaceDir).catch(() => [] as string[]);
+        for (const plugin of plugins) {
+          const pluginDir = path.join(marketplaceDir, plugin);
+          const versions = await fs.readdir(pluginDir).catch(() => [] as string[]);
+          // Use the last version directory (most recently modified)
+          const latestVersion = versions.filter((v) => !v.includes("Zone.Identifier")).sort().at(-1);
+          if (!latestVersion) continue;
+          const skillsDir = path.join(pluginDir, latestVersion, "skills");
+          if (await fs.access(skillsDir).then(() => true).catch(() => false)) {
+            skillDirs.push(skillsDir);
+          }
+        }
+      }
+    }
+
+    let totalImported = 0;
+    const importedSources: string[] = [];
+
+    for (const dir of skillDirs) {
+      const skills = await readLocalSkillImports(companyId, dir).catch(() => [] as ImportedSkill[]);
+      if (skills.length === 0) continue;
+      await upsertImportedSkills(companyId, skills);
+      totalImported += skills.length;
+      importedSources.push(dir);
+    }
+
+    return { imported: totalImported, sources: importedSources };
+  }
+
   return {
     list,
     listFull,
@@ -2340,8 +2448,10 @@ export function companySkillService(db: Db) {
     readFile,
     updateFile,
     createLocalSkill,
+    generateSkill,
     deleteSkill,
     importFromSource,
+    syncFromClaudeCode,
     scanProjectWorkspaces,
     importPackageFiles,
     installUpdate,

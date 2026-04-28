@@ -67,6 +67,9 @@ export {
   PLUGIN_WEBHOOK_DELIVERY_STATUSES,
   PLUGIN_EVENT_TYPES,
   PLUGIN_BRIDGE_ERROR_CODES,
+  COMPANY_USER_ROLES,
+  COMPANY_USER_ROLE_HIERARCHY,
+  type CompanyUserRole,
   type CompanyStatus,
   type DeploymentMode,
   type DeploymentExposure,
@@ -132,6 +135,10 @@ export {
   type PluginWebhookDeliveryStatus,
   type PluginEventType,
   type PluginBridgeErrorCode,
+  BUSINESS_TYPES,
+  BUSINESS_TYPE_LABELS,
+  MODULE_GATES,
+  type BusinessType,
 } from "./constants.js";
 
 export type {
@@ -161,9 +168,10 @@ export type {
   AgentSkillEntry,
   AgentSkillSnapshot,
   AgentSkillSyncRequest,
-  InstanceExperimentalSettings,
-  InstanceGeneralSettings,
-  InstanceSettings,
+   InstanceExperimentalSettings,
+   InstanceGeneralSettings,
+   InstanceNotificationSettings,
+   InstanceSettings,
   Agent,
   AgentAccessState,
   AgentChainOfCommandEntry,
@@ -181,6 +189,7 @@ export type {
   AdapterEnvironmentTestResult,
   AssetImage,
   Project,
+  ProjectMetrics,
   ProjectCodebase,
   ProjectCodebaseOrigin,
   ProjectGoalRef,
@@ -214,6 +223,7 @@ export type {
   IssueAttachment,
   IssueLabel,
   Goal,
+  GoalMetrics,
   Approval,
   ApprovalComment,
   BudgetPolicy,
@@ -242,6 +252,21 @@ export type {
   InstanceSchedulerHeartbeatAgent,
   LiveEvent,
   DashboardSummary,
+  TokenUsageSummary,
+  TokenUsageAgentRow,
+  BurndownSummary,
+  BurndownDay,
+  TasksByAgentRow,
+  TasksByAgentSummary,
+  AgentTimeRow,
+  AgentTimeSummary,
+  IssuesByProjectRow,
+  IssuesByProjectSummary,
+  CycleTimeSummary,
+  CostTrendDay,
+  CostTrendSummary,
+  ProjectHealthRow,
+  ProjectHealthSummary,
   ActivityEvent,
   SidebarBadges,
   CompanyMembership,
@@ -321,6 +346,11 @@ export {
   instanceExperimentalSettingsSchema,
   patchInstanceExperimentalSettingsSchema,
   type PatchInstanceExperimentalSettings,
+  EMAIL_TEMPLATE_IDS,
+  type EmailTemplateId,
+  instanceNotificationSettingsSchema,
+  patchInstanceNotificationSettingsSchema,
+  type PatchInstanceNotificationSettings,
 } from "./validators/index.js";
 
 export {
@@ -371,6 +401,7 @@ export {
   projectExecutionWorkspacePolicySchema,
   createIssueSchema,
   createIssueLabelSchema,
+  updateIssueLabelSchema,
   updateIssueSchema,
   issueExecutionWorkspaceSettingsSchema,
   checkoutIssueSchema,
@@ -453,6 +484,19 @@ export {
   resolveCliAuthChallengeSchema,
   updateMemberPermissionsSchema,
   updateUserCompanyAccessSchema,
+  inviteUserSchema,
+  updateUserRoleSchema,
+  type InviteUser,
+  type UpdateUserRole,
+  createDepartmentSchema,
+  updateDepartmentSchema,
+  addDepartmentMemorySchema,
+  assignAgentToDepartmentSchema,
+  type CreateDepartment,
+  type UpdateDepartment,
+  type AddDepartmentMemory,
+  type AssignAgentToDepartment,
+  type DepartmentMemoryEntry,
   type CreateCostEvent,
   type CreateFinanceEvent,
   type UpdateBudget,
@@ -536,6 +580,77 @@ export {
   type ListPluginState,
 } from "./validators/index.js";
 
+export {
+  allowedModelSchema,
+  updateAllowedModelsSchema,
+  toggleModelSchema,
+  type AllowedModel,
+  type UpdateAllowedModels,
+  type ToggleModel,
+} from "./validators/model.js";
+
+export {
+  SOCIAL_PLATFORMS,
+  SOCIAL_ACCOUNT_STATUSES,
+  SOCIAL_POST_STATUSES,
+  createSocialAccountSchema,
+  updateSocialAccountSchema,
+  createSocialPostSchema,
+  updateSocialPostSchema,
+  type CreateSocialAccount,
+  type UpdateSocialAccount,
+  type CreateSocialPost,
+  type UpdateSocialPost,
+} from "./validators/social-media.js";
+
+export type {
+  SocialPlatform,
+  SocialAccountStatus,
+  SocialPostStatus,
+  SocialPostData,
+  SocialAccount,
+  SocialPost,
+} from "./types/social-media.js";
+
+export {
+  SEO_PAGE_STATUSES,
+  createSeoKeywordSchema,
+  updateSeoKeywordSchema,
+  createSeoPageSchema,
+  updateSeoPageSchema,
+  type CreateSeoKeyword,
+  type UpdateSeoKeyword,
+  type CreateSeoPage,
+  type UpdateSeoPage,
+} from "./validators/seo.js";
+
+export type {
+  SeoPageStatus,
+  SeoKeyword,
+  SeoPage,
+} from "./types/seo.js";
+
+export {
+  COPYWRITING_CONTENT_TYPES,
+  COPYWRITING_BRIEF_STATUSES,
+  createCopywritingBriefSchema,
+  updateCopywritingBriefSchema,
+  type CreateCopywritingBrief,
+  type UpdateCopywritingBrief,
+} from "./validators/copywriting.js";
+
+export type {
+  CopywritingContentType,
+  CopywritingBriefStatus,
+  CopywritingBrief,
+} from "./types/copywriting.js";
+
+export {
+  type IndustryMcpEntry,
+  INDUSTRY_MCP_CATALOG,
+  INDUSTRY_MCP_SUGGESTIONS,
+} from "./industry-mcps.js";
+
 export { API_PREFIX, API } from "./api.js";
 export { normalizeAgentUrlKey, deriveAgentUrlKey, isUuidLike } from "./agent-url-key.js";
 export { deriveProjectUrlKey, normalizeProjectUrlKey } from "./project-url-key.js";
@@ -580,3 +695,183 @@ export {
   type SecretsLocalEncryptedConfig,
   type ConfigMeta,
 } from "./config-schema.js";
+export type {
+  CrmContactStatus,
+  CrmDealStage,
+  CrmContact,
+  CrmDeal,
+} from "./types/crm.js";
+export {
+  CRM_CONTACT_STATUSES,
+  CRM_DEAL_STAGES,
+  CRM_DEAL_STAGE_LABELS,
+  createCrmContactSchema,
+  updateCrmContactSchema,
+  createCrmDealSchema,
+  updateCrmDealSchema,
+  type CreateCrmContact,
+  type UpdateCrmContact,
+  type CreateCrmDeal,
+  type UpdateCrmDeal,
+} from "./validators/crm.js";
+export type {
+  DesignAssetStatus,
+  DesignAsset,
+} from "./types/design.js";
+export {
+  DESIGN_ASSET_STYLES,
+  DESIGN_ASSET_STYLE_LABELS,
+  DESIGN_ASSET_STATUSES,
+  DESIGN_ASPECT_RATIOS,
+  generateDesignAssetSchema,
+  updateDesignAssetSchema,
+  listDesignAssetsSchema,
+  type DesignAssetStyle,
+  type GenerateDesignAsset,
+  type UpdateDesignAsset,
+  type ListDesignAssetsQuery,
+} from "./validators/design.js";
+export {
+  RESEARCH_PROJECT_STATUSES,
+  createResearchProjectSchema,
+  updateResearchProjectSchema,
+  createResearchNoteSchema,
+  updateResearchNoteSchema,
+  createResearchLiteratureSchema,
+  updateResearchLiteratureSchema,
+  type CreateResearchProject,
+  type UpdateResearchProject,
+  type CreateResearchNote,
+  type UpdateResearchNote,
+  type CreateResearchLiterature,
+  type UpdateResearchLiterature,
+} from "./validators/research.js";
+export {
+  MSP_CLIENT_STATUSES,
+  MSP_CLIENT_TIERS,
+  MSP_TICKET_STATUSES,
+  MSP_TICKET_PRIORITIES,
+  createMspClientSchema,
+  updateMspClientSchema,
+  createMspTicketSchema,
+  updateMspTicketSchema,
+  type CreateMspClient,
+  type UpdateMspClient,
+  type CreateMspTicket,
+  type UpdateMspTicket,
+} from "./validators/msp.js";
+export {
+  SPRINT_STATUSES,
+  createSprintSchema,
+  updateSprintSchema,
+  type CreateSprint,
+  type UpdateSprint,
+  type SprintVelocity,
+  type SprintAiReport,
+} from "./validators/sprint.js";
+export {
+  CIVIL_PROJECT_TYPES,
+  CIVIL_PROJECT_STATUSES,
+  CIVIL_DRAWING_TYPES,
+  CIVIL_DRAWING_STATUSES,
+  CIVIL_SPEC_STATUSES,
+  createCivilProjectSchema,
+  updateCivilProjectSchema,
+  createCivilDrawingSchema,
+  updateCivilDrawingSchema,
+  createCivilSpecificationSchema,
+  updateCivilSpecificationSchema,
+  type CreateCivilProject,
+  type UpdateCivilProject,
+  type CreateCivilDrawing,
+  type UpdateCivilDrawing,
+  type CreateCivilSpecification,
+  type UpdateCivilSpecification,
+} from "./validators/civil.js";
+
+export {
+  MESSAGING_PROVIDERS,
+  MESSAGING_MESSAGE_TYPES,
+  messagingProviderSchema,
+  messagingSubscriptionSchema,
+  upsertMessagingProviderSchema,
+  upsertMessagingSubscriptionSchema,
+  type MessagingProvider,
+  type MessagingMessageType,
+  type MessagingProviderRow,
+  type MessagingSubscription,
+  type UpsertMessagingProvider,
+  type UpsertMessagingSubscription,
+} from "./types/messaging.js";
+
+export {
+  KNOWLEDGE_DOCUMENT_STATUSES,
+  knowledgeBaseSchema,
+  createKnowledgeBaseSchema,
+  updateKnowledgeBaseSchema,
+  knowledgeDocumentSchema,
+  agentKnowledgeBaseSchema,
+  kbQuerySchema,
+  kbQueryResultSchema,
+  type KnowledgeBase,
+  type CreateKnowledgeBase,
+  type UpdateKnowledgeBase,
+  type KnowledgeDocument,
+  type KnowledgeDocumentStatus,
+  type AgentKnowledgeBase,
+  type KbQuery,
+  type KbQueryResult,
+} from "./types/knowledge.js";
+
+export {
+  MEMORY_SCOPES,
+  MEMORY_PROVIDER_KINDS,
+  MEMORY_OPS,
+  memoryAdapterCapabilitiesSchema,
+  memoryScopeSchema,
+  memorySourceRefSchema,
+  memoryUsageSchema,
+  memoryWriteRequestSchema,
+  memoryRecordHandleSchema,
+  memoryQueryRequestSchema,
+  memorySnippetSchema,
+  memoryContextBundleSchema,
+  memoryBindingSchema,
+  createMemoryBindingSchema,
+  updateMemoryBindingSchema,
+  memoryOperationSchema,
+  memoryQueryApiSchema,
+  memoryWriteApiSchema,
+  type MemoryScope,
+  type MemoryProviderKind,
+  type MemoryOp,
+  type MemoryAdapterCapabilities,
+  type MemoryScopeInput,
+  type MemorySourceRef,
+  type MemoryUsage,
+  type MemoryWriteRequest,
+  type MemoryRecordHandle,
+  type MemoryQueryRequest,
+  type MemorySnippet,
+  type MemoryContextBundle,
+  type MemoryAdapter,
+  type MemoryBinding,
+  type CreateMemoryBinding,
+  type UpdateMemoryBinding,
+  type MemoryOperation,
+  type MemoryQueryApi,
+  type MemoryWriteApi,
+} from "./types/memory.js";
+
+export {
+  modelPricingSchema,
+  createModelPricingSchema,
+  updateModelPricingSchema,
+  modelPricingLookupSchema,
+  calculatedCostSchema,
+  type ModelPricing,
+  type CreateModelPricing,
+  type UpdateModelPricing,
+  type ModelPricingLookup,
+  type CalculatedCost,
+} from "./types/model-pricing.js";

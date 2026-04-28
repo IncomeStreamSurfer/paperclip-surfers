@@ -15,9 +15,14 @@ const BOARD_ROUTE_ROOTS = new Set([
   "activity",
   "inbox",
   "design-guide",
+  "mcp-servers",
+  "analytics",
+  "social-media",
+  "seo",
+  "copywriting",
 ]);
 
-const GLOBAL_ROUTE_ROOTS = new Set(["auth", "invite", "board-claim", "cli-auth", "docs", "instance"]);
+const GLOBAL_ROUTE_ROOTS = new Set(["auth", "invite", "board-claim", "cli-auth", "docs", "instance", "profile", "onboarding", "accept-user-invite"]);
 
 export function normalizeCompanyPrefix(prefix: string): string {
   return prefix.trim().toUpperCase();

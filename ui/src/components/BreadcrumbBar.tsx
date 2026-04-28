@@ -15,6 +15,7 @@ import {
 import { Fragment, useMemo } from "react";
 import { PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
 import { PluginLauncherOutlet, usePluginLaunchers } from "@/plugins/launchers";
+import { HeaderClock } from "@/components/HeaderClock";
 
 type GlobalToolbarContext = { companyId: string | null; companyPrefix: string | null };
 
@@ -47,7 +48,8 @@ export function BreadcrumbBar() {
 
   if (breadcrumbs.length === 0) {
     return (
-      <div className="border-b border-border px-4 md:px-6 h-12 shrink-0 flex items-center justify-end">
+      <div className="border-b border-border bg-header-surface px-4 md:px-6 h-12 shrink-0 flex items-center justify-end gap-2">
+        <HeaderClock />
         {globalToolbarSlots}
       </div>
     );
@@ -68,13 +70,14 @@ export function BreadcrumbBar() {
   // Single breadcrumb = page title (uppercase)
   if (breadcrumbs.length === 1) {
     return (
-      <div className="border-b border-border px-4 md:px-6 h-12 shrink-0 flex items-center">
+      <div className="border-b border-border bg-header-surface px-4 md:px-6 h-12 shrink-0 flex items-center">
         {menuButton}
         <div className="min-w-0 overflow-hidden flex-1">
           <h1 className="text-sm font-semibold uppercase tracking-wider truncate">
             {breadcrumbs[0].label}
           </h1>
         </div>
+        <HeaderClock />
         {globalToolbarSlots}
       </div>
     );
@@ -82,7 +85,7 @@ export function BreadcrumbBar() {
 
   // Multiple breadcrumbs = breadcrumb trail
   return (
-    <div className="border-b border-border px-4 md:px-6 h-12 shrink-0 flex items-center">
+    <div className="border-b border-border bg-header-surface px-4 md:px-6 h-12 shrink-0 flex items-center">
       {menuButton}
       <div className="min-w-0 overflow-hidden flex-1">
         <Breadcrumb className="min-w-0 overflow-hidden">
@@ -107,6 +110,7 @@ export function BreadcrumbBar() {
           </BreadcrumbList>
         </Breadcrumb>
       </div>
+      <HeaderClock />
       {globalToolbarSlots}
     </div>
   );

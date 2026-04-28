@@ -1,0 +1,44 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Local",
+      "options": {
+        "baseURL": "http://192.168.68.230:11434/v1",
+        "timeout": 300000
+      },
+      "models": {
+        "mistral:latest": { "name": "Mistral Latest" },
+        "llama3.2:latest": { "name": "Llama 3.2 Latest" },
+        "qwen2.5:7b": { "name": "Qwen 2.5 7B" },
+        "qwen3:4b": { "name": "Qwen 3 4B", "tools": true },
+        "llama4:latest": { "name": "Llama 4 Latest" },
+        "deepseek-r1:1.5b": { "name": "DeepSeek R1 1.5B" },
+        "nomic-embed-text:latest": { "name": "Nomic Embed Text" },
+        "codestral:latest": { "name": "Codestral Latest", "tools": true },
+        "gpt-oss:20b": { "name": "GPT-OSS 20B", "tools": true },
+        "dagbs/deepseek-coder-v2-lite-instruct:latest": { "name": "DeepSeek Coder V2 Lite Instruct", "tools": true },
+        "qwen2.5-coder:latest": { "name": "Qwen 2.5 Coder Latest", "tools": true },
+        "solar:10.7b": { "name": "Solar 10.7B" },
+        "goonsai/qwen2.5-3b-goonsai-nsfw-100k:latest": { "name": "Qwen 2.5 3B Goonsai" },
+        "starcoder2:3b": { "name": "StarCoder2 3B", "tools": true },
+        "codegemma:7b": { "name": "CodeGemma 7B", "tools": true },
+        "deepseek-coder:1.3b": { "name": "DeepSeek Coder 1.3B", "tools": true },
+        "codellama:7b-python": { "name": "CodeLlama 7B Python", "tools": true },
+        "codellama:7b-instruct": { "name": "CodeLlama 7B Instruct", "tools": true },
+        "alibayram/hunyuan:4b": { "name": "Hunyuan 4B" },
+        "brxce/stable-diffusion-prompt-generator:latest": { "name": "SD Prompt Generator" },
+        "hir0rameel/qwen-claude:latest": { "name": "Qwen Claude Hybrid", "tools": true },
+        "llama3.1:8b": { "name": "Llama 3.1 8B" },
+        "phi3:3.8b": { "name": "Phi 3 3.8B" },
+        "codellama:13b": { "name": "CodeLlama 13B", "tools": true },
+        "translategemma:12b": { "name": "TranslateGemma 12B" },
+        "deepseek-ocr:latest": { "name": "DeepSeek OCR" },
+        "kimi-k2.6:cloud": { "name": "Kimi K2.6 Cloud", "tools": true }
+      }
+    }
+  },
+  "model": "ollama/dagbs/deepseek-coder-v2-lite-instruct:latest",
+  "small_model": "ollama/qwen3:4b"
+}

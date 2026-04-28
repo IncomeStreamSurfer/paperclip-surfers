@@ -221,6 +221,28 @@ export function companySkillRoutes(db: Db) {
     },
   );
 
+  router.post("/companies/:companyId/skills/sync-claude-code", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    await assertCanMutateCompanySkills(req, companyId);
+    const result = await svc.syncFromClaudeCode(companyId);
+    const skills = await svc.list(companyId);
+
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "company.skills_imported",
+      entityType: "company",
+      entityId: companyId,
+      details: { source: "claude_code_sync", imported: result.imported },
+    });
+
+    res.json({ imported: result.imported, sources: result.sources, skills });
+  });
+
   router.delete("/companies/:companyId/skills/:skillId", async (req, res) => {
     const companyId = req.params.companyId as string;
     const skillId = req.params.skillId as string;
@@ -277,6 +299,37 @@ export function companySkillRoutes(db: Db) {
     });
 
     res.json(result);
+  });
+
+  router.post("/companies/:companyId/skills/generate", async (req, res) => {
+    const companyId = req.params.companyId as string;
+    await assertCanMutateCompanySkills(req, companyId);
+
+    const name = String(req.body.name ?? "").trim();
+    const description = String(req.body.description ?? "").trim();
+    const agentRole = req.body.agentRole ? String(req.body.agentRole) : undefined;
+
+    if (!name || !description) {
+      res.status(400).json({ error: "name and description are required" });
+      return;
+    }
+
+    const skill = await svc.generateSkill(companyId, { name, description, agentRole });
+
+    const actor = getActorInfo(req);
+    await logActivity(db, {
+      companyId,
+      actorType: actor.actorType,
+      actorId: actor.actorId,
+      agentId: actor.agentId,
+      runId: actor.runId,
+      action: "company.skill_created",
+      entityType: "company_skill",
+      entityId: skill.id,
+      details: { slug: skill.slug, name: skill.name, source: "ai_generated" },
+    });
+
+    res.status(201).json(skill);
   });
 
   return router;

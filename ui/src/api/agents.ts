@@ -169,6 +169,12 @@ export const agentsApi = {
     api.get<DetectedAdapterModel | null>(
       `/companies/${encodeURIComponent(companyId)}/adapters/${encodeURIComponent(type)}/detect-model`,
     ),
+  modelSuggestions: (useCase?: string, companyId?: string) =>
+    api.get<AdapterModel[]>(`/models/suggestions${useCase ? `?useCase=${useCase}` : ""}${companyId ? `${useCase ? "&" : "?"}companyId=${companyId}` : ""}`),
+  getAvailableModels: () =>
+    api.get<AdapterModel[]>("/models/available"),
+  installModel: (modelName: string) =>
+    api.post<{ success: boolean; message: string }>("/models/install", { modelName }),
   testEnvironment: (
     companyId: string,
     type: string,
@@ -192,6 +198,26 @@ export const agentsApi = {
   ) => api.post<HeartbeatRun | { status: "skipped" }>(agentPath(id, companyId, "/wakeup"), data),
   loginWithClaude: (id: string, companyId?: string) =>
     api.post<ClaudeLoginResult>(agentPath(id, companyId, "/claude-login"), {}),
+  generateAvatar: (
+    id: string,
+    data: {
+      style?: "realistic" | "cartoon" | "anime" | "oil-painting" | "watercolor" | "pixel-art" | "3d-render" | "sketch";
+      gender?: "male" | "female" | "neutral";
+      seed?: number;
+      customPrompt?: string;
+      temperature?: number;
+    },
+    companyId?: string,
+  ) => api.post<{ avatarUrl: string }>(agentPath(id, companyId, "/generate-avatar"), data),
+  expandAvatarPrompt: (
+    id: string,
+    data: {
+      description?: string;
+      style?: "realistic" | "cartoon" | "anime" | "oil-painting" | "watercolor" | "pixel-art" | "3d-render" | "sketch";
+      gender?: "male" | "female" | "neutral";
+    },
+    companyId?: string,
+  ) => api.post<{ prompt: string }>(agentPath(id, companyId, "/expand-avatar-prompt"), data),
   availableSkills: () =>
     api.get<{ skills: AvailableSkill[] }>("/skills/available"),
 };

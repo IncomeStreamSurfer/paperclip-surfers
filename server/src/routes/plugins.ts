@@ -141,6 +141,47 @@ const BUNDLED_PLUGIN_EXAMPLES: AvailablePluginExample[] = [
   },
 ];
 
+interface MarketplacePlugin {
+  packageName: string;
+  pluginKey: string;
+  displayName: string;
+  description: string;
+  author: string;
+  category: string;
+  tags: string[];
+  version?: string;
+}
+
+const MARKETPLACE_CATALOG: MarketplacePlugin[] = [
+  {
+    packageName: "@paperclipai/plugin-hello-world-example",
+    pluginKey: "paperclip.hello-world-example",
+    displayName: "Hello World Widget",
+    description: "A simple Hello World widget for the Paperclip dashboard. Great starting point for learning the plugin SDK.",
+    author: "Paperclip",
+    category: "Examples",
+    tags: ["ui", "widget", "example"],
+  },
+  {
+    packageName: "@paperclipai/plugin-file-browser-example",
+    pluginKey: "paperclip-file-browser-example",
+    displayName: "File Browser",
+    description: "Adds a file browser link in project navigation and a project detail file browser panel.",
+    author: "Paperclip",
+    category: "Examples",
+    tags: ["ui", "files", "example"],
+  },
+  {
+    packageName: "@paperclipai/plugin-kitchen-sink-example",
+    pluginKey: "paperclip-kitchen-sink-example",
+    displayName: "Kitchen Sink",
+    description: "Comprehensive reference plugin showcasing the full Paperclip plugin API: bridge flows, UI extensions, jobs, webhooks, tools, and streams.",
+    author: "Paperclip",
+    category: "Examples",
+    tags: ["ui", "tools", "jobs", "webhooks", "reference"],
+  },
+];
+
 function listBundledPluginExamples(): AvailablePluginExample[] {
   return BUNDLED_PLUGIN_EXAMPLES.flatMap((plugin) => {
     const absoluteLocalPath = path.resolve(REPO_ROOT, plugin.localPath);
@@ -397,6 +438,25 @@ export function pluginRoutes(
   router.get("/plugins/examples", async (req, res) => {
     assertBoard(req);
     res.json(listBundledPluginExamples());
+  });
+
+  /**
+   * GET /api/plugins/marketplace
+   *
+   * Return the curated marketplace catalog of installable plugins.
+   * Each entry includes metadata needed to render a marketplace card
+   * and install directly by package name.
+   */
+  router.get("/plugins/marketplace", async (req, res) => {
+    assertBoard(req);
+    const installed = await registry.list();
+    const installedKeys = new Set(installed.map((p) => p.pluginKey));
+    res.json(
+      MARKETPLACE_CATALOG.map((entry) => ({
+        ...entry,
+        installed: installedKeys.has(entry.pluginKey),
+      })),
+    );
   });
 
   // IMPORTANT: Static routes must come before parameterized routes

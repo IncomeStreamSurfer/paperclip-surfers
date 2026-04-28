@@ -1,13 +1,8 @@
 import {
-  pgTable,
-  uuid,
-  text,
-  timestamp,
-  jsonb,
-  index,
-  uniqueIndex,
+  pgTable, uuid, text, timestamp, jsonb, index, uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { companies } from "./companies.js";
+import { departments } from "./departments.js";
 
 export const companySkills = pgTable(
   "company_skills",
@@ -26,11 +21,14 @@ export const companySkills = pgTable(
     compatibility: text("compatibility").notNull().default("compatible"),
     fileInventory: jsonb("file_inventory").$type<Array<Record<string, unknown>>>().notNull().default([]),
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+    departmentId: uuid("department_id").references(() => departments.id, { onDelete: "set null" }),
+    sharedWith: jsonb("shared_with").$type<string[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
     companyKeyUniqueIdx: uniqueIndex("company_skills_company_key_idx").on(table.companyId, table.key),
     companyNameIdx: index("company_skills_company_name_idx").on(table.companyId, table.name),
+    departmentIdx: index("company_skills_dept_idx").on(table.departmentId),
   }),
 );

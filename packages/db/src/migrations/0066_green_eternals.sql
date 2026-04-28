@@ -1,0 +1,1 @@
+ALTER TABLE "companies" ADD COLUMN "brand_primary_foreground" text;

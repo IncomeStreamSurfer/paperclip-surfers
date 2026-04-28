@@ -10,6 +10,7 @@ import { workspaceRuntimeServices } from "@paperclipai/db";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { asNumber, asString, parseObject, renderTemplate } from "../adapters/utils.js";
 import { resolveHomeAwarePath } from "../home-paths.js";
+import { safeFetch } from "../utils/safe-fetch.js";
 import type { WorkspaceOperationRecorder } from "./workspace-operations.js";
 
 export interface ExecutionWorkspaceInput {
@@ -925,7 +926,7 @@ async function waitForReadiness(input: {
   let lastError = "service did not become ready";
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(input.url);
+      const response = await safeFetch(input.url);
       if (response.ok) return;
       lastError = `received HTTP ${response.status}`;
     } catch (err) {

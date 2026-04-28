@@ -36,10 +36,37 @@ RUN test -f server/dist/index.js || (echo "ERROR: server build output missing" &
 
 FROM base AS production
 WORKDIR /app
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+COPY --from=docker:cli /usr/local/bin/docker /usr/local/bin/docker
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends imagemagick socat wget gnupg ca-certificates curl ruby default-jdk golang-go \
+  && wget -qO- https://dl.google.com/linux/linux_signing_key.pub | gpg --dearmor -o /usr/share/keyrings/google-chrome.gpg \
+  && echo "deb [arch=amd64 signed-by=/usr/share/keyrings/google-chrome.gpg] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list \
+  && wget -qO- https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
+  && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
+  && apt-get update \
+  && apt-get install -y --no-install-recommends google-chrome-stable gh \
+  && rm -rf /var/lib/apt/lists/*
+# Install Python 3.12 via uv to match the host imagemagick-mcp venv (built with Python 3.12)
+RUN UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python uv python install 3.12 \
+  && UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python uv python install 3.13 \
+  && PY312=$(UV_PYTHON_INSTALL_DIR=/usr/local/share/uv/python uv python find 3.12) \
+  && chmod -R a+rX /usr/local/share/uv \
+  && ln -sf "$PY312" /usr/bin/python3 \
+  && ln -sf "$PY312" /usr/bin/python
+# Add node user to docker socket group (host docker GID=1001) for filesystem MCP
+RUN groupadd -f -g 1001 dockerhost && usermod -aG dockerhost node
 COPY --chown=node:node --from=build /app /app
-RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai \
+RUN npm install --global --omit=dev @anthropic-ai/claude-code@latest @openai/codex@latest opencode-ai mcp-searxng @google/gemini-cli@latest \
+  @modelcontextprotocol/server-filesystem@latest \
+  mcp-fetch@latest \
+  @modelcontextprotocol/server-github@latest \
+  && node "$(npm root -g)/@anthropic-ai/claude-code/install.cjs" \
   && mkdir -p /paperclip \
   && chown node:node /paperclip
+# Install gh copilot extension (system-wide under /usr/local/share/gh so all users can use it)
+RUN GH_HOME=/usr/local/share/gh gh extension install github/gh-copilot --force 2>/dev/null || true \
+  && chmod -R a+rX /usr/local/share/gh 2>/dev/null || true
 
 ENV NODE_ENV=production \
   HOME=/paperclip \
@@ -52,8 +79,12 @@ ENV NODE_ENV=production \
   PAPERCLIP_DEPLOYMENT_MODE=authenticated \
   PAPERCLIP_DEPLOYMENT_EXPOSURE=private
 
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 VOLUME ["/paperclip"]
 EXPOSE 3100
 
 USER node
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "--import", "./server/node_modules/tsx/dist/loader.mjs", "server/dist/index.js"]

@@ -1,6 +1,6 @@
-import { and, asc, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, gte, lte, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
-import { projects, projectGoals, goals, projectWorkspaces, workspaceRuntimeServices } from "@paperclipai/db";
+import { projects, projectGoals, goals, projectWorkspaces, workspaceRuntimeServices, issues } from "@paperclipai/db";
 import {
   PROJECT_COLORS,
   deriveProjectUrlKey,
@@ -9,6 +9,7 @@ import {
   type ProjectCodebase,
   type ProjectExecutionWorkspacePolicy,
   type ProjectGoalRef,
+  type ProjectMetrics,
   type ProjectWorkspace,
   type WorkspaceRuntimeService,
 } from "@paperclipai/shared";
@@ -854,6 +855,44 @@ export function projectService(db: Db) {
         return { project: null, ambiguous: true } as const;
       }
       return { project: null, ambiguous: false } as const;
+    },
+
+    getMetrics: async (projectId: string): Promise<ProjectMetrics> => {
+      const rows = await db.select().from(issues).where(eq(issues.projectId, projectId));
+      const byStatus = { backlog: 0, todo: 0, in_progress: 0, in_review: 0, blocked: 0, done: 0, cancelled: 0 };
+      for (const r of rows) {
+        const k = r.status as keyof typeof byStatus;
+        if (k in byStatus) byStatus[k]++;
+      }
+      const countable = rows.length - byStatus.cancelled;
+      const completionRate = countable > 0 ? Math.round((byStatus.done / countable) * 100) : 0;
+
+      const now = Date.now();
+      const ms7 = 7 * 86400_000;
+      const ms14 = 14 * 86400_000;
+      const ms30 = 30 * 86400_000;
+      const done = rows.filter((r) => r.status === "done" && r.completedAt != null);
+      const vel = (window: number) =>
+        done.filter((r) => now - new Date(r.completedAt!).getTime() <= window).length;
+
+      const cycleTimes = done
+        .map((r) => {
+          const ms = new Date(r.completedAt!).getTime() - new Date(r.createdAt).getTime();
+          return ms / 86400_000;
+        })
+        .filter((d) => d >= 0);
+      const avgCycleDays =
+        cycleTimes.length > 0
+          ? Math.round((cycleTimes.reduce((a, b) => a + b, 0) / cycleTimes.length) * 10) / 10
+          : null;
+
+      return {
+        total: rows.length,
+        byStatus,
+        completionRate,
+        velocity: { last7days: vel(ms7), last14days: vel(ms14), last30days: vel(ms30) },
+        avgCycleDays,
+      };
     },
   };
 }

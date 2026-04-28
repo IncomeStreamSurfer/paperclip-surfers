@@ -78,13 +78,21 @@ export function BillerSpendCard({
       </CardHeader>
 
       <CardContent className="px-4 pb-4 pt-3 space-y-4">
-        {budgetMonthlyCents > 0 && (
+        {budgetMonthlyCents > 0 ? (
           <QuotaBar
             label="Period spend"
             percentUsed={budgetPct}
             leftLabel={formatCents(row.costCents)}
             rightLabel={`${Math.round(budgetPct)}% of allocation`}
           />
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">Period spend</span>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-medium tabular-nums">{formatCents(row.costCents)}</span>
+              <span className="text-xs text-muted-foreground">No limit</span>
+            </div>
+          </div>
         )}
 
         <div className="text-xs text-muted-foreground">

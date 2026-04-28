@@ -89,14 +89,21 @@ export function Activity() {
     return <PageSkeleton variant="list" />;
   }
 
-  const filtered =
-    data && filter !== "all"
-      ? data.filter((e) => e.entityType === filter)
-      : data;
+  const filtered = useMemo(() => {
+    const result =
+      data && filter !== "all"
+        ? data.filter((e) => e.entityType === filter)
+        : data;
+    // Limit to most recent 200 events to prevent render hang
+    return result?.slice(0, 200) ?? [];
+  }, [data, filter]);
 
-  const entityTypes = data
-    ? [...new Set(data.map((e) => e.entityType))].sort()
-    : [];
+  const entityTypes = useMemo(() =>
+    data
+      ? [...new Set(data.map((e) => e.entityType))].sort()
+      : [],
+    [data]
+  );
 
   return (
     <div className="space-y-4">

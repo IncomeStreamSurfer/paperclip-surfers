@@ -132,6 +132,7 @@ function makeIssue(id: string, isUnreadForMe: boolean): Issue {
     projectId: null,
     projectWorkspaceId: null,
     goalId: null,
+    sprintId: null,
     parentId: null,
     title: `Issue ${id}`,
     description: null,

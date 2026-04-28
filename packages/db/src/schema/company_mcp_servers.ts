@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, jsonb, boolean, index } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, jsonb, boolean, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { companies } from "./companies.js";
 import { agents } from "./agents.js";
 
@@ -25,6 +25,7 @@ export const companyMcpServers = pgTable(
   (table) => ({
     companyIdx: index("company_mcp_servers_company_idx").on(table.companyId),
     companyAgentIdx: index("company_mcp_servers_company_agent_idx").on(table.companyId, table.agentId),
+    companyNameUniq: uniqueIndex("company_mcp_servers_company_name_uniq").on(table.companyId, table.name),
   }),
 );
 

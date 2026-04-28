@@ -26,13 +26,21 @@ export const AGENT_ADAPTER_TYPES = [
   "http",
   "claude_local",
   "codex_local",
+  "gemini_local",
   "opencode_local",
   "pi_local",
   "cursor",
   "openclaw_gateway",
   "hermes_local",
+  "openai_api",
+  "anthropic_api",
+  "openrouter_api",
+  "github_copilot",
 ] as const;
 export type AgentAdapterType = (typeof AGENT_ADAPTER_TYPES)[number];
+
+export const MODEL_PROVIDERS = ["ollama", "openai", "openrouter", "anthropic", "google"] as const;
+export type ModelProvider = (typeof MODEL_PROVIDERS)[number];
 
 export const AGENT_ROLES = [
   "ceo",
@@ -168,20 +176,30 @@ export type RoutineRunStatus = (typeof ROUTINE_RUN_STATUSES)[number];
 export const ROUTINE_RUN_SOURCES = ["schedule", "manual", "api", "webhook"] as const;
 export type RoutineRunSource = (typeof ROUTINE_RUN_SOURCES)[number];
 
-export const PAUSE_REASONS = ["manual", "budget", "system"] as const;
+export const PAUSE_REASONS = ["manual", "budget", "system", "stuck"] as const;
 export type PauseReason = (typeof PAUSE_REASONS)[number];
 
 export const PROJECT_COLORS = [
   "#6366f1", // indigo
   "#8b5cf6", // violet
+  "#a855f7", // purple
+  "#d946ef", // fuchsia
   "#ec4899", // pink
+  "#f43f5e", // rose
   "#ef4444", // red
   "#f97316", // orange
+  "#f59e0b", // amber
   "#eab308", // yellow
+  "#84cc16", // lime
   "#22c55e", // green
+  "#10b981", // emerald
   "#14b8a6", // teal
   "#06b6d4", // cyan
+  "#0ea5e9", // sky
   "#3b82f6", // blue
+  "#64748b", // slate
+  "#6b7280", // gray
+  "#78716c", // stone
 ] as const;
 
 export const APPROVAL_TYPES = ["hire_agent", "approve_ceo_strategy", "budget_override_required"] as const;
@@ -279,6 +297,7 @@ export const HEARTBEAT_INVOCATION_SOURCES = [
   "assignment",
   "on_demand",
   "automation",
+  "replay",
 ] as const;
 export type HeartbeatInvocationSource = (typeof HEARTBEAT_INVOCATION_SOURCES)[number];
 
@@ -350,6 +369,15 @@ export const PERMISSION_KEYS = [
   "joins:approve",
 ] as const;
 export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+export const COMPANY_USER_ROLES = ["company_admin", "manager", "viewer"] as const;
+export type CompanyUserRole = (typeof COMPANY_USER_ROLES)[number];
+
+export const COMPANY_USER_ROLE_HIERARCHY: Record<string, number> = {
+  viewer: 0,
+  manager: 1,
+  company_admin: 2,
+};
 
 // ---------------------------------------------------------------------------
 // Plugin System — see doc/plugins/PLUGIN_SPEC.md for the full specification
@@ -687,3 +715,74 @@ export const PLUGIN_BRIDGE_ERROR_CODES = [
   "UNKNOWN",
 ] as const;
 export type PluginBridgeErrorCode = (typeof PLUGIN_BRIDGE_ERROR_CODES)[number];
+
+// ---- Business Types ----
+
+export const BUSINESS_TYPES = [
+  "general",
+  "copywriting",
+  "seo_agency",
+  "software_agency",
+  "marketing_agency",
+  "ecommerce",
+  "electrical_engineering",
+  "architecture_civil",
+  "aviation",
+  "robotics",
+  "call_center",
+  "graphic_design",
+  "social_media_management",
+  "sales",
+  "phd_research",
+  "msp_rmm",
+  "legal_tech",
+  "finance_accounting",
+  "healthcare_admin",
+  "hr_recruiting",
+  "data_analytics",
+  "cybersecurity",
+] as const;
+
+export type BusinessType = (typeof BUSINESS_TYPES)[number];
+
+export const BUSINESS_TYPE_LABELS: Record<BusinessType, string> = {
+  general: "General",
+  copywriting: "Copywriting",
+  seo_agency: "SEO Agency",
+  software_agency: "Software Agency",
+  marketing_agency: "Marketing Agency",
+  ecommerce: "E-Commerce",
+  electrical_engineering: "Electrical Engineering",
+  architecture_civil: "Architecture / Civil",
+  aviation: "Aviation",
+  robotics: "Robotics",
+  call_center: "Call Center",
+  graphic_design: "Graphic Design",
+  social_media_management: "Social Media Management",
+  sales: "Sales",
+  phd_research: "PhD Research",
+  msp_rmm: "MSP / RMM",
+  legal_tech: "Legal Tech",
+  finance_accounting: "Finance & Accounting",
+  healthcare_admin: "Healthcare Admin",
+  hr_recruiting: "HR & Recruiting",
+  data_analytics: "Data Analytics",
+  cybersecurity: "Cybersecurity",
+};
+
+/**
+ * MODULE_GATES maps a UI module key to the set of business types that see it.
+ * An empty set means the module is hidden for all types (reserved).
+ * Absence from this map means the module is visible for everyone.
+ */
+export const MODULE_GATES: Record<string, BusinessType[]> = {
+  "seo": ["seo_agency"],
+  "copywriting": ["copywriting"],
+  "social-media": ["social_media_management"],
+  "crm": ["sales", "marketing_agency", "ecommerce"],
+  "design": ["graphic_design", "marketing_agency", "ecommerce", "social_media_management", "copywriting"],
+  "software": ["software_agency", "general"],
+  "research": ["phd_research"],
+  "msp": ["msp_rmm"],
+  "civil": ["architecture_civil"],
+};

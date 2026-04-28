@@ -7,6 +7,8 @@ export const portabilityIncludeSchema = z
     projects: z.boolean().optional(),
     issues: z.boolean().optional(),
     skills: z.boolean().optional(),
+    memories: z.boolean().optional(),
+    telemetry: z.boolean().optional(),
   })
   .partial();
 

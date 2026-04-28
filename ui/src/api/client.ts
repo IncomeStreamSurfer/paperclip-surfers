@@ -1,5 +1,10 @@
 const BASE = "/api";
 
+function getCsrfToken(): string | undefined {
+  const match = document.cookie.match(/(?:^|; )csrf-token=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : undefined;
+}
+
 export class ApiError extends Error {
   status: number;
   body: unknown;
@@ -17,6 +22,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const body = init?.body;
   if (!(body instanceof FormData) && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
+  }
+
+  const csrfToken = getCsrfToken();
+  if (csrfToken) {
+    headers.set("x-csrf-token", csrfToken);
   }
 
   const res = await fetch(`${BASE}${path}`, {

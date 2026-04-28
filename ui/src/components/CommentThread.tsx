@@ -1,16 +1,20 @@
 import { memo, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import type { IssueComment, Agent } from "@paperclipai/shared";
 import { Button } from "@/components/ui/button";
-import { Check, Copy, Paperclip } from "lucide-react";
+import { Check, ChevronRight, Copy, Paperclip } from "lucide-react";
 import { Identity } from "./Identity";
 import { InlineEntitySelector, type InlineEntityOption } from "./InlineEntitySelector";
 import { MarkdownBody } from "./MarkdownBody";
 import { MarkdownEditor, type MarkdownEditorRef, type MentionOption } from "./MarkdownEditor";
 import { StatusBadge } from "./StatusBadge";
 import { AgentIcon } from "./AgentIconPicker";
-import { formatDateTime } from "../lib/utils";
+import { cn, formatDateTime } from "../lib/utils";
 import { PluginSlotOutlet } from "@/plugins/slots";
+import { activityApi } from "../api/activity";
+import { heartbeatsApi } from "../api/heartbeats";
+import { queryKeys } from "../lib/queryKeys";
 
 interface CommentWithRunMeta extends IssueComment {
   runId?: string | null;
@@ -114,6 +118,73 @@ function CopyMarkdownButton({ text }: { text: string }) {
   );
 }
 
+function RunCardDetails({ runId }: { runId: string }) {
+  const [open, setOpen] = useState(false);
+  const { data: touchedIssues } = useQuery({
+    queryKey: queryKeys.runIssues(runId),
+    queryFn: () => activityApi.issuesForRun(runId),
+    enabled: open,
+  });
+  const { data: events } = useQuery({
+    queryKey: ["run-events", runId],
+    queryFn: () => heartbeatsApi.events(runId, 0, 100),
+    enabled: open,
+  });
+
+  const keyEvents = useMemo(
+    () => (events ?? []).filter((e) => e.message).slice(0, 12),
+    [events],
+  );
+
+  return (
+    <div className="mt-2 pt-2 border-t border-border/60">
+      <button
+        type="button"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <ChevronRight className={cn("h-3 w-3 transition-transform", open && "rotate-90")} />
+        {open ? "Hide details" : "Show issues touched & events"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {touchedIssues && touchedIssues.length > 0 && (
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Issues Touched</p>
+              <div className="flex flex-wrap gap-1">
+                {touchedIssues.map((issue) => (
+                  <span
+                    key={issue.issueId}
+                    className="inline-flex items-center gap-1 rounded border border-border bg-accent/30 px-1.5 py-0.5 text-[11px] text-muted-foreground"
+                  >
+                    <span className="font-mono">{issue.identifier}</span>
+                    <span className="truncate max-w-[140px]">{issue.title}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          {keyEvents.length > 0 && (
+            <div>
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Events</p>
+              <div className="space-y-0.5">
+                {keyEvents.map((ev) => (
+                  <p key={ev.id} className="text-[11px] text-muted-foreground truncate">
+                    {ev.message}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
+          {(!touchedIssues || touchedIssues.length === 0) && keyEvents.length === 0 && (
+            <p className="text-[11px] text-muted-foreground">No details available.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 type TimelineItem =
   | { kind: "comment"; id: string; createdAtMs: number; comment: CommentWithRunMeta }
   | { kind: "run"; id: string; createdAtMs: number; run: LinkedRunItem };
@@ -163,6 +234,7 @@ const TimelineList = memo(function TimelineList({
                 </Link>
                 <StatusBadge status={run.status} />
               </div>
+              <RunCardDetails runId={run.runId} />
             </div>
           );
         }
@@ -430,7 +502,7 @@ export function CommentThread({
               <input
                 ref={attachInputRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp,image/gif"
+                accept="*"
                 className="hidden"
                 onChange={handleAttachFile}
               />

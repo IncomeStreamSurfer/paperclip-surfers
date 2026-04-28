@@ -15,6 +15,7 @@ import { companySecrets } from "./company_secrets.js";
 import { issues } from "./issues.js";
 import { projects } from "./projects.js";
 import { goals } from "./goals.js";
+import { departments } from "./departments.js";
 
 export const routines = pgTable(
   "routines",
@@ -35,6 +36,8 @@ export const routines = pgTable(
     createdByUserId: text("created_by_user_id"),
     updatedByAgentId: uuid("updated_by_agent_id").references(() => agents.id, { onDelete: "set null" }),
     updatedByUserId: text("updated_by_user_id"),
+    departmentId: uuid("department_id").references(() => departments.id, { onDelete: "set null" }),
+    sharedWith: jsonb("shared_with").$type<string[]>().notNull().default([]),
     lastTriggeredAt: timestamp("last_triggered_at", { withTimezone: true }),
     lastEnqueuedAt: timestamp("last_enqueued_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -44,6 +47,7 @@ export const routines = pgTable(
     companyStatusIdx: index("routines_company_status_idx").on(table.companyId, table.status),
     companyAssigneeIdx: index("routines_company_assignee_idx").on(table.companyId, table.assigneeAgentId),
     companyProjectIdx: index("routines_company_project_idx").on(table.companyId, table.projectId),
+    departmentIdx: index("routines_department_idx").on(table.departmentId),
   }),
 );
 

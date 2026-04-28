@@ -14,6 +14,7 @@ import {
   runChildProcess,
 } from "@paperclipai/adapter-utils/server-utils";
 import { discoverOpenCodeModels, ensureOpenCodeModelConfiguredAndAvailable } from "./models.js";
+import { DEFAULT_OPENCODE_MODEL } from "../index.js";
 import { parseOpenCodeJsonl } from "./parse.js";
 import { prepareOpenCodeRuntimeConfig } from "./runtime-config.js";
 
@@ -136,8 +137,10 @@ export async function testEnvironment(
 
     let modelValidationPassed = false;
     const configuredModel = asString(config.model, "").trim();
+    // Use default model if none configured to avoid hosted API bugs
+    const effectiveModel = configuredModel || DEFAULT_OPENCODE_MODEL;
 
-    if (canRunProbe && configuredModel) {
+    if (canRunProbe && effectiveModel) {
       try {
         const discovered = await discoverOpenCodeModels({ command, cwd, env: runtimeEnv });
         if (discovered.length > 0) {
@@ -173,7 +176,7 @@ export async function testEnvironment(
           });
         }
       }
-    } else if (canRunProbe && !configuredModel) {
+    } else if (canRunProbe && !effectiveModel) {
       try {
         const discovered = await discoverOpenCodeModels({ command, cwd, env: runtimeEnv });
         if (discovered.length > 0) {

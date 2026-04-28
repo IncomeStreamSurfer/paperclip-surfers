@@ -446,8 +446,13 @@ function SkillList({
                     </TooltipTrigger>
                     <TooltipContent side="top">{source.managedLabel}</TooltipContent>
                   </Tooltip>
-                  <span className="min-w-0 overflow-hidden text-[13px] font-medium leading-5 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3]">
-                    {skill.name}
+                  <span className="min-w-0 overflow-hidden">
+                    <span className="block truncate text-[13px] font-medium leading-5">
+                      {skill.name}
+                    </span>
+                    <span className="block truncate font-mono text-[11px] text-muted-foreground leading-4">
+                      {skill.key}
+                    </span>
                   </span>
                 </span>
               </Link>
@@ -932,6 +937,25 @@ export function CompanySkills() {
     },
   });
 
+  const syncClaudeCode = useMutation({
+    mutationFn: () => companySkillsApi.syncFromClaudeCode(selectedCompanyId!),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.companySkills.list(selectedCompanyId!) });
+      pushToast({
+        tone: "success",
+        title: "Claude Code skills synced",
+        body: `${result.imported} skill${result.imported !== 1 ? "s" : ""} imported from Claude Code.`,
+      });
+    },
+    onError: (error) => {
+      pushToast({
+        tone: "error",
+        title: "Claude Code sync failed",
+        body: error instanceof Error ? error.message : "Failed to sync skills from Claude Code.",
+      });
+    },
+  });
+
   const saveFile = useMutation({
     mutationFn: () => companySkillsApi.updateFile(
       selectedCompanyId!,
@@ -1058,11 +1082,20 @@ export function CompanySkills() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
+                  onClick={() => syncClaudeCode.mutate()}
+                  disabled={syncClaudeCode.isPending}
+                  title="Sync skills from Claude Code (~/.claude)"
+                >
+                  <RefreshCw className={cn("h-4 w-4", syncClaudeCode.isPending && "animate-spin")} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
                   onClick={() => scanProjects.mutate()}
                   disabled={scanProjects.isPending}
                   title="Scan project workspaces for skills"
                 >
-                  <RefreshCw className={cn("h-4 w-4", scanProjects.isPending && "animate-spin")} />
+                  <Folder className={cn("h-4 w-4", scanProjects.isPending && "animate-spin")} />
                 </Button>
                 <Button variant="ghost" size="icon-sm" onClick={() => setCreateOpen((value) => !value)}>
                   <Plus className="h-4 w-4" />

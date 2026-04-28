@@ -28,7 +28,7 @@ describe("claude local skill sync", () => {
     cleanupDirs.clear();
   });
 
-  it("defaults to mounting all built-in Paperclip skills when no explicit selection exists", async () => {
+  it("defaults to mounting only the core paperclip skill when no explicit selection exists", async () => {
     const snapshot = await listClaudeSkills({
       agentId: "agent-1",
       companyId: "company-1",
@@ -39,8 +39,11 @@ describe("claude local skill sync", () => {
     expect(snapshot.mode).toBe("ephemeral");
     expect(snapshot.supported).toBe(true);
     expect(snapshot.desiredSkills).toContain(paperclipKey);
+    expect(snapshot.desiredSkills).not.toContain(createAgentKey);
     expect(snapshot.entries.find((entry) => entry.key === paperclipKey)?.required).toBe(true);
     expect(snapshot.entries.find((entry) => entry.key === paperclipKey)?.state).toBe("configured");
+    expect(snapshot.entries.find((entry) => entry.key === createAgentKey)?.required).toBe(false);
+    expect(snapshot.entries.find((entry) => entry.key === createAgentKey)?.state).toBe("available");
   });
 
   it("respects an explicit desired skill list without mutating a persistent home", async () => {
@@ -57,7 +60,7 @@ describe("claude local skill sync", () => {
 
     expect(snapshot.desiredSkills).toContain(paperclipKey);
     expect(snapshot.entries.find((entry) => entry.key === paperclipKey)?.state).toBe("configured");
-    expect(snapshot.entries.find((entry) => entry.key === createAgentKey)?.state).toBe("configured");
+    expect(snapshot.entries.find((entry) => entry.key === createAgentKey)?.state).toBe("available");
   });
 
   it("normalizes legacy flat Paperclip skill refs to canonical keys", async () => {
@@ -106,5 +109,25 @@ describe("claude local skill sync", () => {
       readOnly: true,
       detail: "Installed outside Paperclip management in the Claude skills home.",
     }));
+  });
+
+  it("expands '*' wildcard to all available skills", async () => {
+    const snapshot = await listClaudeSkills({
+      agentId: "agent-5",
+      companyId: "company-1",
+      adapterType: "claude_local",
+      config: {
+        paperclipSkillSync: {
+          desiredSkills: ["*"],
+        },
+      },
+    });
+
+    expect(snapshot.desiredSkills).toContain(paperclipKey);
+    expect(snapshot.desiredSkills).toContain(createAgentKey);
+    expect(snapshot.entries.find((e) => e.key === paperclipKey)?.state).toBe("configured");
+    expect(snapshot.entries.find((e) => e.key === createAgentKey)?.state).toBe("configured");
+    const managedDesiredEntries = snapshot.entries.filter((e) => e.managed && snapshot.desiredSkills.includes(e.key));
+    expect(managedDesiredEntries.length).toBeGreaterThan(1);
   });
 });

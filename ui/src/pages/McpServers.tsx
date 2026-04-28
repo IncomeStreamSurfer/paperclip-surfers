@@ -6,6 +6,7 @@ import {
   type McpServerCreateRequest,
   type McpServerUpdateRequest,
 } from "../api/mcpServers";
+import { departmentsApi } from "../api/departments";
 import { agentsApi } from "../api/agents";
 import { useCompany } from "../context/CompanyContext";
 import { useBreadcrumbs } from "../context/BreadcrumbContext";
@@ -41,8 +42,18 @@ import {
   Trash2,
   Power,
   PowerOff,
+  Sparkles,
+  Loader2,
+  ChevronDown,
+  Search,
 } from "lucide-react";
 import { useEffect } from "react";
+import {
+  INDUSTRY_MCP_CATALOG,
+  INDUSTRY_MCP_SUGGESTIONS,
+  type IndustryMcpEntry,
+  type BusinessType,
+} from "@paperclipai/shared";
 
 const transportColors: Record<string, string> = {
   stdio: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
@@ -77,8 +88,472 @@ const emptyForm: McpFormState = {
   agentId: "",
 };
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
+
+function resolveBuiltinUrl(url: string): string {
+  return url.replace(
+    "__PAPERCLIP_BASE_URL__",
+    `${window.location.protocol}//${window.location.host}`,
+  );
+}
+
+function entryToCreateRequest(entry: IndustryMcpEntry): McpServerCreateRequest {
+  if (entry.transportType === "http" || entry.transportType === "sse") {
+    return {
+      name: entry.name,
+      description: entry.description,
+      command: "",
+      args: [],
+      transportType: entry.transportType,
+      transportUrl: entry.url ? resolveBuiltinUrl(entry.url) : null,
+      scope: "company",
+    };
+  }
+  return {
+    name: entry.name,
+    description: entry.description,
+    command: entry.command ?? "",
+    args: entry.args ?? [],
+    transportType: "stdio",
+    transportUrl: null,
+    scope: "company",
+  };
+}
+
+// ─── SuggestedMcps ───────────────────────────────────────────────────────────
+
+function SuggestedMcps({
+  businessType,
+  installedNames,
+  companyId,
+}: {
+  businessType: BusinessType;
+  installedNames: Set<string>;
+  companyId: string;
+}) {
+  const { pushToast } = useToast();
+  const queryClient = useQueryClient();
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+
+  const suggestedKeys = INDUSTRY_MCP_SUGGESTIONS[businessType] ?? [];
+  const suggestedEntries = suggestedKeys
+    .map((k) => INDUSTRY_MCP_CATALOG.find((e) => e.key === k))
+    .filter((e): e is IndustryMcpEntry => !!e);
+
+  const addMutation = useMutation({
+    mutationFn: ({ entry }: { entry: IndustryMcpEntry }) =>
+      mcpServersApi.create(companyId, entryToCreateRequest(entry)),
+    onSuccess: (_data, { entry }) => {
+      pushToast({ title: `Added "${entry.name}"`, tone: "success" });
+      setAddedKeys((prev) => new Set(prev).add(entry.key));
+      queryClient.invalidateQueries({ queryKey: queryKeys.mcpServers.list(companyId) });
+    },
+    onError: (_err, { entry }) =>
+      pushToast({ title: `Failed to add "${entry.name}"`, tone: "warn" }),
+  });
+
+  if (suggestedEntries.length === 0) return null;
+
+  const newEntries = suggestedEntries.filter(
+    (e) => !installedNames.has(e.name) && !addedKeys.has(e.key),
+  );
+
+  if (newEntries.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold">Suggested for your business type</h2>
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          {newEntries.length} available
+        </Badge>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        These MCP servers are recommended for{" "}
+        <span className="font-medium">{businessType.replace(/_/g, " ")}</span> companies.
+        Click to add them instantly.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {newEntries.map((entry) => {
+          const isPending =
+            addMutation.isPending &&
+            (addMutation.variables as { entry: IndustryMcpEntry } | undefined)?.entry.key ===
+              entry.key;
+          return (
+            <Card key={entry.key} className="p-3 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm font-medium">{entry.name}</p>
+                  {entry.builtin && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      built-in
+                    </Badge>
+                  )}
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      "text-[10px] px-1.5 py-0",
+                      entry.transportType === "stdio"
+                        ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                        : entry.transportType === "http"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                          : "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+                    )}
+                  >
+                    {entry.transportType}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                  {entry.description}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1 shrink-0"
+                disabled={isPending}
+                onClick={() => addMutation.mutate({ entry })}
+              >
+                {isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Plus className="h-3 w-3" />
+                )}
+                Add
+              </Button>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── DepartmentSuggestedMcps ──────────────────────────────────────────────────
+
+function DepartmentSuggestedMcps({
+  installedNames,
+  companyId,
+}: {
+  installedNames: Set<string>;
+  companyId: string;
+}) {
+  const { pushToast } = useToast();
+  const queryClient = useQueryClient();
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+
+  const { data: deptData } = useQuery({
+    queryKey: queryKeys.departments.list(companyId),
+    queryFn: () => departmentsApi.list(companyId),
+    enabled: !!companyId,
+  });
+
+  const departments = (deptData?.departments ?? []) as Array<{ id: string; name: string; mcpKeys: string[] | null }>;
+
+  // Collect unique MCP keys across all departments, annotated with which dept wants them
+  const keyToDepts = new Map<string, string[]>();
+  for (const dept of departments) {
+    for (const key of dept.mcpKeys ?? []) {
+      const existing = keyToDepts.get(key) ?? [];
+      existing.push(dept.name);
+      keyToDepts.set(key, existing);
+    }
+  }
+
+  const addMutation = useMutation({
+    mutationFn: ({ entry }: { entry: IndustryMcpEntry }) =>
+      mcpServersApi.create(companyId, entryToCreateRequest(entry)),
+    onSuccess: (_data, { entry }) => {
+      pushToast({ title: `Added "${entry.name}"`, tone: "success" });
+      setAddedKeys((prev) => new Set(prev).add(entry.key));
+      queryClient.invalidateQueries({ queryKey: queryKeys.mcpServers.list(companyId) });
+    },
+    onError: (_err, { entry }) =>
+      pushToast({ title: `Failed to add "${entry.name}"`, tone: "warn" }),
+  });
+
+  const entries = Array.from(keyToDepts.entries())
+    .map(([key, depts]) => {
+      const catalogEntry = INDUSTRY_MCP_CATALOG.find((e) => e.key === key);
+      return catalogEntry ? { entry: catalogEntry, depts } : null;
+    })
+    .filter((x): x is { entry: IndustryMcpEntry; depts: string[] } => !!x)
+    .filter(({ entry }) => !installedNames.has(entry.name) && !addedKeys.has(entry.key));
+
+  if (entries.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold">Suggested by departments</h2>
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          {entries.length} available
+        </Badge>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        These MCPs are configured as defaults in your departments.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {entries.map(({ entry, depts }) => {
+          const isPending = addMutation.isPending && (addMutation.variables as { entry: IndustryMcpEntry } | undefined)?.entry.key === entry.key;
+          return (
+            <Card key={entry.key} className="flex items-start gap-3 p-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-medium">{entry.name}</span>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                    {entry.transportType}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
+                  {entry.description}
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  ↳ {depts.join(", ")}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs gap-1 shrink-0"
+                disabled={isPending}
+                onClick={() => addMutation.mutate({ entry })}
+              >
+                {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Add
+              </Button>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── MCP category map (local, UI-only) ───────────────────────────────────────
+
+const MCP_CATEGORY_MAP: Record<string, string[]> = {
+  "Built-in": INDUSTRY_MCP_CATALOG.filter((e) => e.builtin).map((e) => e.key),
+  Development: ["github-mcp", "filesystem-code", "postgres-mcp", "web-fetch"],
+  Writing: [
+    "builtin-writing-tools",
+    "filesystem-notes",
+    "languagetool-mcp",
+    "pandoc-convert",
+  ],
+  Design: ["builtin-design-tools", "filesystem-design"],
+  Engineering: [
+    "builtin-cad-tools",
+    "builtin-eda-tools",
+    "builtin-ros-tools",
+    "filesystem-cad",
+  ],
+  "Data & Research": [
+    "builtin-r-tools",
+    "builtin-research-tools",
+    "builtin-ledger-tools",
+  ],
+  "Security & Ops": [
+    "builtin-security-tools",
+    "builtin-sysadmin-tools",
+    "builtin-asterisk-tools",
+  ],
+  Specialized: ["builtin-aviation-tools", "builtin-gis-tools"],
+};
+
+const MCP_CATEGORIES = ["All", ...Object.keys(MCP_CATEGORY_MAP)] as const;
+
+// ─── DiscoverMcps ─────────────────────────────────────────────────────────────
+
+function DiscoverMcps({
+  installedNames,
+  addedKeys: externalAddedKeys,
+  companyId,
+}: {
+  installedNames: Set<string>;
+  addedKeys: Set<string>;
+  companyId: string;
+}) {
+  const { pushToast } = useToast();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState<string>("All");
+  const [addedKeys, setAddedKeys] = useState<Set<string>>(new Set());
+
+  const allAdded = new Set([...externalAddedKeys, ...addedKeys]);
+
+  const addMutation = useMutation({
+    mutationFn: ({ entry }: { entry: IndustryMcpEntry }) =>
+      mcpServersApi.create(companyId, entryToCreateRequest(entry)),
+    onSuccess: (_data, { entry }) => {
+      pushToast({ title: `Added "${entry.name}"`, tone: "success" });
+      setAddedKeys((prev) => new Set(prev).add(entry.key));
+      queryClient.invalidateQueries({ queryKey: queryKeys.mcpServers.list(companyId) });
+    },
+    onError: (_err, { entry }) =>
+      pushToast({ title: `Failed to add "${entry.name}"`, tone: "warn" }),
+  });
+
+  const filtered = INDUSTRY_MCP_CATALOG.filter((entry) => {
+    if (category !== "All") {
+      const keys = MCP_CATEGORY_MAP[category] ?? [];
+      if (!keys.includes(entry.key)) return false;
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      if (
+        !entry.name.toLowerCase().includes(q) &&
+        !entry.description.toLowerCase().includes(q)
+      )
+        return false;
+    }
+    return true;
+  });
+
+  const pendingKey =
+    addMutation.isPending &&
+    (addMutation.variables as { entry: IndustryMcpEntry } | undefined)?.entry.key;
+
+  return (
+    <div className="space-y-2">
+      {/* Toggle header */}
+      <button
+        type="button"
+        className="flex w-full items-center gap-2 text-left"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <Search className="h-4 w-4 text-muted-foreground" />
+        <h2 className="text-sm font-semibold flex-1">Discover MCP Tools</h2>
+        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+          {INDUSTRY_MCP_CATALOG.length} available
+        </Badge>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="space-y-3 pt-1">
+          <p className="text-xs text-muted-foreground">
+            Browse the full MCP catalog — built-in servers and community integrations. Click
+            to install any tool instantly.
+          </p>
+
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or description…"
+              className="w-full pl-8 pr-3 h-8 text-sm border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+
+          {/* Category pills */}
+          <div className="flex flex-wrap gap-1.5">
+            {MCP_CATEGORIES.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(cat)}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-xs font-medium border transition-colors",
+                  category === cat
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted text-muted-foreground border-transparent hover:border-border",
+                )}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Results grid */}
+          {filtered.length === 0 ? (
+            <p className="text-xs text-muted-foreground py-4 text-center">
+              No results match your search.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {filtered.map((entry) => {
+                const isInstalled =
+                  installedNames.has(entry.name) || allAdded.has(entry.key);
+                const isPending = pendingKey === entry.key;
+                return (
+                  <Card key={entry.key} className="p-3 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-sm font-medium">{entry.name}</p>
+                        {entry.builtin && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            built-in
+                          </Badge>
+                        )}
+                        <Badge
+                          variant="secondary"
+                          className={cn(
+                            "text-[10px] px-1.5 py-0",
+                            entry.transportType === "stdio"
+                              ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                              : entry.transportType === "http"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                                : "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+                          )}
+                        >
+                          {entry.transportType}
+                        </Badge>
+                        {isInstalled && (
+                          <Badge
+                            variant="secondary"
+                            className="text-[10px] px-1.5 py-0 bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                          >
+                            installed
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                        {entry.description}
+                      </p>
+                    </div>
+                    {!isInstalled && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1 shrink-0"
+                        disabled={isPending}
+                        onClick={() => addMutation.mutate({ entry })}
+                      >
+                        {isPending ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Plus className="h-3 w-3" />
+                        )}
+                        Add
+                      </Button>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── McpServers page ─────────────────────────────────────────────────────────
+
 export function McpServers() {
-  const { selectedCompanyId } = useCompany();
+  const { selectedCompanyId, selectedCompany } = useCompany();
   const { setBreadcrumbs } = useBreadcrumbs();
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
@@ -140,9 +615,9 @@ export function McpServers() {
     mutationFn: () => mcpServersApi.sync(companyId),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.mcpServers.list(companyId) });
-      pushToast({ title: `Synced ${result.imported} MCP server${result.imported !== 1 ? "s" : ""} from Claude Code` });
+      pushToast({ title: `Synced ${result.imported} MCP server${result.imported !== 1 ? "s" : ""} from system` });
     },
-    onError: () => pushToast({ tone: "warn", title: "Failed to sync from Claude Code" }),
+    onError: () => pushToast({ tone: "warn", title: "Failed to sync from system" }),
   });
 
   const toggleEnabledMutation = useMutation({
@@ -228,7 +703,7 @@ export function McpServers() {
             <RefreshCw
               className={cn("h-3.5 w-3.5 mr-1.5", syncMutation.isPending && "animate-spin")}
             />
-            {syncMutation.isPending ? "Syncing..." : "Sync from Claude Code"}
+            {syncMutation.isPending ? "Syncing..." : "Sync with System"}
           </Button>
           <Button size="sm" onClick={openCreate}>
             <Plus className="h-3.5 w-3.5 mr-1.5" />
@@ -237,12 +712,34 @@ export function McpServers() {
         </div>
       </div>
 
+      {/* Suggested MCPs */}
+      {selectedCompany?.businessType && (
+        <SuggestedMcps
+          businessType={selectedCompany.businessType}
+          installedNames={new Set(servers.map((s) => s.name))}
+          companyId={companyId}
+        />
+      )}
+
+      {/* Department-curated MCPs */}
+      <DepartmentSuggestedMcps
+        installedNames={new Set(servers.map((s) => s.name))}
+        companyId={companyId}
+      />
+
+      {/* Discover all MCPs */}
+      <DiscoverMcps
+        installedNames={new Set(servers.map((s) => s.name))}
+        addedKeys={new Set()}
+        companyId={companyId}
+      />
+
       {/* Servers */}
       {servers.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Server className="h-10 w-10 text-muted-foreground/30 mb-3" />
           <p className="text-sm text-muted-foreground mb-4">
-            No MCP servers configured yet. Add one manually or sync from Claude Code.
+            No MCP servers configured yet. Add one manually or sync with system.
           </p>
         </div>
       ) : (

@@ -3,6 +3,8 @@ import type { Db } from "@paperclipai/db";
 import { activityLog, agents, companies, costEvents, issues, projects } from "@paperclipai/db";
 import { notFound, unprocessable } from "../errors.js";
 import { budgetService, type BudgetServiceHooks } from "./budgets.js";
+import { pricingService } from "./pricing.js";
+import { logger } from "../middleware/logger.js";
 
 export interface CostDateRange {
   from?: Date;
@@ -11,6 +13,97 @@ export interface CostDateRange {
 
 const METERED_BILLING_TYPE = "metered_api";
 const SUBSCRIPTION_BILLING_TYPES = ["subscription_included", "subscription_overage"] as const;
+
+/**
+ * Server-side model pricing floor (USD cents per million tokens).
+ * Used to detect and correct agent under-reporting of costs.
+ * Values are conservative minimums — actual pricing may be higher.
+ * Prefix matching is used so "claude-3-5-sonnet-20241022" matches "claude-3-5-sonnet".
+ */
+const MODEL_PRICE_FLOOR: Array<{ prefix: string; inputCentsPerM: number; outputCentsPerM: number }> = [
+  { prefix: "claude-opus-4",           inputCentsPerM: 1500, outputCentsPerM: 7500 },
+  { prefix: "claude-3-5-sonnet",       inputCentsPerM:  300, outputCentsPerM: 1500 },
+  { prefix: "claude-3-5-haiku",        inputCentsPerM:   80, outputCentsPerM:  400 },
+  { prefix: "claude-3-haiku",          inputCentsPerM:   25, outputCentsPerM:  125 },
+  { prefix: "claude-3-opus",           inputCentsPerM: 1500, outputCentsPerM: 7500 },
+  { prefix: "claude-3-sonnet",         inputCentsPerM:  300, outputCentsPerM: 1500 },
+  { prefix: "gpt-4o-mini",             inputCentsPerM:   15, outputCentsPerM:   60 },
+  { prefix: "gpt-4o",                  inputCentsPerM:  500, outputCentsPerM: 1500 },
+  { prefix: "gpt-4-turbo",             inputCentsPerM: 1000, outputCentsPerM: 3000 },
+  { prefix: "gpt-4",                   inputCentsPerM: 3000, outputCentsPerM: 6000 },
+  { prefix: "gpt-3.5-turbo",           inputCentsPerM:   50, outputCentsPerM:  150 },
+  { prefix: "gemini-1.5-pro",          inputCentsPerM:  125, outputCentsPerM:  500 },
+  { prefix: "gemini-1.5-flash",        inputCentsPerM:    7, outputCentsPerM:   30 },
+  { prefix: "gemini-2.0-flash",        inputCentsPerM:   10, outputCentsPerM:   40 },
+];
+
+function computeMinCostCents(
+  model: string | null | undefined,
+  inputTokens: number,
+  outputTokens: number,
+): number | null {
+  if (!model || (inputTokens <= 0 && outputTokens <= 0)) return null;
+  const lower = model.toLowerCase();
+  const rates = MODEL_PRICE_FLOOR.find((r) => lower.startsWith(r.prefix.toLowerCase()));
+  if (!rates) return null;
+  return Math.ceil(
+    (inputTokens * rates.inputCentsPerM + outputTokens * rates.outputCentsPerM) / 1_000_000,
+  );
+}
+
+/**
+ * Tolerance factor for client-reported costs. If the reported cost is within
+ * 95% of the server-calculated value, we accept it to avoid penalizing minor
+ * rounding differences between client libraries.
+ */
+const COST_VERIFICATION_TOLERANCE = 0.95;
+
+async function computeVerifiedCostCents(
+  pricingSvc: ReturnType<typeof pricingService>,
+  data: {
+    provider: string;
+    model: string | null | undefined;
+    inputTokens: number;
+    outputTokens: number;
+    cachedInputTokens: number;
+    costCents: number;
+  },
+): Promise<{ costCents: number; wasOverridden: boolean; reason?: string }> {
+  const { provider, model, inputTokens, outputTokens, cachedInputTokens, costCents } = data;
+
+  // 1. Try the dynamic pricing catalog first (most accurate, admin-updatable)
+  if (model) {
+    try {
+      const price = await pricingSvc.findByProviderModel(provider, model);
+      if (price) {
+        const expected =
+          (inputTokens * price.inputPriceCentsPer1M +
+            outputTokens * price.outputPriceCentsPer1M +
+            cachedInputTokens * price.cachedInputPriceCentsPer1M) /
+          1_000_000;
+        const minAccepted = expected * COST_VERIFICATION_TOLERANCE;
+        if (costCents < minAccepted) {
+          return {
+            costCents: Math.ceil(expected),
+            wasOverridden: true,
+            reason: `catalog_floor:${provider}/${model}`,
+          };
+        }
+        return { costCents, wasOverridden: false };
+      }
+    } catch {
+      // Pricing lookup failure is non-fatal — fall through to hardcoded floor
+    }
+  }
+
+  // 2. Fall back to hardcoded floor (covers models not yet in the catalog)
+  const minCost = computeMinCostCents(model, inputTokens, outputTokens);
+  if (minCost !== null && costCents < minCost) {
+    return { costCents: minCost, wasOverridden: true, reason: `hardcoded_floor` };
+  }
+
+  return { costCents, wasOverridden: false };
+}
 
 function currentUtcMonthWindow(now = new Date()) {
   const year = now.getUTCFullYear();
@@ -45,6 +138,7 @@ async function getMonthlySpendTotal(
 
 export function costService(db: Db, budgetHooks: BudgetServiceHooks = {}) {
   const budgets = budgetService(db, budgetHooks);
+  const pricingSvc = pricingService(db);
   return {
     createEvent: async (companyId: string, data: Omit<typeof costEvents.$inferInsert, "companyId">) => {
       const agent = await db
@@ -58,10 +152,38 @@ export function costService(db: Db, budgetHooks: BudgetServiceHooks = {}) {
         throw unprocessable("Agent does not belong to company");
       }
 
+      // Server-side cost verification: reject under-reported costs by looking
+      // up the dynamic pricing catalog first, then falling back to hardcoded
+      // floors. This prevents a compromised agent from evading budget caps.
+      const verification = await computeVerifiedCostCents(pricingSvc, {
+        provider: data.provider,
+        model: data.model,
+        inputTokens: data.inputTokens ?? 0,
+        outputTokens: data.outputTokens ?? 0,
+        cachedInputTokens: data.cachedInputTokens ?? 0,
+        costCents: data.costCents,
+      });
+
+      if (verification.wasOverridden) {
+        logger.warn(
+          {
+            companyId,
+            agentId: data.agentId,
+            provider: data.provider,
+            model: data.model,
+            reportedCents: data.costCents,
+            verifiedCents: verification.costCents,
+            reason: verification.reason,
+          },
+          "costEvent: client-reported cost was below server-calculated floor; overriding",
+        );
+      }
+
       const event = await db
         .insert(costEvents)
         .values({
           ...data,
+          costCents: verification.costCents,
           companyId,
           biller: data.biller ?? data.provider,
           billingType: data.billingType ?? "unknown",
