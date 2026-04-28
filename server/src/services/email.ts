@@ -571,10 +571,10 @@ export function emailService(db: Db) {
         ].join("\n"),
         html: await wrapHtml(
           [
-            `<h2>Reset your ${appName} password</h2>`,
-            `<p>You requested a password reset for your <strong>${appName}</strong> account.</p>`,
-            `<p><a href="${resetUrl}" class="btn">Reset password</a></p>`,
-            `<p style="color:#666;font-size:12px;">Or copy this link: ${resetUrl}</p>`,
+            `<h2>Reset your ${esc(appName)} password</h2>`,
+            `<p>You requested a password reset for your <strong>${esc(appName)}</strong> account.</p>`,
+            `<p><a href="${esc(resetUrl)}" class="btn">Reset password</a></p>`,
+            `<p style="color:#666;font-size:12px;">Or copy this link: ${esc(resetUrl)}</p>`,
             `<p style="color:#666;font-size:12px;">This link expires in 1 hour. If you did not request this, you can safely ignore this email.</p>`,
           ].join(""),
           n,
