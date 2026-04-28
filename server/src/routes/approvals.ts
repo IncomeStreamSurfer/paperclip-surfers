@@ -152,6 +152,12 @@ export function approvalRoutes(db: Db) {
   router.post("/approvals/:id/approve", validate(resolveApprovalSchema), async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Approval not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const { approval, applied } = await svc.approve(
       id,
       req.body.decidedByUserId ?? "board",
@@ -247,6 +253,12 @@ export function approvalRoutes(db: Db) {
   router.post("/approvals/:id/reject", validate(resolveApprovalSchema), async (req, res) => {
     assertBoard(req);
     const id = req.params.id as string;
+    const precheck = await svc.getById(id);
+    if (!precheck) {
+      res.status(404).json({ error: "Approval not found" });
+      return;
+    }
+    assertCompanyAccess(req, precheck.companyId);
     const { approval, applied } = await svc.reject(
       id,
       req.body.decidedByUserId ?? "board",
@@ -274,6 +286,12 @@ export function approvalRoutes(db: Db) {
     async (req, res) => {
       assertBoard(req);
       const id = req.params.id as string;
+      const precheck = await svc.getById(id);
+      if (!precheck) {
+        res.status(404).json({ error: "Approval not found" });
+        return;
+      }
+      assertCompanyAccess(req, precheck.companyId);
       const approval = await svc.requestRevision(
         id,
         req.body.decidedByUserId ?? "board",

@@ -3712,6 +3712,7 @@ function LogViewer({ run, adapterType, onTranscript }: { run: HeartbeatRun; adap
     distanceFromBottom: Number.POSITIVE_INFINITY,
   });
   const isLive = run.status === "running" || run.status === "queued";
+  const maxSeqRef = useRef(0);
   const { data: workspaceOperations = [] } = useQuery({
     queryKey: queryKeys.runWorkspaceOperations(run.id),
     queryFn: () => heartbeatsApi.workspaceOperations(run.id),
@@ -3770,6 +3771,7 @@ function LogViewer({ run, adapterType, onTranscript }: { run: HeartbeatRun; adap
   useEffect(() => {
     if (initialEvents) {
       setEvents(initialEvents);
+      maxSeqRef.current = initialEvents.reduce((max, e) => Math.max(max, e.seq), 0);
       setLoading(false);
     }
   }, [initialEvents]);
@@ -3913,18 +3915,19 @@ function LogViewer({ run, adapterType, onTranscript }: { run: HeartbeatRun; adap
   useEffect(() => {
     if (!isLive || isStreamingConnected) return;
     const interval = setInterval(async () => {
-      const maxSeq = events.length > 0 ? Math.max(...events.map((e) => e.seq)) : 0;
       try {
-        const newEvents = await heartbeatsApi.events(run.id, maxSeq, 100);
+        const newEvents = await heartbeatsApi.events(run.id, maxSeqRef.current, 100);
         if (newEvents.length > 0) {
-          setEvents((prev) => [...prev, ...newEvents]);
+          maxSeqRef.current = newEvents.reduce((max, e) => Math.max(max, e.seq), maxSeqRef.current);
+          setEvents((prev) => [...prev, ...newEvents].slice(-500));
         }
       } catch {
         // ignore polling errors
       }
     }, 2000);
     return () => clearInterval(interval);
-  }, [run.id, isLive, isStreamingConnected, events]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run.id, isLive, isStreamingConnected]);
 
   // Poll shell log for running runs
   useEffect(() => {
@@ -4030,7 +4033,8 @@ function LogViewer({ run, adapterType, onTranscript }: { run: HeartbeatRun; adap
 
         setEvents((prev) => {
           if (prev.some((existing) => existing.seq === seq)) return prev;
-          return [...prev, liveEvent];
+          if (seq > maxSeqRef.current) maxSeqRef.current = seq;
+          return [...prev, liveEvent].slice(-500);
         });
       };
 
