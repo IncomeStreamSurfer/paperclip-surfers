@@ -329,6 +329,15 @@ export function companyRoutes(db: Db, storage?: StorageService) {
       entityType: "company",
       entityId: companyId,
     });
+
+    // Pause all non-terminated agents so they stop picking up work
+    const activeAgents = await agents.list(companyId);
+    await Promise.allSettled(
+      activeAgents
+        .filter((a) => a.status !== "paused")
+        .map((a) => agents.pause(a.id, "system")),
+    );
+
     res.json(company);
   });
 
