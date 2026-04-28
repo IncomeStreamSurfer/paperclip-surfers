@@ -2998,12 +2998,6 @@ function RunListItem({
           </div>
         )}
       </Link>
-      {transcript.length > 0 && (
-        <span className="px-3 pb-2 flex items-center gap-1 text-[11px] text-cyan-600 dark:text-cyan-400 truncate">
-          <Activity className={cn("h-2.5 w-2.5", isLive && "animate-pulse")} />
-          {latestActivityPreview(transcript) ?? (isLive ? "Working…" : "Recent activity")}
-        </span>
-      )}
     </div>
   );
 }
@@ -3045,7 +3039,7 @@ function RunsTab({
     }));
   }, [runs, adapterType]);
 
-  const { transcriptByRun, hasOutputForRun } = useLiveRunTranscripts({
+  const { transcriptByRun } = useLiveRunTranscripts({
     runs: liveRuns,
     companyId,
   });
