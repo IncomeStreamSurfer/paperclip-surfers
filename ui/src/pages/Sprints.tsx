@@ -13,6 +13,7 @@ import {
   FolderOpen, Link2, X, Search,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Tooltip } from "../components/Tooltip";
 import { Button } from "@/components/ui/button";
 import { PageSkeleton } from "../components/PageSkeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

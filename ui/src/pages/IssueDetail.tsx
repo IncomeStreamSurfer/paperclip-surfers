@@ -29,6 +29,7 @@ import { StatusIcon } from "../components/StatusIcon";
 import { PriorityIcon } from "../components/PriorityIcon";
 import { StatusBadge } from "../components/StatusBadge";
 import { Identity } from "../components/Identity";
+import { Tooltip } from "../components/Tooltip";
 import { PluginSlotMount, PluginSlotOutlet, usePluginSlots } from "@/plugins/slots";
 import { PluginLauncherOutlet } from "@/plugins/launchers";
 import { Separator } from "@/components/ui/separator";
@@ -798,45 +799,49 @@ export function IssueDetail() {
           )}
 
           <div className="ml-auto flex items-center gap-0.5 md:hidden shrink-0">
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={copyIssueToClipboard}
-              title="Copy issue as markdown"
-            >
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={() => setMobilePropsOpen(true)}
-              title="Properties"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
+            <Tooltip content="Copy issue as markdown">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={copyIssueToClipboard}
+              >
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </Tooltip>
+            <Tooltip content="Properties">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={() => setMobilePropsOpen(true)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </Tooltip>
           </div>
 
           <div className="hidden md:flex items-center md:ml-auto shrink-0">
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              onClick={copyIssueToClipboard}
-              title="Copy issue as markdown"
-            >
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              className={cn(
-                "shrink-0 transition-opacity duration-200",
-                panelVisible ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100",
-              )}
-              onClick={() => setPanelVisible(true)}
-              title="Show properties"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
+            <Tooltip content="Copy issue as markdown">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={copyIssueToClipboard}
+              >
+                {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </Tooltip>
+            <Tooltip content="Show properties">
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                className={cn(
+                  "shrink-0 transition-opacity duration-200",
+                  panelVisible ? "opacity-0 pointer-events-none w-0 overflow-hidden" : "opacity-100",
+                )}
+                onClick={() => setPanelVisible(true)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </Tooltip>
 
             <Popover open={moreOpen} onOpenChange={setMoreOpen}>
               <PopoverTrigger asChild>
@@ -978,15 +983,16 @@ export function IssueDetail() {
                 >
                   {attachment.originalFilename ?? attachment.id}
                 </a>
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => deleteAttachment.mutate(attachment.id)}
-                  disabled={deleteAttachment.isPending}
-                  title="Delete attachment"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip content="Delete attachment">
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => deleteAttachment.mutate(attachment.id)}
+                    disabled={deleteAttachment.isPending}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
               </div>
               <p className="text-[11px] text-muted-foreground">
                 {attachment.contentType} · {(attachment.byteSize / 1024).toFixed(1)} KB

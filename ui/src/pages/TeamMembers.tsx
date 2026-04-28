@@ -4,6 +4,7 @@ import { useCompany } from "../context/CompanyContext";
 import { useToast } from "../context/ToastContext";
 import { teamApi, type TeamMember, type PendingInvitation } from "../api/team";
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "../components/Tooltip";
 import { UserPlus, Trash2, ChevronDown, Copy, Check } from "lucide-react";
 import {
   DropdownMenu,
@@ -215,23 +216,24 @@ export function TeamMembers() {
                     {new Date(inv.expiresAt).toLocaleDateString()}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  title="Copy invite link"
-                  className="text-muted-foreground"
-                  onClick={() => {
-                    const link = `${window.location.origin}/accept-user-invite/${inv.token}`;
-                    navigator.clipboard.writeText(link).then(() => {
-                      setCopiedInviteId(inv.id);
-                      setTimeout(() => setCopiedInviteId(null), 2000);
-                    });
-                  }}
-                >
-                  {copiedInviteId === inv.id
-                    ? <Check className="h-4 w-4 text-green-600" />
-                    : <Copy className="h-4 w-4" />}
-                </Button>
+                <Tooltip content="Copy invite link">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-muted-foreground"
+                    onClick={() => {
+                      const link = `${window.location.origin}/accept-user-invite/${inv.token}`;
+                      navigator.clipboard.writeText(link).then(() => {
+                        setCopiedInviteId(inv.id);
+                        setTimeout(() => setCopiedInviteId(null), 2000);
+                      });
+                    }}
+                  >
+                    {copiedInviteId === inv.id
+                      ? <Check className="h-4 w-4 text-green-600" />
+                      : <Copy className="h-4 w-4" />}
+                  </Button>
+                </Tooltip>
                 <Button
                   variant="ghost"
                   size="sm"

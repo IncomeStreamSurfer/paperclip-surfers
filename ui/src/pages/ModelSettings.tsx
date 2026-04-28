@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { Tooltip } from "../components/Tooltip";
 import {
   Cpu,
   Save,
@@ -1190,9 +1191,11 @@ function ModelPickerPanel({
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={onClose} title="Close">
-          <X className="h-3.5 w-3.5" />
-        </Button>
+        <Tooltip content="Close">
+          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 shrink-0" onClick={onClose}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </Tooltip>
       </div>
 
       {isLoading && (
@@ -1459,14 +1462,15 @@ function ProPlusSection({
                 </span>
                 <span className="flex-1 text-sm font-medium truncate">{m.modelId}</span>
                 <Checkbox checked={m.enabled} onCheckedChange={() => toggle(m.modelId)} />
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-destructive transition-colors ml-1 shrink-0"
-                  onClick={() => removeModel(m.modelId)}
-                  title="Remove from allow-list"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <Tooltip content="Remove from allow-list">
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-destructive transition-colors ml-1 shrink-0"
+                    onClick={() => removeModel(m.modelId)}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </Tooltip>
               </Card>
             ))}
           </div>

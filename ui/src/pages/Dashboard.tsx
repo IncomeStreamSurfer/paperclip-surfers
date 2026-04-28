@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/sortable";
 import { dashboardApi } from "../api/dashboard";
 import { activityApi } from "../api/activity";
+import { Tooltip } from "../components/Tooltip";
 import { issuesApi } from "../api/issues";
 import { agentsApi } from "../api/agents";
 import { projectsApi } from "../api/projects";
@@ -691,22 +692,24 @@ export function Dashboard() {
             <div className="flex items-center gap-1">
               {sections.length > 0 && (
                 <>
-                  <button
-                    onClick={expandAll}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted/60 px-2 py-1 rounded font-medium transition-colors"
-                    title="Expand all sections"
-                  >
-                    <ChevronsUpDown className="h-3 w-3" />
-                    Expand all
-                  </button>
-                  <button
-                    onClick={collapseAll}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted/60 px-2 py-1 rounded font-medium transition-colors"
-                    title="Collapse all sections"
-                  >
-                    <ChevronsDownUp className="h-3 w-3" />
-                    Collapse all
-                  </button>
+                  <Tooltip content="Expand all sections">
+                    <button
+                      onClick={expandAll}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted/60 px-2 py-1 rounded font-medium transition-colors"
+                    >
+                      <ChevronsUpDown className="h-3 w-3" />
+                      Expand all
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="Collapse all sections">
+                    <button
+                      onClick={collapseAll}
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:bg-muted/60 px-2 py-1 rounded font-medium transition-colors"
+                    >
+                      <ChevronsDownUp className="h-3 w-3" />
+                      Collapse all
+                    </button>
+                  </Tooltip>
                 </>
               )}
               <button

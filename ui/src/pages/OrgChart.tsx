@@ -10,6 +10,7 @@ import { agentUrl } from "../lib/utils";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "../components/EmptyState";
 import { PageSkeleton } from "../components/PageSkeleton";
+import { Tooltip } from "../components/Tooltip";
 import { AgentIcon } from "../components/AgentIconPicker";
 import { Download, Network, RotateCcw, Upload } from "lucide-react";
 import { AGENT_ROLE_LABELS, type Agent } from "@paperclipai/shared";
@@ -483,10 +484,11 @@ export function OrgChart() {
           </Button>
         </Link>
         {hasCustomLayout && (
-          <Button variant="ghost" size="sm" onClick={handleResetLayout} title="Reset agent positions to default">
-            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-            Reset layout
-          </Button>
+          <Tooltip content="Reset agent positions to default">
+            <Button variant="ghost" size="sm" onClick={handleResetLayout}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </Tooltip>
         )}
       </div>
       <div
@@ -540,14 +542,15 @@ export function OrgChart() {
           >
             &minus;
           </button>
-          <button
-            className="w-7 h-7 flex items-center justify-center bg-background border border-border rounded text-[10px] hover:bg-accent transition-colors"
-            onClick={fitToScreen}
-            title="Fit to screen"
-            aria-label="Fit chart to screen"
-          >
-            Fit
-          </button>
+          <Tooltip content="Fit to screen">
+            <button
+              className="w-7 h-7 flex items-center justify-center bg-background border border-border rounded text-[10px] hover:bg-accent transition-colors"
+              onClick={fitToScreen}
+              aria-label="Fit chart to screen"
+            >
+              Fit
+            </button>
+          </Tooltip>
         </div>
 
         {/* SVG layer for edges — always follows offset-adjusted node positions */}

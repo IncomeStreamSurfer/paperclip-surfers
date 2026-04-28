@@ -95,17 +95,24 @@ export function RunActivityChart({ runs }: { runs: HeartbeatRun[] }) {
           const total = entry.succeeded + entry.failed + entry.other;
           const heightPct = (total / maxValue) * 100;
           return (
-            <div key={day} className="flex-1 h-full flex flex-col justify-end" title={`${day}: ${total} runs`}>
-              {total > 0 ? (
-                <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
-                  {entry.succeeded > 0 && <div className="bg-emerald-500" style={{ flex: entry.succeeded }} />}
-                  {entry.failed > 0 && <div className="bg-red-500" style={{ flex: entry.failed }} />}
-                  {entry.other > 0 && <div className="bg-neutral-500" style={{ flex: entry.other }} />}
+            <Tooltip key={day}>
+              <TooltipTrigger asChild>
+                <div className="flex-1 h-full flex flex-col justify-end">
+                  {total > 0 ? (
+                    <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
+                      {entry.succeeded > 0 && <div className="bg-emerald-500" style={{ flex: entry.succeeded }} />}
+                      {entry.failed > 0 && <div className="bg-red-500" style={{ flex: entry.failed }} />}
+                      {entry.other > 0 && <div className="bg-neutral-500" style={{ flex: entry.other }} />}
+                    </div>
+                  ) : (
+                    <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
+                  )}
                 </div>
-              ) : (
-                <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
-              )}
-            </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {day}: {total} runs
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
@@ -147,17 +154,24 @@ export function PriorityChart({ issues }: { issues: { priority: string; createdA
           const total = Object.values(entry).reduce((a, b) => a + b, 0);
           const heightPct = (total / maxValue) * 100;
           return (
-            <div key={day} className="flex-1 h-full flex flex-col justify-end" title={`${day}: ${total} issues`}>
-              {total > 0 ? (
-                <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
-                  {priorityOrder.map(p => entry[p] > 0 ? (
-                    <div key={p} style={{ flex: entry[p], backgroundColor: priorityColors[p] }} />
-                  ) : null)}
+            <Tooltip key={day}>
+              <TooltipTrigger asChild>
+                <div className="flex-1 h-full flex flex-col justify-end">
+                  {total > 0 ? (
+                    <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
+                      {priorityOrder.map(p => entry[p] > 0 ? (
+                        <div key={p} style={{ flex: entry[p], backgroundColor: priorityColors[p] }} />
+                      ) : null)}
+                    </div>
+                  ) : (
+                    <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
+                  )}
                 </div>
-              ) : (
-                <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
-              )}
-            </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {day}: {total} issues
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
@@ -214,17 +228,24 @@ export function IssueStatusChart({ issues }: { issues: { status: string; created
           const total = Object.values(entry).reduce((a, b) => a + b, 0);
           const heightPct = (total / maxValue) * 100;
           return (
-            <div key={day} className="flex-1 h-full flex flex-col justify-end" title={`${day}: ${total} issues`}>
-              {total > 0 ? (
-                <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
-                  {statusOrder.map(s => (entry[s] ?? 0) > 0 ? (
-                    <div key={s} style={{ flex: entry[s], backgroundColor: statusColors[s] ?? "#6b7280" }} />
-                  ) : null)}
+            <Tooltip key={day}>
+              <TooltipTrigger asChild>
+                <div className="flex-1 h-full flex flex-col justify-end">
+                  {total > 0 ? (
+                    <div className="flex flex-col-reverse gap-px overflow-hidden" style={{ height: `${heightPct}%`, minHeight: 2 }}>
+                      {statusOrder.map(s => (entry[s] ?? 0) > 0 ? (
+                        <div key={s} style={{ flex: entry[s], backgroundColor: statusColors[s] ?? "#6b7280" }} />
+                      ) : null)}
+                    </div>
+                  ) : (
+                    <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
+                  )}
                 </div>
-              ) : (
-                <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
-              )}
-            </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {day}: {total} issues
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
@@ -257,13 +278,20 @@ export function SuccessRateChart({ runs }: { runs: HeartbeatRun[] }) {
           const rate = entry.total > 0 ? entry.succeeded / entry.total : 0;
           const color = entry.total === 0 ? undefined : rate >= 0.8 ? "#10b981" : rate >= 0.5 ? "#eab308" : "#ef4444";
           return (
-            <div key={day} className="flex-1 h-full flex flex-col justify-end" title={`${day}: ${entry.total > 0 ? Math.round(rate * 100) : 0}% (${entry.succeeded}/${entry.total})`}>
-              {entry.total > 0 ? (
-                <div style={{ height: `${rate * 100}%`, minHeight: 2, backgroundColor: color }} />
-              ) : (
-                <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
-              )}
-            </div>
+            <Tooltip key={day}>
+              <TooltipTrigger asChild>
+                <div className="flex-1 h-full flex flex-col justify-end">
+                  {entry.total > 0 ? (
+                    <div style={{ height: `${rate * 100}%`, minHeight: 2, backgroundColor: color }} />
+                  ) : (
+                    <div className="bg-muted/30 rounded-sm" style={{ height: 2 }} />
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {day}: {entry.total > 0 ? Math.round(rate * 100) : 0}% ({entry.succeeded}/{entry.total})
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
@@ -391,25 +419,37 @@ export function TasksByAgentChart({ data }: { data: TasksByAgentSummary }) {
           <span className="text-[10px] text-muted-foreground truncate w-20 shrink-0">{row.agentName}</span>
           <div className="flex-1 h-3 bg-muted/30 rounded-sm overflow-hidden flex">
             {row.inProgressCount > 0 && (
-              <div
-                className="h-full bg-violet-500"
-                style={{ width: `${(row.inProgressCount / maxTotal) * 100}%` }}
-                title={`In progress: ${row.inProgressCount}`}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full bg-violet-500"
+                    style={{ width: `${(row.inProgressCount / maxTotal) * 100}%` }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">In progress: {row.inProgressCount}</TooltipContent>
+              </Tooltip>
             )}
             {(row.openCount - row.inProgressCount) > 0 && (
-              <div
-                className="h-full bg-blue-400"
-                style={{ width: `${((row.openCount - row.inProgressCount) / maxTotal) * 100}%` }}
-                title={`Open: ${row.openCount - row.inProgressCount}`}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full bg-blue-400"
+                    style={{ width: `${((row.openCount - row.inProgressCount) / maxTotal) * 100}%` }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Open: {row.openCount - row.inProgressCount}</TooltipContent>
+              </Tooltip>
             )}
             {row.doneCount > 0 && (
-              <div
-                className="h-full bg-emerald-500"
-                style={{ width: `${(row.doneCount / maxTotal) * 100}%` }}
-                title={`Done: ${row.doneCount}`}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{ width: `${(row.doneCount / maxTotal) * 100}%` }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Done: {row.doneCount}</TooltipContent>
+              </Tooltip>
             )}
           </div>
           <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-right shrink-0">
@@ -446,14 +486,20 @@ export function AgentTimeChart({ data }: { data: AgentTimeSummary }) {
         <div key={row.agentId} className="flex items-center gap-2">
           <span className="text-[10px] text-muted-foreground truncate w-20 shrink-0">{row.agentName}</span>
           <div className="flex-1 h-3 bg-muted/30 rounded-sm overflow-hidden">
-            <div
-              className="h-full rounded-sm"
-              style={{
-                width: `${(row.totalSeconds / maxSeconds) * 100}%`,
-                backgroundColor: AGENT_COLORS[i % AGENT_COLORS.length],
-              }}
-              title={`${row.runCount} run${row.runCount === 1 ? "" : "s"} · avg ${formatDuration(row.avgSeconds)}`}
-            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div
+                  className="h-full rounded-sm"
+                  style={{
+                    width: `${(row.totalSeconds / maxSeconds) * 100}%`,
+                    backgroundColor: AGENT_COLORS[i % AGENT_COLORS.length],
+                  }}
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {row.runCount} run{row.runCount === 1 ? "" : "s"} · avg {formatDuration(row.avgSeconds)}
+              </TooltipContent>
+            </Tooltip>
           </div>
           <span className="text-[10px] text-muted-foreground tabular-nums w-12 text-right shrink-0">
             {formatDuration(row.totalSeconds)}
@@ -482,13 +528,28 @@ export function IssuesByProjectChart({ data }: { data: IssuesByProjectSummary })
           <span className="text-[10px] text-muted-foreground truncate w-24 shrink-0">{row.projectName}</span>
           <div className="flex-1 h-3 bg-muted/30 rounded-sm overflow-hidden flex">
             {row.inProgressCount > 0 && (
-              <div className="h-full bg-violet-500" style={{ width: `${(row.inProgressCount / maxTotal) * 100}%` }} title={`In progress: ${row.inProgressCount}`} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="h-full bg-violet-500" style={{ width: `${(row.inProgressCount / maxTotal) * 100}%` }} />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">In progress: {row.inProgressCount}</TooltipContent>
+              </Tooltip>
             )}
             {(row.openCount - row.inProgressCount) > 0 && (
-              <div className="h-full bg-blue-400" style={{ width: `${((row.openCount - row.inProgressCount) / maxTotal) * 100}%` }} title={`Open: ${row.openCount - row.inProgressCount}`} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="h-full bg-blue-400" style={{ width: `${((row.openCount - row.inProgressCount) / maxTotal) * 100}%` }} />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Open: {row.openCount - row.inProgressCount}</TooltipContent>
+              </Tooltip>
             )}
             {row.doneCount > 0 && (
-              <div className="h-full bg-emerald-500" style={{ width: `${(row.doneCount / maxTotal) * 100}%` }} title={`Done: ${row.doneCount}`} />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="h-full bg-emerald-500" style={{ width: `${(row.doneCount / maxTotal) * 100}%` }} />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Done: {row.doneCount}</TooltipContent>
+              </Tooltip>
             )}
           </div>
           <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-right shrink-0">{row.totalCount}</span>
@@ -560,17 +621,20 @@ export function CostTrendChart({ data }: { data: CostTrendSummary }) {
         {days.map((day, i) => {
           const heightPct = (day.costCents / maxCents) * 100;
           return (
-            <div
-              key={day.date}
-              className="flex-1 h-full flex flex-col justify-end"
-              title={`${day.date}: ${formatCents(day.costCents)}`}
-            >
-              {day.costCents > 0 ? (
-                <div className="bg-amber-500 rounded-sm" style={{ height: `${heightPct}%`, minHeight: 2 }} />
-              ) : (
-                <div className="bg-muted/20 rounded-sm" style={{ height: 2 }} />
-              )}
-            </div>
+            <Tooltip key={day.date}>
+              <TooltipTrigger asChild>
+                <div className="flex-1 h-full flex flex-col justify-end">
+                  {day.costCents > 0 ? (
+                    <div className="bg-amber-500 rounded-sm" style={{ height: `${heightPct}%`, minHeight: 2 }} />
+                  ) : (
+                    <div className="bg-muted/20 rounded-sm" style={{ height: 2 }} />
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {day.date}: {formatCents(day.costCents)}
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>
@@ -704,25 +768,37 @@ export function ProjectHealthWidget({ data }: { data: ProjectHealthSummary }) {
           </div>
           <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden flex">
             {row.doneIssueCount > 0 && row.totalIssueCount > 0 && (
-              <div
-                className="h-full bg-emerald-500"
-                style={{ width: `${(row.doneIssueCount / row.totalIssueCount) * 100}%` }}
-                title={`Done: ${row.doneIssueCount}`}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{ width: `${(row.doneIssueCount / row.totalIssueCount) * 100}%` }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Done: {row.doneIssueCount}</TooltipContent>
+              </Tooltip>
             )}
             {row.inProgressIssueCount > 0 && row.totalIssueCount > 0 && (
-              <div
-                className="h-full bg-violet-500"
-                style={{ width: `${(row.inProgressIssueCount / row.totalIssueCount) * 100}%` }}
-                title={`In Progress: ${row.inProgressIssueCount}`}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full bg-violet-500"
+                    style={{ width: `${(row.inProgressIssueCount / row.totalIssueCount) * 100}%` }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">In Progress: {row.inProgressIssueCount}</TooltipContent>
+              </Tooltip>
             )}
             {row.blockedIssueCount > 0 && row.totalIssueCount > 0 && (
-              <div
-                className="h-full bg-red-500"
-                style={{ width: `${(row.blockedIssueCount / row.totalIssueCount) * 100}%` }}
-                title={`Blocked: ${row.blockedIssueCount}`}
-              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div
+                    className="h-full bg-red-500"
+                    style={{ width: `${(row.blockedIssueCount / row.totalIssueCount) * 100}%` }}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Blocked: {row.blockedIssueCount}</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -854,38 +930,50 @@ export function WorldClockWidget() {
         {timezones.map((entry, idx) => {
           const { time, ampm, day, offset } = formatTzDateTime(entry.tz, now);
           return (
-            <div
-              key={entry.id}
-              className="group relative flex flex-col gap-0.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2 hover:bg-muted/60 transition-colors"
-              title={entry.tz}
-            >
-              {/* Remove button */}
-              <button
-                onClick={() => removeTimezone(entry.id)}
-                className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                title="Remove"
-              >
-                <X className="h-3 w-3" />
-              </button>
-              {/* Reorder buttons */}
-              <div className="absolute bottom-1.5 right-1.5 flex-col gap-px opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex">
-                <button
-                  onClick={() => moveTimezone(entry.id, "up")}
-                  disabled={idx === 0}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
-                  title="Move left"
+            <Tooltip key={entry.id}>
+              <TooltipTrigger asChild>
+                <div
+                  className="group relative flex flex-col gap-0.5 rounded-md border border-border/60 bg-muted/30 px-3 py-2 hover:bg-muted/60 transition-colors"
                 >
-                  <ChevronUp className="h-2.5 w-2.5" />
-                </button>
-                <button
-                  onClick={() => moveTimezone(entry.id, "down")}
-                  disabled={idx === timezones.length - 1}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
-                  title="Move right"
-                >
-                  <ChevronDown className="h-2.5 w-2.5" />
-                </button>
-              </div>
+                  {/* Remove button */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => removeTimezone(entry.id)}
+                        className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="text-xs">Remove</TooltipContent>
+                  </Tooltip>
+                  {/* Reorder buttons */}
+                  <div className="absolute bottom-1.5 right-1.5 flex-col gap-px opacity-0 group-hover:opacity-100 transition-opacity hidden group-hover:flex">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => moveTimezone(entry.id, "up")}
+                          disabled={idx === 0}
+                          className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
+                        >
+                          <ChevronUp className="h-2.5 w-2.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">Move left</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => moveTimezone(entry.id, "down")}
+                          disabled={idx === timezones.length - 1}
+                          className="text-muted-foreground hover:text-foreground disabled:opacity-20 disabled:cursor-default leading-none"
+                        >
+                          <ChevronDown className="h-2.5 w-2.5" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="text-xs">Move right</TooltipContent>
+                    </Tooltip>
+                  </div>
               <span className="text-[10px] font-medium text-muted-foreground truncate pr-4">{entry.label}</span>
               <div className="flex items-baseline gap-1">
                 <span className="text-lg font-mono font-semibold tabular-nums leading-tight">{time}</span>
@@ -896,6 +984,9 @@ export function WorldClockWidget() {
                 {offset && <><span className="text-border/60">·</span><span>{offset}</span></>}
               </div>
             </div>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">{entry.tz}</TooltipContent>
+        </Tooltip>
           );
         })}
       </div>
@@ -943,16 +1034,20 @@ function WorldClockSearch({
 }: WorldClockSearchProps) {
   return (
     <div className="relative">
-      <button
-        ref={buttonRef}
-        onClick={() => setDropdownOpen(!dropdownOpen)}
-        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded px-2 py-1 hover:bg-muted/60 border border-border/50"
-        title="Add Time Zone"
-      >
-        <Globe className="h-3.5 w-3.5" />
-        <Plus className="h-3 w-3" />
-        <span>Add city</span>
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            ref={buttonRef}
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded px-2 py-1 hover:bg-muted/60 border border-border/50"
+          >
+            <Globe className="h-3.5 w-3.5" />
+            <Plus className="h-3 w-3" />
+            <span>Add city</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">Add Time Zone</TooltipContent>
+      </Tooltip>
 
       {dropdownOpen && (
         <div
