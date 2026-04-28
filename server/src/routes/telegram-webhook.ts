@@ -47,18 +47,26 @@ export function telegramWebhookRoutes(db: Db) {
 
     const config = providerRow.config as { botToken?: string; chatId?: string; webhookSecret?: string };
 
-    // Validate X-Telegram-Bot-Api-Secret-Token header when a webhookSecret is configured.
-    // Uses constant-time comparison to prevent timing attacks.
-    if (config.webhookSecret) {
-      const incomingSecret = req.headers["x-telegram-bot-api-secret-token"];
-      if (typeof incomingSecret !== "string") return;
-      try {
-        const expected = Buffer.from(config.webhookSecret, "utf8");
-        const incoming = Buffer.from(incomingSecret, "utf8");
-        if (expected.length !== incoming.length || !timingSafeEqual(expected, incoming)) return;
-      } catch {
+    // Always require webhook secret validation. Reject unauthenticated requests.
+    // Return 200 before validating so Telegram doesn't retry, but do not process commands.
+    if (!config.webhookSecret) {
+      logger.warn({ companyId }, "telegram webhook: no webhookSecret configured; ignoring request");
+      return;
+    }
+    const incomingSecret = req.headers["x-telegram-bot-api-secret-token"];
+    if (typeof incomingSecret !== "string") {
+      logger.warn({ companyId }, "telegram webhook: missing X-Telegram-Bot-Api-Secret-Token header");
+      return;
+    }
+    try {
+      const expected = Buffer.from(config.webhookSecret, "utf8");
+      const incoming = Buffer.from(incomingSecret, "utf8");
+      if (expected.length !== incoming.length || !timingSafeEqual(expected, incoming)) {
+        logger.warn({ companyId }, "telegram webhook: secret token mismatch");
         return;
       }
+    } catch {
+      return;
     }
 
     if (!config.chatId || String(chatId) !== config.chatId) return;

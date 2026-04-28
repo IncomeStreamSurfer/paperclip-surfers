@@ -1,5 +1,5 @@
 import { Router, type Request } from "express";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type { Db } from "@paperclipai/db";
 import {
   companyAllowedModels,
@@ -343,21 +343,34 @@ export function modelRoutes(db: Db) {
 
     const { updates } = req.body as { updates: Array<{ agentId: string; model: string }> };
 
-    for (const update of updates) {
-      const agent = await db
-        .select({ adapterConfig: agentsTable.adapterConfig })
-        .from(agentsTable)
-        .where(eq(agentsTable.id, update.agentId))
-        .then((rows) => rows[0]);
+    if (!Array.isArray(updates) || updates.length === 0) {
+      res.json({ agents: [] });
+      return;
+    }
+    if (updates.length > 200) {
+      res.status(400).json({ error: "Too many updates; maximum 200 per request" });
+      return;
+    }
 
-      if (agent) {
-        const newConfig = { ...agent.adapterConfig, model: update.model };
-        await db
+    const agentIds = [...new Set(updates.map((u) => u.agentId))];
+    const existingAgents = await db
+      .select({ id: agentsTable.id, adapterConfig: agentsTable.adapterConfig })
+      .from(agentsTable)
+      .where(inArray(agentsTable.id, agentIds));
+
+    const configMap = new Map(existingAgents.map((a) => [a.id, a.adapterConfig]));
+
+    await Promise.all(
+      updates.map((update) => {
+        const current = configMap.get(update.agentId);
+        if (!current) return Promise.resolve();
+        const newConfig = { ...current, model: update.model };
+        return db
           .update(agentsTable)
           .set({ adapterConfig: newConfig })
           .where(eq(agentsTable.id, update.agentId));
-      }
-    }
+      }),
+    );
 
     const agentsWithModels = await db
       .select({
