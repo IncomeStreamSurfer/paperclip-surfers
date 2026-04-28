@@ -1,9 +1,32 @@
 import type { TranscriptEntry } from "./types.js";
 
 export const REDACTED_HOME_PATH_USER = "*";
+export const REDACTED_API_KEY = "[REDACTED]";
 
 export interface HomePathRedactionOptions {
   enabled?: boolean;
+}
+
+// Patterns that match well-known API key formats leaked via agent stderr/stdout.
+// Each regex must have the 'g' flag so String.replace handles all occurrences.
+const API_KEY_PATTERNS: RegExp[] = [
+  /sk-[A-Za-z0-9]{20,}/g,             // OpenAI sk- keys
+  /sk-or-[A-Za-z0-9]{20,}/g,          // OpenRouter sk-or- keys
+  /sk-ant-[A-Za-z0-9\-]{20,}/g,       // Anthropic sk-ant- keys
+  /AIza[A-Za-z0-9\-_]{35}/g,          // Google AI / GCP API keys
+  /[A-Za-z0-9]{32}-us[0-9]+/g,        // Mailchimp-style keys
+  /ghp_[A-Za-z0-9]{36}/g,             // GitHub personal access tokens
+  /ghu_[A-Za-z0-9]{36}/g,             // GitHub user-to-server tokens
+  /Bearer\s+[A-Za-z0-9\-_.]{20,}/g,   // Generic Bearer tokens in text
+];
+
+export function redactApiKeys(text: string): string {
+  let result = text;
+  for (const pattern of API_KEY_PATTERNS) {
+    pattern.lastIndex = 0;
+    result = result.replace(pattern, REDACTED_API_KEY);
+  }
+  return result;
 }
 
 function maskHomePathUserSegment(value: string) {
@@ -35,7 +58,7 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 export function redactHomePathUserSegments(text: string, opts?: HomePathRedactionOptions): string {
   if (opts?.enabled === false) return text;
-  let result = text;
+  let result = redactApiKeys(text);
   for (const pattern of HOME_PATH_PATTERNS) {
     result = result.replace(pattern.regex, pattern.replace);
   }

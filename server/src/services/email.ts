@@ -384,7 +384,8 @@ export function emailService(db: Db) {
       acceptLink: string;
     }): Promise<void> {
       const notifications = await settingsSvc.getNotifications();
-      if (!isEmailConfigured(notifications)) return; // Email not configured — silently skip
+      if (!notifications.enabled) return;
+      if (!isEmailConfigured(notifications)) return;
       const { transporter } = await createTransporter();
       const from = notifications.smtpFrom || notifications.smtpUser || "paperclip@localhost";
 

@@ -1,8 +1,10 @@
 import { Router, type Request, type Response } from "express";
+import { timingSafeEqual } from "node:crypto";
 import type { Db } from "@paperclipai/db";
 import { messagingProviders, issues, heartbeatRuns, agents } from "@paperclipai/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { logger } from "../middleware/logger.js";
+import { logActivity } from "../services/index.js";
 
 interface TelegramUpdate {
   update_id: number;
@@ -43,7 +45,22 @@ export function telegramWebhookRoutes(db: Db) {
       .then((rows) => rows[0] ?? null);
     if (!providerRow?.enabled) return;
 
-    const config = providerRow.config as { botToken?: string; chatId?: string };
+    const config = providerRow.config as { botToken?: string; chatId?: string; webhookSecret?: string };
+
+    // Validate X-Telegram-Bot-Api-Secret-Token header when a webhookSecret is configured.
+    // Uses constant-time comparison to prevent timing attacks.
+    if (config.webhookSecret) {
+      const incomingSecret = req.headers["x-telegram-bot-api-secret-token"];
+      if (typeof incomingSecret !== "string") return;
+      try {
+        const expected = Buffer.from(config.webhookSecret, "utf8");
+        const incoming = Buffer.from(incomingSecret, "utf8");
+        if (expected.length !== incoming.length || !timingSafeEqual(expected, incoming)) return;
+      } catch {
+        return;
+      }
+    }
+
     if (!config.chatId || String(chatId) !== config.chatId) return;
 
     const command = messageText.trim().toLowerCase();
@@ -152,6 +169,17 @@ async function handleCompleteCommand(db: Db, companyId: string, chatId: number, 
     .update(issues)
     .set({ status: "done", completedAt: new Date() })
     .where(eq(issues.id, issue.id));
+
+  await logActivity(db, {
+    companyId,
+    actorType: "system",
+    actorId: "telegram-webhook",
+    agentId: null,
+    action: "issue.status_changed",
+    entityType: "issue",
+    entityId: issue.id,
+    details: { previousStatus: issue.status, newStatus: "done", via: "telegram" },
+  }).catch((err) => logger.warn({ err, issueId: issue.id }, "failed to log telegram complete activity"));
 
   await sendTelegramMessage(botToken, chatId, `✅ Issue \`${escapeMarkdown(issueIdentifier)}\` has been marked as completed.`);
 }
