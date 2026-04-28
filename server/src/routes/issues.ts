@@ -998,6 +998,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
     if (existing.status !== "blocked" && issue.status === "blocked") {
       emailSvc.sendBlockedIssueNotification({
         id: issue.id,
+        companyId: issue.companyId,
         identifier: issue.identifier ?? issue.id,
         title: issue.title,
         assigneeUserId: issue.assigneeUserId,
@@ -1025,6 +1026,7 @@ export function issueRoutes(db: Db, storage: StorageService) {
     ) {
       emailSvc.sendAssignedNotification({
         id: issue.id,
+        companyId: issue.companyId,
         identifier: issue.identifier ?? issue.id,
         title: issue.title,
         assigneeUserId: issue.assigneeUserId,

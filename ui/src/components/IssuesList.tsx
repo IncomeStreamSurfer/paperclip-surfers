@@ -150,6 +150,7 @@ function countActiveFilters(state: IssueViewState): number {
 interface Agent {
   id: string;
   name: string;
+  avatarUrl: string | null;
 }
 
 interface ProjectOption {
@@ -296,6 +297,11 @@ export function IssuesList({
   const agentName = useCallback((id: string | null) => {
     if (!id || !agents) return null;
     return agents.find((a) => a.id === id)?.name ?? null;
+  }, [agents]);
+
+  const agentAvatarUrl = useCallback((id: string | null) => {
+    if (!id || !agents) return null;
+    return agents.find((a) => a.id === id)?.avatarUrl ?? null;
   }, [agents]);
 
   const filtered = useMemo(() => {
@@ -790,14 +796,9 @@ export function IssuesList({
                             }}
                           >
                             {issue.assigneeAgentId && agentName(issue.assigneeAgentId) ? (
-                              <Identity name={agentName(issue.assigneeAgentId)!} size="sm" />
+                              <Identity name={agentName(issue.assigneeAgentId)!} avatarUrl={agentAvatarUrl(issue.assigneeAgentId)} size="sm" />
                             ) : issue.assigneeUserId ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs">
-                                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-muted-foreground/35 bg-muted/30">
-                                  <User className="h-3 w-3" />
-                                </span>
-                                {formatAssigneeUserLabel(issue.assigneeUserId, currentUserId) ?? "User"}
-                              </span>
+                              <Identity name={formatAssigneeUserLabel(issue.assigneeUserId, currentUserId) ?? "User"} size="sm" />
                             ) : (
                               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <span className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-muted-foreground/35 bg-muted/30">
@@ -871,7 +872,7 @@ export function IssuesList({
                                     assignIssue(issue.id, agent.id, null);
                                   }}
                                 >
-                                  <Identity name={agent.name} size="sm" className="min-w-0" />
+                                  <Identity name={agent.name} avatarUrl={agent.avatarUrl} size="sm" className="min-w-0" />
                                 </button>
                               ))}
                           </div>

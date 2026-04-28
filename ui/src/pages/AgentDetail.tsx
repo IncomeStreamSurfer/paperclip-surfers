@@ -70,10 +70,13 @@ import {
   Copy,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   ArrowLeft,
   HelpCircle,
   FolderOpen,
   Camera,
+  CircleDot,
+  Activity,
 } from "lucide-react";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -81,6 +84,8 @@ import { Input } from "@/components/ui/input";
 import { AgentIcon, AgentIconPicker } from "../components/AgentIconPicker";
 import { AvatarGeneratorPanel } from "../components/AvatarGeneratorPanel";
 import { RunTranscriptView, type TranscriptMode } from "../components/transcript/RunTranscriptView";
+import { useLiveRunTranscripts } from "../components/transcript/useLiveRunTranscripts";
+import { latestActivityPreview } from "../components/ActiveAgentsPanel";
 import {
   isUuidLike,
   type Agent,
@@ -2899,52 +2904,125 @@ function AgentSkillsTab({
 
 /* ---- Runs Tab ---- */
 
-function RunListItem({ run, isSelected, agentId }: { run: HeartbeatRun; isSelected: boolean; agentId: string }) {
+function runIssueId(run: HeartbeatRun): string | null {
+  const ctx = run.contextSnapshot;
+  if (!ctx || typeof ctx !== "object") return null;
+  const id = (ctx as Record<string, unknown>).issueId;
+  return typeof id === "string" && id ? id : null;
+}
+
+function RunListItem({
+  run,
+  isSelected,
+  agentId,
+  isExpanded,
+  onToggleExpand,
+  transcript,
+  hasOutput,
+}: {
+  run: HeartbeatRun;
+  isSelected: boolean;
+  agentId: string;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  transcript: import("../adapters").TranscriptEntry[];
+  hasOutput: boolean;
+}) {
   const statusInfo = runStatusIcons[run.status] ?? { icon: Clock, color: "text-neutral-400" };
   const StatusIcon = statusInfo.icon;
   const metrics = runMetrics(run);
   const summary = run.resultJson
     ? String((run.resultJson as Record<string, unknown>).summary ?? (run.resultJson as Record<string, unknown>).result ?? "")
     : run.error ?? "";
+  const isLive = run.status === "running" || run.status === "queued";
+  const linkedIssueId = runIssueId(run);
 
   return (
-    <Link
-      to={isSelected ? `/agents/${agentId}/runs` : `/agents/${agentId}/runs/${run.id}`}
+    <div
       className={cn(
-        "flex flex-col gap-1 w-full px-3 py-2.5 text-left border-b border-border last:border-b-0 transition-colors no-underline text-inherit",
+        "flex flex-col w-full border-b border-border last:border-b-0 transition-colors",
         isSelected ? "bg-accent/40" : "hover:bg-accent/20",
       )}
     >
-      <div className="flex items-center gap-2">
-        <StatusIcon className={cn("h-3.5 w-3.5 shrink-0", statusInfo.color, run.status === "running" && "animate-spin")} />
-        <span className="font-mono text-xs text-muted-foreground">
-          {run.id.slice(0, 8)}
-        </span>
-        <span className={cn(
-          "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
-          run.invocationSource === "timer" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
-            : run.invocationSource === "assignment" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
-            : run.invocationSource === "on_demand" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"
-            : "bg-muted text-muted-foreground"
-        )}>
-          {sourceLabels[run.invocationSource] ?? run.invocationSource}
-        </span>
-        <span className="ml-auto text-[11px] text-muted-foreground shrink-0">
-          {relativeTime(run.createdAt)}
-        </span>
-      </div>
-      {summary && (
-        <span className="text-xs text-muted-foreground truncate pl-5.5">
-          {summary.slice(0, 60)}
-        </span>
-      )}
-      {(metrics.totalTokens > 0 || metrics.cost > 0) && (
-        <div className="flex items-center gap-2 pl-5.5 text-[11px] text-muted-foreground tabular-nums">
-          {metrics.totalTokens > 0 && <span>{formatTokens(metrics.totalTokens)} tok</span>}
-          {metrics.cost > 0 && <span>${metrics.cost.toFixed(3)}</span>}
+      <Link
+        to={isSelected ? `/agents/${agentId}/runs` : `/agents/${agentId}/runs/${run.id}`}
+        className="flex flex-col gap-1 w-full px-3 py-2.5 text-left no-underline text-inherit"
+      >
+        <div className="flex items-center gap-2">
+          <StatusIcon className={cn("h-3.5 w-3.5 shrink-0", statusInfo.color, run.status === "running" && "animate-spin")} />
+          <span className="font-mono text-xs text-muted-foreground">
+            {run.id.slice(0, 8)}
+          </span>
+          <span className={cn(
+            "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
+            run.invocationSource === "timer" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
+              : run.invocationSource === "assignment" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
+              : run.invocationSource === "on_demand" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"
+              : "bg-muted text-muted-foreground"
+          )}>
+            {sourceLabels[run.invocationSource] ?? run.invocationSource}
+          </span>
+          <span className="ml-auto text-[11px] text-muted-foreground shrink-0">
+            {relativeTime(run.createdAt)}
+          </span>
         </div>
-      )}
-    </Link>
+        {linkedIssueId && (
+          <div className="flex items-center gap-1.5 pl-5.5">
+            <CircleDot className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground truncate">
+              Issue {linkedIssueId.slice(0, 8)}
+            </span>
+          </div>
+        )}
+        {summary && (
+          <span className="text-xs text-muted-foreground truncate pl-5.5">
+            {summary.slice(0, 60)}
+          </span>
+        )}
+        {transcript.length > 0 && (
+          <span className="text-[11px] text-cyan-600 dark:text-cyan-400 truncate pl-5.5 flex items-center gap-1">
+            <Activity className={cn("h-2.5 w-2.5", isLive && "animate-pulse")} />
+            {latestActivityPreview(transcript) ?? (isLive ? "Working…" : "Recent activity")}
+          </span>
+        )}
+        {(metrics.totalTokens > 0 || metrics.cost > 0) && (
+          <div className="flex items-center gap-2 pl-5.5 text-[11px] text-muted-foreground tabular-nums">
+            {metrics.totalTokens > 0 && <span>{formatTokens(metrics.totalTokens)} tok</span>}
+            {metrics.cost > 0 && <span>${metrics.cost.toFixed(3)}</span>}
+          </div>
+        )}
+      </Link>
+      {/* Expand toggle + transcript */}
+      <div className="px-3 pb-2">
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onToggleExpand();
+          }}
+          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+          {isExpanded ? "Hide stream" : "Show live stream"}
+        </button>
+        {isExpanded && (
+          <div className="mt-2 max-h-[240px] overflow-y-auto border border-border/60 rounded-md p-2 bg-background/50">
+            <RunTranscriptView
+              entries={transcript}
+              density="compact"
+              limit={6}
+              streaming={isLive}
+              collapseStdout
+              emptyMessage={hasOutput ? "Waiting for transcript parsing..." : "Waiting for run output..."}
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2964,6 +3042,39 @@ function RunsTab({
   adapterType: string;
 }) {
   const { isMobile } = useSidebar();
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+
+  // Auto-expand the most recent live run when runs change
+  useEffect(() => {
+    const firstLive = [...runs].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    ).find((r) => r.status === "running" || r.status === "queued");
+    if (firstLive) {
+      setExpandedRunId((current) => current ?? firstLive.id);
+    }
+  }, [runs]);
+
+  const liveRuns = useMemo(() =>
+    runs.map((run) => ({
+      id: run.id,
+      status: run.status,
+      invocationSource: run.invocationSource,
+      triggerDetail: run.triggerDetail,
+      startedAt: run.startedAt ? new Date(run.startedAt).toISOString() : null,
+      finishedAt: run.finishedAt ? new Date(run.finishedAt).toISOString() : null,
+      createdAt: new Date(run.createdAt).toISOString(),
+      agentId: run.agentId,
+      agentName: "",
+      adapterType,
+      issueId: null,
+    })),
+    [runs, adapterType]
+  );
+
+  const { transcriptByRun, hasOutputForRun } = useLiveRunTranscripts({
+    runs: liveRuns,
+    companyId,
+  });
 
   if (runs.length === 0) {
     return <p className="text-sm text-muted-foreground">No runs yet.</p>;
@@ -2997,7 +3108,16 @@ function RunsTab({
     return (
       <div className="border border-border rounded-lg overflow-x-hidden">
         {sorted.map((run) => (
-          <RunListItem key={run.id} run={run} isSelected={false} agentId={agentRouteId} />
+          <RunListItem
+            key={run.id}
+            run={run}
+            isSelected={false}
+            agentId={agentRouteId}
+            isExpanded={expandedRunId === run.id}
+            onToggleExpand={() => setExpandedRunId(expandedRunId === run.id ? null : run.id)}
+            transcript={transcriptByRun.get(run.id) ?? []}
+            hasOutput={hasOutputForRun(run.id)}
+          />
         ))}
       </div>
     );
@@ -3009,11 +3129,20 @@ function RunsTab({
       {/* Left: run list — border stretches full height, content sticks */}
       <div className={cn(
         "shrink-0 border border-border rounded-lg",
-        selectedRun ? "w-72" : "w-full",
+        selectedRun ? "w-80" : "w-full",
       )}>
         <div className="sticky top-4 overflow-y-auto" style={{ maxHeight: "calc(100vh - 2rem)" }}>
         {sorted.map((run) => (
-          <RunListItem key={run.id} run={run} isSelected={run.id === effectiveRunId} agentId={agentRouteId} />
+          <RunListItem
+            key={run.id}
+            run={run}
+            isSelected={run.id === effectiveRunId}
+            agentId={agentRouteId}
+            isExpanded={expandedRunId === run.id}
+            onToggleExpand={() => setExpandedRunId(expandedRunId === run.id ? null : run.id)}
+            transcript={transcriptByRun.get(run.id) ?? []}
+            hasOutput={hasOutputForRun(run.id)}
+          />
         ))}
         </div>
       </div>
@@ -3042,6 +3171,26 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
   const metrics = runMetrics(run);
   const [sessionOpen, setSessionOpen] = useState(false);
   const [claudeLoginResult, setClaudeLoginResult] = useState<ClaudeLoginResult | null>(null);
+
+  const liveRunEntry = useMemo(() => ([{
+    id: run.id,
+    status: run.status,
+    invocationSource: run.invocationSource,
+    triggerDetail: run.triggerDetail,
+    startedAt: run.startedAt ? new Date(run.startedAt).toISOString() : null,
+    finishedAt: run.finishedAt ? new Date(run.finishedAt).toISOString() : null,
+    createdAt: new Date(run.createdAt).toISOString(),
+    agentId: run.agentId,
+    agentName: "",
+    adapterType,
+    issueId: null,
+  }]), [run.id, run.status, run.invocationSource, run.triggerDetail, run.startedAt, run.finishedAt, run.createdAt, run.agentId, adapterType]);
+
+  const { transcriptByRun } = useLiveRunTranscripts({
+    runs: liveRunEntry,
+    companyId: run.companyId,
+  });
+  const detailTranscript = transcriptByRun.get(run.id) ?? [];
 
   useEffect(() => {
     setClaudeLoginResult(null);
@@ -3178,52 +3327,105 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
   const sessionChanged = run.sessionIdBefore && run.sessionIdAfter && run.sessionIdBefore !== run.sessionIdAfter;
   const sessionId = run.sessionIdAfter || run.sessionIdBefore;
   const hasNonZeroExit = run.exitCode !== null && run.exitCode !== 0;
+  const [detailsOpen, setDetailsOpen] = useState(true);
+
+  const primaryIssueId = runIssueId(run);
+  const { data: primaryIssue } = useQuery({
+    queryKey: ["issue", primaryIssueId],
+    queryFn: () => issuesApi.get(primaryIssueId!),
+    enabled: !!primaryIssueId,
+  });
 
   return (
     <div className="space-y-4 min-w-0">
-      {/* Run summary card */}
+      {/* Run summary card — collapsible */}
       <div className="border border-border rounded-lg overflow-hidden">
-        <div className="flex flex-col sm:flex-row">
-          {/* Left column: status + timing */}
-          <div className="flex-1 p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <StatusBadge status={run.status} />
-              {(run.status === "running" || run.status === "queued") && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:text-destructive text-xs h-6 px-2"
-                  onClick={() => cancelRun.mutate()}
-                  disabled={cancelRun.isPending}
+        <button
+          onClick={() => setDetailsOpen((v) => !v)}
+          className="flex items-center gap-1.5 w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ChevronRight className={cn("h-3 w-3 transition-transform", detailsOpen && "rotate-90")} />
+          Run details
+          {isRunning && (
+            <span className="flex items-center gap-1 text-cyan-400 ml-2">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400" />
+              </span>
+              Live
+            </span>
+          )}
+          <span className="ml-auto font-mono text-[10px]">{run.id.slice(0, 8)}</span>
+        </button>
+        {detailsOpen && (
+          <div>
+            {/* Issue link inside run details */}
+            {primaryIssue && (
+              <div className="px-4 pt-3">
+                <Link
+                  to={`/issues/${primaryIssue.identifier ?? primaryIssue.id}`}
+                  className="flex items-center justify-between w-full px-3 py-2 text-sm border border-border rounded-lg hover:bg-accent/20 transition-colors no-underline text-inherit"
                 >
-                  {cancelRun.isPending ? "Cancelling…" : "Cancel"}
-                </Button>
-              )}
-              {canResumeLostRun && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => resumeRun.mutate()}
-                  disabled={resumeRun.isPending}
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  {resumeRun.isPending ? "Resuming…" : "Resume"}
-                </Button>
-              )}
-              {canRetryRun && !canResumeLostRun && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs h-6 px-2"
-                  onClick={() => retryRun.mutate()}
-                  disabled={retryRun.isPending}
-                >
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  {retryRun.isPending ? "Retrying…" : "Retry"}
-                </Button>
-              )}
-            </div>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <StatusBadge status={primaryIssue.status} />
+                    <span className="truncate">{primaryIssue.title}</span>
+                  </div>
+                  <span className="font-mono text-muted-foreground shrink-0 ml-2 text-xs">{primaryIssue.identifier ?? primaryIssue.id.slice(0, 8)}</span>
+                </Link>
+              </div>
+            )}
+            {/* Live stream preview */}
+            {detailTranscript.length > 0 && (
+              <div className="px-4 pt-2 pb-1">
+                <div className="flex items-center gap-1.5 text-[11px] text-cyan-600 dark:text-cyan-400 truncate">
+                  <Activity className={cn("h-3 w-3 shrink-0", isRunning && "animate-pulse")} />
+                  <span className="truncate">
+                    {latestActivityPreview(detailTranscript) ?? (isRunning ? "Working…" : "Last activity")}
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="flex flex-col sm:flex-row">
+              {/* Left column: status + timing */}
+              <div className="flex-1 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <StatusBadge status={run.status} />
+                  {(run.status === "running" || run.status === "queued") && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive text-xs h-6 px-2"
+                      onClick={() => cancelRun.mutate()}
+                      disabled={cancelRun.isPending}
+                    >
+                      {cancelRun.isPending ? "Cancelling…" : "Cancel"}
+                    </Button>
+                  )}
+                  {canResumeLostRun && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 px-2"
+                      onClick={() => resumeRun.mutate()}
+                      disabled={resumeRun.isPending}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                      {resumeRun.isPending ? "Resuming…" : "Resume"}
+                    </Button>
+                  )}
+                  {canRetryRun && !canResumeLostRun && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 px-2"
+                      onClick={() => retryRun.mutate()}
+                      disabled={retryRun.isPending}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                      {retryRun.isPending ? "Retrying…" : "Retry"}
+                    </Button>
+                  )}
+                </div>
             {resumeRun.isError && (
               <div className="text-xs text-destructive">
                 {resumeRun.error instanceof Error ? resumeRun.error.message : "Failed to resume run"}
@@ -3394,6 +3596,8 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
           </div>
         )}
       </div>
+    )}
+    </div>
 
       {/* Issues touched by this run */}
       {touchedIssues && touchedIssues.length > 0 && (
@@ -3807,6 +4011,8 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     queryFn: () => instanceSettingsApi.getGeneral(),
   }).data?.censorUsernameInLogs === true;
 
+  const [invocationOpen, setInvocationOpen] = useState(false);
+
   const adapterInvokePayload = useMemo(() => {
     const evt = events.find((e) => e.eventType === "adapter.invoke");
     return redactPathValue(asRecord(evt?.payload ?? null), censorUsernameInLogs);
@@ -3844,75 +4050,6 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
 
   return (
     <div className="space-y-3">
-      <WorkspaceOperationsSection
-        operations={workspaceOperations}
-        censorUsernameInLogs={censorUsernameInLogs}
-      />
-      {adapterInvokePayload && (
-        <div className="rounded-lg border border-border bg-background/60 p-3 space-y-2">
-          <div className="text-xs font-medium text-muted-foreground">Invocation</div>
-          {typeof adapterInvokePayload.adapterType === "string" && (
-            <div className="text-xs"><span className="text-muted-foreground">Adapter: </span>{adapterInvokePayload.adapterType}</div>
-          )}
-          {typeof adapterInvokePayload.cwd === "string" && (
-            <div className="text-xs break-all"><span className="text-muted-foreground">Working dir: </span><span className="font-mono">{adapterInvokePayload.cwd}</span></div>
-          )}
-          {typeof adapterInvokePayload.command === "string" && (
-            <div className="text-xs break-all">
-              <span className="text-muted-foreground">Command: </span>
-              <span className="font-mono">
-                {[
-                  adapterInvokePayload.command,
-                  ...(Array.isArray(adapterInvokePayload.commandArgs)
-                    ? adapterInvokePayload.commandArgs.filter((v): v is string => typeof v === "string")
-                    : []),
-                ].join(" ")}
-              </span>
-            </div>
-          )}
-          {Array.isArray(adapterInvokePayload.commandNotes) && adapterInvokePayload.commandNotes.length > 0 && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Command notes</div>
-              <ul className="list-disc pl-5 space-y-1">
-                {adapterInvokePayload.commandNotes
-                  .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
-                  .map((note, idx) => (
-                    <li key={`${idx}-${note}`} className="text-xs break-all font-mono">
-                      {note}
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          )}
-          {adapterInvokePayload.prompt !== undefined && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Prompt</div>
-              <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
-                {typeof adapterInvokePayload.prompt === "string"
-                  ? redactPathText(adapterInvokePayload.prompt, censorUsernameInLogs)
-                  : JSON.stringify(redactPathValue(adapterInvokePayload.prompt, censorUsernameInLogs), null, 2)}
-              </pre>
-            </div>
-          )}
-          {adapterInvokePayload.context !== undefined && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Context</div>
-              <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
-                {JSON.stringify(redactPathValue(adapterInvokePayload.context, censorUsernameInLogs), null, 2)}
-              </pre>
-            </div>
-          )}
-          {adapterInvokePayload.env !== undefined && (
-            <div>
-              <div className="text-xs text-muted-foreground mb-1">Environment</div>
-              <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap font-mono">
-                {formatEnvForDisplay(adapterInvokePayload.env, censorUsernameInLogs)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">
           Transcript ({transcript.length})
@@ -3975,6 +4112,87 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
         )}
         <div ref={logEndRef} />
       </div>
+
+      <WorkspaceOperationsSection
+        operations={workspaceOperations}
+        censorUsernameInLogs={censorUsernameInLogs}
+      />
+
+      {adapterInvokePayload && (
+        <div className="rounded-lg border border-border bg-background/60 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setInvocationOpen((v) => !v)}
+            className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronRight className={cn("h-3 w-3 transition-transform", invocationOpen && "rotate-90")} />
+            Invocation
+          </button>
+          {invocationOpen && (
+            <div className="px-3 pb-3 space-y-2">
+              {typeof adapterInvokePayload.adapterType === "string" && (
+                <div className="text-xs"><span className="text-muted-foreground">Adapter: </span>{adapterInvokePayload.adapterType}</div>
+              )}
+              {typeof adapterInvokePayload.cwd === "string" && (
+                <div className="text-xs break-all"><span className="text-muted-foreground">Working dir: </span><span className="font-mono">{adapterInvokePayload.cwd}</span></div>
+              )}
+              {typeof adapterInvokePayload.command === "string" && (
+                <div className="text-xs break-all">
+                  <span className="text-muted-foreground">Command: </span>
+                  <span className="font-mono">
+                    {[
+                      adapterInvokePayload.command,
+                      ...(Array.isArray(adapterInvokePayload.commandArgs)
+                        ? adapterInvokePayload.commandArgs.filter((v): v is string => typeof v === "string")
+                        : []),
+                    ].join(" ")}
+                  </span>
+                </div>
+              )}
+              {Array.isArray(adapterInvokePayload.commandNotes) && adapterInvokePayload.commandNotes.length > 0 && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Command notes</div>
+                  <ul className="list-disc pl-5 space-y-1">
+                    {adapterInvokePayload.commandNotes
+                      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+                      .map((note, idx) => (
+                        <li key={`${idx}-${note}`} className="text-xs break-all font-mono">
+                          {note}
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+              {adapterInvokePayload.prompt !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Prompt</div>
+                  <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
+                    {typeof adapterInvokePayload.prompt === "string"
+                      ? redactPathText(adapterInvokePayload.prompt, censorUsernameInLogs)
+                      : JSON.stringify(redactPathValue(adapterInvokePayload.prompt, censorUsernameInLogs), null, 2)}
+                  </pre>
+                </div>
+              )}
+              {adapterInvokePayload.context !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Context</div>
+                  <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(redactPathValue(adapterInvokePayload.context, censorUsernameInLogs), null, 2)}
+                  </pre>
+                </div>
+              )}
+              {adapterInvokePayload.env !== undefined && (
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Environment</div>
+                  <pre className="bg-neutral-100 dark:bg-neutral-950 rounded-md p-2 text-xs overflow-x-auto whitespace-pre-wrap font-mono">
+                    {formatEnvForDisplay(adapterInvokePayload.env, censorUsernameInLogs)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {(run.status === "failed" || run.status === "timed_out") && (
         <div className="rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-950/20 p-3 space-y-2">

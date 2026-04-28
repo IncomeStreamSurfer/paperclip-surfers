@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@/lib/router";
 import { messagingApi } from "@/api/messaging";
 import { queryKeys } from "@/lib/queryKeys";
 import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/utils";
 import { Send, MessageSquare, Image, Check, X, Loader2 } from "lucide-react";
 import type { MessagingMessageType, MessagingProvider } from "@paperclipai/shared";
+import { useCompany } from "@/context/CompanyContext";
 
 const MESSAGE_TYPES: { value: MessagingMessageType; label: string }[] = [
   { value: "new_issue", label: "New Issues" },
@@ -211,8 +211,7 @@ function ProviderSection({
 }
 
 export function MessagingSettings() {
-  const params = useParams<{ companyId: string }>();
-  const companyId = params.companyId;
+  const { selectedCompanyId: companyId } = useCompany();
 
   if (!companyId) {
     return <div className="text-sm text-muted-foreground">Select a company to configure messaging.</div>;

@@ -148,15 +148,18 @@ export function instanceSettingsService(db: Db) {
 
     updateGeneral: async (patch: PatchInstanceGeneralSettings): Promise<InstanceSettings> => {
       const current = await getOrCreateRow();
-      const nextGeneral = normalizeGeneralSettings({
-        ...normalizeGeneralSettings(current.general),
+      const normalized = normalizeGeneralSettings(current.general);
+      // Preserve unknown fields (e.g. API keys) from raw general while updating known ones
+      const nextGeneral = {
+        ...(current.general as Record<string, unknown> ?? {}),
+        ...normalized,
         ...patch,
-      });
+      };
       const now = new Date();
       const [updated] = await db
         .update(instanceSettings)
         .set({
-          general: { ...nextGeneral },
+          general: nextGeneral,
           updatedAt: now,
         })
         .where(eq(instanceSettings.id, current.id))

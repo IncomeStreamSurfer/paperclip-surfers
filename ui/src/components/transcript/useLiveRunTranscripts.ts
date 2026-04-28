@@ -156,13 +156,19 @@ export function useLiveRunTranscripts({
       }
     };
 
-    const readAll = async () => {
+    const readInitial = async () => {
       await Promise.all(runs.map((run) => readRunLog(run)));
     };
 
-    void readAll();
+    const readLive = async () => {
+      const liveRuns = runs.filter((run) => !isTerminalStatus(run.status));
+      if (liveRuns.length === 0) return;
+      await Promise.all(liveRuns.map((run) => readRunLog(run)));
+    };
+
+    void readInitial();
     const interval = window.setInterval(() => {
-      void readAll();
+      void readLive();
     }, LOG_POLL_INTERVAL_MS);
 
     return () => {

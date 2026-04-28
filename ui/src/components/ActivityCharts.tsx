@@ -4,6 +4,11 @@ import type { Sprint } from "../api/sprints";
 import { Link } from "@/lib/router";
 import { Globe, Plus, X, ChevronUp, ChevronDown } from "lucide-react";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   useTimezones,
   formatTzDateTime,
   searchTimezones,
@@ -375,18 +380,25 @@ export function BurndownChart({ data }: { data: BurndownSummary }) {  const days
           const openedPct = (opened / maxValue) * 100;
           const closedPct = (closed / maxValue) * 100;
           return (
-            <div key={day} className="flex-1 h-full flex items-end gap-px" title={`${day}: +${opened} opened, ${closed} closed`}>
-              {opened > 0 ? (
-                <div className="flex-1 bg-blue-400 rounded-sm" style={{ height: `${openedPct}%`, minHeight: 2 }} />
-              ) : (
-                <div className="flex-1 bg-muted/20 rounded-sm" style={{ height: 2 }} />
-              )}
-              {closed > 0 ? (
-                <div className="flex-1 bg-emerald-500 rounded-sm" style={{ height: `${closedPct}%`, minHeight: 2 }} />
-              ) : (
-                <div className="flex-1 bg-muted/20 rounded-sm" style={{ height: 2 }} />
-              )}
-            </div>
+            <Tooltip key={day}>
+              <TooltipTrigger asChild>
+                <div className="flex-1 h-full flex flex-col-reverse justify-start gap-px">
+                  {opened > 0 ? (
+                    <div className="w-full bg-blue-400 rounded-sm" style={{ height: `${openedPct}%`, minHeight: 2 }} />
+                  ) : (
+                    <div className="w-full bg-muted/20 rounded-sm" style={{ height: 2 }} />
+                  )}
+                  {closed > 0 ? (
+                    <div className="w-full bg-emerald-500 rounded-sm" style={{ height: `${closedPct}%`, minHeight: 2 }} />
+                  ) : (
+                    <div className="w-full bg-muted/20 rounded-sm" style={{ height: 2 }} />
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs">
+                {day}: +{opened} opened, {closed} closed
+              </TooltipContent>
+            </Tooltip>
           );
         })}
       </div>

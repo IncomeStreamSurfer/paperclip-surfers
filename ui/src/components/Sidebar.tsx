@@ -33,6 +33,7 @@ import {
   HardHat,
   Ruler,
   FileText,
+  Bot,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -363,6 +364,7 @@ export function Sidebar() {
             <span className="truncate">New Issue</span>
           </button>
           <SidebarNavItem to="/dashboard" label="Dashboard" icon={LayoutDashboard} liveCount={liveRunCount} />
+          <SidebarNavItem to="/agents" label="Agents" icon={Bot} liveCount={liveRunCount} />
           <SidebarNavItem
             to="/inbox"
             label="Inbox"

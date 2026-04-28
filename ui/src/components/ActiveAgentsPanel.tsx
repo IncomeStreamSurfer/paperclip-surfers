@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@/lib/router";
 import { useQuery } from "@tanstack/react-query";
 import type { Agent, Issue } from "@paperclipai/shared";
@@ -6,10 +6,49 @@ import { heartbeatsApi, type LiveRunForIssue } from "../api/heartbeats";
 import { issuesApi } from "../api/issues";
 import { departmentsApi, type DepartmentWithAgents } from "../api/departments";
 import { queryKeys } from "../lib/queryKeys";
-import { cn, relativeTime } from "../lib/utils";
+import { cn, relativeTime, formatTokens } from "../lib/utils";
 import { AgentIcon } from "./AgentIconPicker";
+import { useLiveRunTranscripts } from "./transcript/useLiveRunTranscripts";
+import { RunTranscriptView } from "./transcript/RunTranscriptView";
+import { ChevronDown, ChevronUp, Cpu, DollarSign, Wrench, Puzzle, Plug, Activity } from "lucide-react";
+import { Tooltip } from "./Tooltip";
+import type { TranscriptEntry } from "../adapters";
 
 const MIN_DASHBOARD_RUNS = 8;
+
+export function latestActivityPreview(entries: TranscriptEntry[]): string | null {
+  if (entries.length === 0) return null;
+  for (let i = entries.length - 1; i >= Math.max(0, entries.length - 5); i--) {
+    const entry = entries[i];
+    switch (entry.kind) {
+      case "tool_call":
+        return `Using ${entry.name}`;
+      case "thinking":
+        return "Thinking…";
+      case "assistant":
+        if (entry.delta) return "Responding…";
+        break;
+      case "result":
+        return entry.isError ? "Run failed" : "Completed";
+      case "init":
+        return "Starting…";
+    }
+  }
+  const last = entries[entries.length - 1];
+  switch (last.kind) {
+    case "assistant":
+      return "Responded";
+    case "stdout":
+    case "stderr":
+      return "Output…";
+    case "system":
+      return "System event…";
+    case "tool_result":
+      return last.isError ? "Tool errored" : "Tool result";
+    default:
+      return null;
+  }
+}
 
 interface ActiveAgentsPanelProps {
   companyId: string;
@@ -50,6 +89,18 @@ function statusLabel(agent: Agent, run: LiveRunForIssue | undefined, issue: Issu
   }
 }
 
+function runMetrics(run: LiveRunForIssue) {
+  const metrics = (run as unknown as Record<string, unknown>).metrics as
+    | { inputTokens?: number; outputTokens?: number; cachedInputTokens?: number; costCents?: number }
+    | undefined;
+  const input = metrics?.inputTokens ?? 0;
+  const output = metrics?.outputTokens ?? 0;
+  const cached = metrics?.cachedInputTokens ?? 0;
+  const total = input + output + cached;
+  const costCents = metrics?.costCents ?? 0;
+  return { input, output, cached, total, costCents };
+}
+
 export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps) {
   const { data: liveRuns } = useQuery({
     queryKey: [...queryKeys.liveRuns(companyId), "dashboard"],
@@ -68,6 +119,8 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
     queryKey: [...queryKeys.departments.list(companyId), "withAgents"],
     queryFn: () => departmentsApi.list(companyId, true),
   });
+
+  const [expandedAgentId, setExpandedAgentId] = useState<string | null>(null);
 
   const issueById = useMemo(() => {
     const map = new Map<string, Issue>();
@@ -97,6 +150,8 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
     return map;
   }, [runs]);
 
+  const { transcriptByRun, hasOutputForRun } = useLiveRunTranscripts({ runs, companyId });
+
   if (agents.length === 0) return null;
 
   // Sort: running/live first, then idle, then active, then others
@@ -112,14 +167,35 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
     return order(a) - order(b);
   });
 
+  // Auto-expand the first live agent on mount
+  useEffect(() => {
+    if (expandedAgentId !== null) return;
+    const firstLive = sorted.find((ag) => {
+      const run = runByAgent.get(ag.id);
+      return run && (run.status === "running" || run.status === "queued");
+    });
+    if (firstLive) {
+      setExpandedAgentId(firstLive.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agents.length, runs.length]);
+
   return (
     <div>
-      <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-        Agents
-        <span className="ml-2 text-xs font-normal normal-case text-muted-foreground/60">
-          {agents.length} total
-        </span>
-      </h3>
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          Agents
+          <span className="ml-2 text-xs font-normal normal-case text-muted-foreground/60">
+            {agents.length} total
+          </span>
+        </h3>
+        <Link
+          to="/agents"
+          className="text-xs text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors no-underline font-medium"
+        >
+          View all agents →
+        </Link>
+      </div>
 
       <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         {sorted.map((agent) => {
@@ -129,51 +205,137 @@ export function ActiveAgentsPanel({ companyId, agents }: ActiveAgentsPanelProps)
           const href = run
             ? `/agents/${agent.id}/runs/${run.id}`
             : `/agents/${agent.id}`;
+          const isExpanded = expandedAgentId === agent.id;
+          const transcript = run ? transcriptByRun.get(run.id) ?? [] : [];
+          const metrics = run ? runMetrics(run) : null;
 
           return (
-            <Link
+            <div
               key={agent.id}
-              to={href}
               className={cn(
-                "group flex items-center gap-2.5 rounded-lg border px-3 py-2 no-underline text-inherit transition-colors",
+                "rounded-lg border overflow-hidden transition-colors",
                 isLive
-                  ? "border-cyan-500/30 bg-cyan-500/[0.04] hover:bg-cyan-500/[0.08]"
-                  : "border-border bg-background/60 hover:bg-accent/40",
+                  ? "border-cyan-500/30 bg-cyan-500/[0.04]"
+                  : "border-border bg-background/60",
               )}
             >
-              {/* Avatar / Icon with status dot */}
-              <div className="relative shrink-0">
-                <AgentIcon
-                  icon={agent.icon}
-                  avatarUrl={agent.avatarUrl}
-                  className="h-8 w-8 rounded-full"
-                />
-                <span
-                  className={cn(
-                    "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background",
-                    statusDotClass(agent.status, isLive),
-                    isLive && "animate-pulse",
-                  )}
-                />
+              <div className="flex items-center gap-2.5 px-3 py-2">
+                <Link
+                  to={href}
+                  className="flex items-center gap-2.5 no-underline text-inherit flex-1 min-w-0"
+                >
+                  {/* Avatar / Icon with status dot */}
+                  <div className="relative shrink-0">
+                    <AgentIcon
+                      icon={agent.icon}
+                      avatarUrl={agent.avatarUrl}
+                      className="h-8 w-8 rounded-full"
+                    />
+                    <span
+                      className={cn(
+                        "absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background",
+                        statusDotClass(agent.status, isLive),
+                        isLive && "animate-pulse",
+                      )}
+                    />
+                  </div>
+
+                  {/* Name + status */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="truncate text-xs font-semibold leading-tight min-w-0">
+                        {agent.name}
+                      </p>
+                      {agentDeptMap.get(agent.id) && (
+                        <Tooltip content={agentDeptMap.get(agent.id)!}>
+                          <span className="shrink-0 text-[9px] font-medium px-1 py-px rounded bg-muted/60 text-muted-foreground border border-border/60 leading-tight ml-1 max-w-[70px] truncate cursor-default">
+                            {agentDeptMap.get(agent.id)}
+                          </span>
+                        </Tooltip>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
+                      {statusLabel(agent, run, issue)}
+                    </p>
+                    {!isExpanded && run && (
+                      <p className="truncate text-[10px] leading-tight text-cyan-600 dark:text-cyan-400 flex items-center gap-1">
+                        <Activity className={cn("h-2.5 w-2.5", isLive && "animate-pulse")} />
+                        {latestActivityPreview(transcript) ?? (isLive ? "Working…" : "Recent run")}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+
+                {/* Expand toggle */}
+                {run && (
+                  <Tooltip content={isExpanded ? "Collapse stream" : "Expand live stream"}>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setExpandedAgentId(isExpanded ? null : agent.id);
+                      }}
+                      className="shrink-0 p-1 rounded hover:bg-accent/60 transition-colors"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </button>
+                  </Tooltip>
+                )}
               </div>
 
-              {/* Name + status */}
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-1">
-                  <p className="truncate text-xs font-semibold leading-tight min-w-0">
-                    {agent.name}
-                  </p>
-                  {agentDeptMap.get(agent.id) && (
-                    <span className="shrink-0 text-[9px] font-medium px-1 py-px rounded bg-muted/60 text-muted-foreground border border-border/60 leading-tight ml-1 max-w-[70px] truncate">
-                      {agentDeptMap.get(agent.id)}
+              {/* Expanded live stream */}
+              {isExpanded && run && (
+                <div className="border-t border-border/60 px-3 py-2 space-y-2">
+                  {/* Metadata bar: API, tokens, cost, capabilities */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/60">
+                      <Cpu className="h-2.5 w-2.5" />
+                      {agent.adapterType}
                     </span>
-                  )}
+                    {metrics && metrics.total > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/60">
+                        <Wrench className="h-2.5 w-2.5" />
+                        {formatTokens(metrics.total)} tok
+                      </span>
+                    )}
+                    {metrics && metrics.costCents > 0 && (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/60">
+                        <DollarSign className="h-2.5 w-2.5" />
+                        ${(metrics.costCents / 100).toFixed(2)}
+                      </span>
+                    )}
+                    {agent.capabilities && (
+                      <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/60">
+                        <Puzzle className="h-2.5 w-2.5" />
+                        {agent.capabilities}
+                      </span>
+                    )}
+                    <Link
+                      to={`/agents/${agent.id}`}
+                      className="ml-auto text-[10px] text-cyan-600 hover:text-cyan-700 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors no-underline"
+                    >
+                      Skills, plugins & MCPs →
+                    </Link>
+                  </div>
+
+                  {/* Transcript */}
+                  <div className="max-h-[260px] overflow-y-auto">
+                    <RunTranscriptView
+                      entries={transcript}
+                      density="compact"
+                      limit={8}
+                      streaming={isLive}
+                      collapseStdout
+                      emptyMessage={hasOutputForRun(run.id) ? "Waiting for transcript parsing..." : "Waiting for run output..."}
+                    />
+                  </div>
                 </div>
-                <p className="mt-0.5 truncate text-[10px] leading-tight text-muted-foreground">
-                  {statusLabel(agent, run, issue)}
-                </p>
-              </div>
-            </Link>
+              )}
+            </div>
           );
         })}
       </div>

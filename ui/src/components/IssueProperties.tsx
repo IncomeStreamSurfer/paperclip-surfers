@@ -395,7 +395,7 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
 
   const assigneeTrigger = assignee ? (
     <>
-      <AgentIcon icon={assignee.icon} className="shrink-0 h-3.5 w-3.5 text-muted-foreground" />
+      <AgentIcon icon={assignee.icon} avatarUrl={assignee.avatarUrl} className="shrink-0 h-5 w-5 rounded-full object-cover" />
       <span className="text-sm truncate">{assignee.name}</span>
     </>
   ) : assigneeUserLabel ? (
@@ -672,15 +672,28 @@ export function IssueProperties({ issue, onUpdate, inline }: IssuePropertiesProp
             {issue.createdByAgentId ? (
               <Link
                 to={`/agents/${issue.createdByAgentId}`}
-                className="hover:underline"
+                className="hover:underline inline-flex items-center gap-1.5"
               >
-                <Identity name={agentName(issue.createdByAgentId) ?? issue.createdByAgentId.slice(0, 8)} size="sm" />
+                <AgentIcon
+                  icon={agents?.find((a) => a.id === issue.createdByAgentId)?.icon}
+                  avatarUrl={agents?.find((a) => a.id === issue.createdByAgentId)?.avatarUrl}
+                  className="shrink-0 h-4 w-4 rounded-full object-cover"
+                />
+                <span className="text-sm">{agentName(issue.createdByAgentId) ?? issue.createdByAgentId.slice(0, 8)}</span>
               </Link>
             ) : (
-              <>
-                <User className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-sm">{creatorUserLabel ?? "User"}</span>
-              </>
+              <span className="inline-flex items-center gap-1.5">
+                {issue.createdByUserId === currentUserId && session?.user?.image ? (
+                  <img src={session.user.image} alt="" className="h-4 w-4 rounded-full object-cover" />
+                ) : (
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                )}
+                <span className="text-sm">
+                  {issue.createdByUserId === currentUserId && session?.user?.name
+                    ? session.user.name
+                    : (creatorUserLabel ?? "User")}
+                </span>
+              </span>
             )}
           </PropertyRow>
         )}

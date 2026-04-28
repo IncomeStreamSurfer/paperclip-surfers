@@ -28,6 +28,10 @@ export interface EmailLayoutOptions {
   template: EmailTemplateId;
   /** Optional: plain-text preview shown in email clients before open */
   previewText?: string;
+  /** Optional: public URL to the app icon / logo image */
+  appIconUrl?: string;
+  /** Optional: URL for managing notification preferences / unsubscribing */
+  unsubscribeUrl?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -70,7 +74,13 @@ const BASE_RESET = `
 // ---------------------------------------------------------------------------
 
 function renderClean(o: EmailLayoutOptions): string {
-  const { appName, appUrl, body, primaryColor, previewText } = o;
+  const { appName, appUrl, body, primaryColor, previewText, appIconUrl, unsubscribeUrl } = o;
+  const iconHtml = appIconUrl
+    ? `<img src="${esc(appIconUrl)}" alt="" width="32" height="32" style="vertical-align:middle;margin-right:8px;border-radius:4px" />`
+    : "";
+  const unsubscribeHtml = unsubscribeUrl
+    ? ` &middot; <a href="${esc(unsubscribeUrl)}">Manage preferences</a>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -80,7 +90,7 @@ function renderClean(o: EmailLayoutOptions): string {
 <style>
 ${BASE_RESET}
 .wrap{max-width:600px;margin:0 auto;padding:24px 16px}
-.header{padding:20px 0 16px;border-bottom:2px solid ${esc(primaryColor)}}
+.header{padding:20px 0 16px;border-bottom:2px solid ${esc(primaryColor)};display:flex;align-items:center}
 .header a{font-size:18px;font-weight:700;color:${esc(primaryColor)};text-decoration:none;font-family:system-ui,sans-serif}
 .body{background:#ffffff;border-radius:8px;padding:28px 32px;margin:24px 0;font-family:system-ui,sans-serif;font-size:15px;line-height:1.6;color:#333}
 .body h2{margin:0 0 16px;font-size:20px;color:#111}
@@ -94,11 +104,11 @@ ${BASE_RESET}
 ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(previewText)}&nbsp;&#8203;</div>` : ""}
 <div class="wrap">
   <div class="header">
-    <a href="${esc(appUrl)}">${esc(appName)}</a>
+    <a href="${esc(appUrl)}">${iconHtml}${esc(appName)}</a>
   </div>
   <div class="body">${body}</div>
   <div class="footer">
-    <a href="${esc(appUrl)}">${esc(appName)}</a> &middot; You received this because you have an account on this instance.
+    <a href="${esc(appUrl)}">${esc(appName)}</a> &middot; You received this because you have an account on this instance.${unsubscribeHtml}
   </div>
 </div>
 </body>
@@ -111,8 +121,14 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
 // ---------------------------------------------------------------------------
 
 function renderBranded(o: EmailLayoutOptions): string {
-  const { appName, appUrl, body, primaryColor, previewText } = o;
+  const { appName, appUrl, body, primaryColor, previewText, appIconUrl, unsubscribeUrl } = o;
   const bg = lighten(primaryColor, 0.94);
+  const iconHtml = appIconUrl
+    ? `<img src="${esc(appIconUrl)}" alt="" width="28" height="28" style="vertical-align:middle;margin-right:8px;border-radius:4px" />`
+    : "";
+  const unsubscribeHtml = unsubscribeUrl
+    ? ` &bull; <a href="${esc(unsubscribeUrl)}" style="color:rgba(255,255,255,0.9)">Manage preferences</a>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -139,10 +155,10 @@ body{background:${bg}}
 ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(previewText)}&nbsp;&#8203;</div>` : ""}
 <div style="padding:32px 16px">
 <div class="outer">
-  <div class="header"><a href="${esc(appUrl)}">${esc(appName)}</a></div>
+  <div class="header"><a href="${esc(appUrl)}">${iconHtml}${esc(appName)}</a></div>
   <div class="body">${body}</div>
   <div class="footer">
-    <a href="${esc(appUrl)}">${esc(appName)}</a> &bull; You received this because you have an account on this instance.
+    <a href="${esc(appUrl)}">${esc(appName)}</a> &bull; You received this because you have an account on this instance.${unsubscribeHtml}
   </div>
 </div>
 </div>
@@ -156,7 +172,13 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
 // ---------------------------------------------------------------------------
 
 function renderDark(o: EmailLayoutOptions): string {
-  const { appName, appUrl, body, primaryColor, previewText } = o;
+  const { appName, appUrl, body, primaryColor, previewText, appIconUrl, unsubscribeUrl } = o;
+  const iconHtml = appIconUrl
+    ? `<img src="${esc(appIconUrl)}" alt="" width="28" height="28" style="vertical-align:middle;margin-right:8px;border-radius:4px" />`
+    : "";
+  const unsubscribeHtml = unsubscribeUrl
+    ? ` &mdash; <a href="${esc(unsubscribeUrl)}" style="color:#9ca3af">Manage preferences</a>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -183,10 +205,10 @@ body{background:#0f1117}
 ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(previewText)}&nbsp;&#8203;</div>` : ""}
 <div style="padding:32px 16px">
 <div class="outer">
-  <div class="header"><a href="${esc(appUrl)}">${esc(appName)}<span>.</span></a></div>
+  <div class="header"><a href="${esc(appUrl)}">${iconHtml}${esc(appName)}<span>.</span></a></div>
   <div class="body">${body}</div>
   <div class="footer">
-    <a href="${esc(appUrl)}">${esc(appName)}</a> &mdash; You received this because you have an account on this instance.
+    <a href="${esc(appUrl)}">${esc(appName)}</a> &mdash; You received this because you have an account on this instance.${unsubscribeHtml}
   </div>
 </div>
 </div>
@@ -201,8 +223,14 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
 // ---------------------------------------------------------------------------
 
 function renderCard(o: EmailLayoutOptions): string {
-  const { appName, appUrl, body, primaryColor, previewText } = o;
+  const { appName, appUrl, body, primaryColor, previewText, appIconUrl, unsubscribeUrl } = o;
   const bg = lighten(primaryColor, 0.96);
+  const iconHtml = appIconUrl
+    ? `<img src="${esc(appIconUrl)}" alt="" width="24" height="24" style="vertical-align:middle;margin-right:6px;border-radius:4px" />`
+    : "";
+  const unsubscribeHtml = unsubscribeUrl
+    ? ` &middot; <a href="${esc(unsubscribeUrl)}">Manage preferences</a>`
+    : "";
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -230,12 +258,12 @@ body{background:${bg}}
 ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(previewText)}&nbsp;&#8203;</div>` : ""}
 <div class="wrap">
   <div class="card">
-    <div class="card-header"><a class="card-logo" href="${esc(appUrl)}">${esc(appName)}</a></div>
+    <div class="card-header"><a class="card-logo" href="${esc(appUrl)}">${iconHtml}${esc(appName)}</a></div>
     <div class="divider"></div>
     <div class="card-body">${body}</div>
   </div>
   <div class="footer">
-    <a href="${esc(appUrl)}">${esc(appName)}</a> &middot; Sent by your instance administrator.
+    <a href="${esc(appUrl)}">${esc(appName)}</a> &middot; Sent by your instance administrator.${unsubscribeHtml}
   </div>
 </div>
 </body>
@@ -248,7 +276,11 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
 // ---------------------------------------------------------------------------
 
 function renderCorporate(o: EmailLayoutOptions): string {
-  const { appName, appUrl, body, primaryColor, previewText } = o;
+  const { appName, appUrl, body, primaryColor, previewText, appIconUrl, unsubscribeUrl } = o;
+  const iconHtml = appIconUrl
+    ? `<img src="${esc(appIconUrl)}" alt="" width="28" height="28" style="vertical-align:middle;margin-right:8px;border-radius:4px" />`
+    : "";
+  const prefsUrl = unsubscribeUrl || `${appUrl}/profile`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -282,7 +314,7 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
 <div style="padding:32px 16px">
 <div class="outer">
   <div class="header-bar">
-    <a href="${esc(appUrl)}">${esc(appName)}</a>
+    <a href="${esc(appUrl)}">${iconHtml}${esc(appName)}</a>
     <div style="height:18px"></div>
   </div>
   <div class="accent-bar"></div>
@@ -296,7 +328,7 @@ ${previewText ? `<div style="display:none;max-height:0;overflow:hidden">${esc(pr
       <div class="footer-right">
         <div class="links">
           <a href="${esc(appUrl)}">Dashboard</a>
-          <a href="${esc(appUrl)}/profile">Preferences</a>
+          <a href="${esc(prefsUrl)}">Preferences</a>
         </div>
       </div>
     </div>

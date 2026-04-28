@@ -45,6 +45,16 @@ function assertModelAdmin(req: Request): void {
   throw forbidden("Instance admin access required");
 }
 
+async function getInstanceSettingsSingleton(db: Db) {
+  const row = await db
+    .select({ id: instanceSettingsTable.id, general: instanceSettingsTable.general })
+    .from(instanceSettingsTable)
+    .where(eq(instanceSettingsTable.singletonKey, "default"))
+    .limit(1)
+    .then((r) => r[0] ?? null);
+  return row;
+}
+
 async function requireCompanyAdminRole(
   db: Db,
   companyId: string,
@@ -220,11 +230,7 @@ export function modelRoutes(db: Db) {
 
   // List vLLM endpoint configs (stored in instance_settings)
   router.get("/models/vllm/endpoints", async (_req, res) => {
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((rows) => rows[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const endpoints = (general.vllmEndpoints as VllmEndpoint[]) ?? [];
     res.json({ endpoints });
@@ -238,11 +244,7 @@ export function modelRoutes(db: Db) {
       return;
     }
 
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((rows) => rows[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
 
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const existing = (general.vllmEndpoints as VllmEndpoint[]) ?? [];
@@ -252,7 +254,8 @@ export function modelRoutes(db: Db) {
     if (row) {
       await db
         .update(instanceSettingsTable)
-        .set({ general: { ...general, vllmEndpoints: updated } });
+        .set({ general: { ...general, vllmEndpoints: updated } })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     } else {
       await db.insert(instanceSettingsTable).values({ general: { vllmEndpoints: updated } });
     }
@@ -263,11 +266,7 @@ export function modelRoutes(db: Db) {
   // Delete vLLM endpoint
   router.delete("/models/vllm/endpoints/:id", async (req, res) => {
     const id = req.params.id as string;
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((rows) => rows[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
 
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const existing = (general.vllmEndpoints as VllmEndpoint[]) ?? [];
@@ -276,7 +275,8 @@ export function modelRoutes(db: Db) {
     if (row) {
       await db
         .update(instanceSettingsTable)
-        .set({ general: { ...general, vllmEndpoints: updated } });
+        .set({ general: { ...general, vllmEndpoints: updated } })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     }
 
     res.json({ ok: true });
@@ -285,11 +285,7 @@ export function modelRoutes(db: Db) {
   // Probe vLLM endpoint and return discovered models
   router.get("/models/vllm/endpoints/:id/models", async (req, res) => {
     const id = req.params.id as string;
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((rows) => rows[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
 
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const endpoints = (general.vllmEndpoints as VllmEndpoint[]) ?? [];
@@ -381,11 +377,7 @@ export function modelRoutes(db: Db) {
 
   router.get("/models/openai/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const key = general.openaiApiKey as string | undefined;
     res.json({ configured: !!key, maskedKey: key ? `sk-...${key.slice(-4)}` : null });
@@ -398,15 +390,14 @@ export function modelRoutes(db: Db) {
       res.status(400).json({ error: "apiKey is required" });
       return;
     }
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const updated = { ...general, openaiApiKey: apiKey.trim() };
     if (row) {
-      await db.update(instanceSettingsTable).set({ general: updated });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: updated })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     } else {
       await db.insert(instanceSettingsTable).values({ general: updated });
     }
@@ -415,25 +406,20 @@ export function modelRoutes(db: Db) {
 
   router.delete("/models/openai/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     if (row) {
       const general = (row.general as Record<string, unknown> | null) ?? {};
       const { openaiApiKey: _k, ...rest } = general;
-      await db.update(instanceSettingsTable).set({ general: rest });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: rest })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     }
     res.json({ ok: true });
   });
 
   router.get("/models/openai/models", async (_req, res) => {
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = (general.openaiApiKey as string | undefined) || process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -451,11 +437,7 @@ export function modelRoutes(db: Db) {
 
   router.get("/models/openrouter/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const key = general.openrouterApiKey as string | undefined;
     res.json({ configured: !!key, maskedKey: key ? `sk-or-...${key.slice(-4)}` : null });
@@ -468,15 +450,14 @@ export function modelRoutes(db: Db) {
       res.status(400).json({ error: "apiKey is required" });
       return;
     }
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const updated = { ...general, openrouterApiKey: apiKey.trim() };
     if (row) {
-      await db.update(instanceSettingsTable).set({ general: updated });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: updated })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     } else {
       await db.insert(instanceSettingsTable).values({ general: updated });
     }
@@ -485,25 +466,20 @@ export function modelRoutes(db: Db) {
 
   router.delete("/models/openrouter/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     if (row) {
       const general = (row.general as Record<string, unknown> | null) ?? {};
       const { openrouterApiKey: _k, ...rest } = general;
-      await db.update(instanceSettingsTable).set({ general: rest });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: rest })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     }
     res.json({ ok: true });
   });
 
   router.get("/models/openrouter/models", async (_req, res) => {
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = (general.openrouterApiKey as string | undefined) || process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -518,11 +494,7 @@ export function modelRoutes(db: Db) {
 
   router.get("/models/vercelai/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const key = general.vercelaiApiKey as string | undefined;
     const url = (general.vercelaiBaseURL as string | undefined) ?? null;
@@ -536,15 +508,14 @@ export function modelRoutes(db: Db) {
       res.status(400).json({ error: "apiKey and baseURL are required" });
       return;
     }
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const updated = { ...general, vercelaiApiKey: apiKey.trim(), vercelaiBaseURL: baseURL.trim() };
     if (row) {
-      await db.update(instanceSettingsTable).set({ general: updated });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: updated })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     } else {
       await db.insert(instanceSettingsTable).values({ general: updated });
     }
@@ -554,25 +525,20 @@ export function modelRoutes(db: Db) {
 
   router.delete("/models/vercelai/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     if (row) {
       const general = (row.general as Record<string, unknown> | null) ?? {};
       const { vercelaiApiKey: _k, vercelaiBaseURL: _u, ...rest } = general;
-      await db.update(instanceSettingsTable).set({ general: rest });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: rest })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     }
     res.json({ ok: true });
   });
 
   router.get("/models/vercelai/models", async (_req, res) => {
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = general.vercelaiApiKey as string | undefined;
     const baseURL = general.vercelaiBaseURL as string | undefined;
@@ -588,11 +554,7 @@ export function modelRoutes(db: Db) {
 
   router.get("/models/azure/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const key = general.azureOpenaiApiKey as string | undefined;
     const url = (general.azureOpenaiEndpoint as string | undefined) ?? null;
@@ -607,11 +569,7 @@ export function modelRoutes(db: Db) {
       res.status(400).json({ error: "apiKey and endpoint are required" });
       return;
     }
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const updated = {
       ...general,
@@ -620,7 +578,10 @@ export function modelRoutes(db: Db) {
       azureOpenaiApiVersion: (apiVersion?.trim() || "2024-02-15-preview"),
     };
     if (row) {
-      await db.update(instanceSettingsTable).set({ general: updated });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: updated })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     } else {
       await db.insert(instanceSettingsTable).values({ general: updated });
     }
@@ -629,25 +590,20 @@ export function modelRoutes(db: Db) {
 
   router.delete("/models/azure/key", async (req, res) => {
     assertModelAdmin(req);
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     if (row) {
       const general = (row.general as Record<string, unknown> | null) ?? {};
       const { azureOpenaiApiKey: _k, azureOpenaiEndpoint: _e, azureOpenaiApiVersion: _v, ...rest } = general;
-      await db.update(instanceSettingsTable).set({ general: rest });
+      await db
+        .update(instanceSettingsTable)
+        .set({ general: rest })
+        .where(eq(instanceSettingsTable.singletonKey, "default"));
     }
     res.json({ ok: true });
   });
 
   router.get("/models/azure/models", async (_req, res) => {
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((r) => r[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
     const apiKey = general.azureOpenaiApiKey as string | undefined;
     const baseURL = general.azureOpenaiEndpoint as string | undefined;
@@ -663,11 +619,7 @@ export function modelRoutes(db: Db) {
   // ── Aggregate: all models from all configured providers ───────────────────
 
   router.get("/models/all", async (_req, res) => {
-    const row = await db
-      .select({ general: instanceSettingsTable.general })
-      .from(instanceSettingsTable)
-      .limit(1)
-      .then((rows) => rows[0] ?? null);
+    const row = await getInstanceSettingsSingleton(db);
     const general = (row?.general as Record<string, unknown> | null) ?? {};
 
     const tasks: Promise<DiscoveredModel[]>[] = [];

@@ -53,7 +53,7 @@ export function SidebarSection({ label, children, defaultExpanded = true }: Side
       >
         <ChevronRight
           className={cn(
-            "h-3 w-3 text-foreground/40 transition-transform opacity-60 group-hover:opacity-100",
+            "h-3 w-3 text-foreground/40 transition-transform opacity-0 group-hover:opacity-100",
             expanded && "rotate-90",
           )}
         />

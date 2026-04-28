@@ -9,6 +9,30 @@ import type { EmailLayoutOptions } from "./email-layouts.js";
 export function emailService(db: Db) {
   const settingsSvc = instanceSettingsService(db);
 
+  function normalizeAppUrl(url: string | null | undefined): string {
+    if (!url) return "";
+    // Ensure no trailing slash so we can safely append paths
+    return url.replace(/\/+$/, "");
+  }
+
+  async function getAppIconUrl(): Promise<string | undefined> {
+    const general = await settingsSvc.getGeneral();
+    const appUrl = normalizeAppUrl((await settingsSvc.getNotifications()).emailAppUrl);
+    if (general.appIconAssetId && appUrl) {
+      return `${appUrl}/api/assets/${general.appIconAssetId}/content`;
+    }
+    return undefined;
+  }
+
+  async function getCompanyPrefix(companyId: string): Promise<string | null> {
+    const row = await db
+      .select({ issuePrefix: companies.issuePrefix })
+      .from(companies)
+      .where(eq(companies.id, companyId))
+      .then((rows) => rows[0] ?? null);
+    return row?.issuePrefix ?? null;
+  }
+
   async function createTransporter() {
     const notifications = await settingsSvc.getNotifications();
 
@@ -91,18 +115,21 @@ export function emailService(db: Db) {
    * Wrap a raw HTML body string in the configured email layout template.
    * Falls back to "clean" template and empty appUrl when not configured.
    */
-  function wrapHtml(
+  async function wrapHtml(
     body: string,
     notifications: Awaited<ReturnType<typeof settingsSvc.getNotifications>>,
-    opts?: Partial<Pick<EmailLayoutOptions, "appName" | "previewText">>,
-  ): string {
+    opts?: Partial<Pick<EmailLayoutOptions, "appName" | "previewText" | "unsubscribeUrl">>,
+  ): Promise<string> {
+    const appIconUrl = await getAppIconUrl();
     const layoutOpts: EmailLayoutOptions = {
       body,
       appName: opts?.appName ?? "Paperclip",
-      appUrl: notifications.emailAppUrl ?? "",
+      appUrl: normalizeAppUrl(notifications.emailAppUrl),
       primaryColor: "#5c5fff",
       template: notifications.emailTemplate ?? "clean",
       previewText: opts?.previewText,
+      appIconUrl,
+      unsubscribeUrl: opts?.unsubscribeUrl,
     };
     return renderEmailLayout(layoutOpts);
   }
@@ -130,6 +157,7 @@ export function emailService(db: Db) {
   return {
     async sendBlockedIssueNotification(issue: {
       id: string;
+      companyId: string;
       identifier: string;
       title: string;
       assigneeUserId?: string | null;
@@ -152,9 +180,20 @@ export function emailService(db: Db) {
       if (allRecipients.length === 0) return;
 
       const { transporter } = await createTransporter();
-      // Use || not ?? so that an empty string smtpFrom falls through to the next fallback.
-      // An empty From header is rejected by Gmail (RFC 5322 violation).
       const from = notifications.smtpFrom || notifications.smtpUser || "paperclip@localhost";
+      const appUrl = normalizeAppUrl(notifications.emailAppUrl);
+      const companyPrefix = await getCompanyPrefix(issue.companyId);
+      const issueUrl = companyPrefix && appUrl
+        ? `${appUrl}/${companyPrefix}/issues/${issue.identifier}`
+        : appUrl;
+      const unsubscribeUrl = appUrl ? `${appUrl}/profile` : undefined;
+
+      const bodyHtml = [
+        `<h2>An issue has been blocked</h2>`,
+        `<p><strong>${issue.identifier}</strong>: ${issue.title}</p>`,
+        `<p>This issue has been marked as <strong>blocked</strong> and may need your attention.</p>`,
+        issueUrl ? `<p><a href="${issueUrl}" class="btn">Open in Paperclip</a></p>` : "",
+      ].join("");
 
       await transporter.sendMail({
         from,
@@ -164,21 +203,18 @@ export function emailService(db: Db) {
           `An issue has been marked as blocked and may need your attention.`,
           ``,
           `Issue: ${issue.identifier} — ${issue.title}`,
+          issueUrl ? `\nView issue: ${issueUrl}` : "",
         ].join("\n"),
-        html: wrapHtml(
-          [
-            `<h2>An issue has been blocked</h2>`,
-            `<p><strong>${issue.identifier}</strong>: ${issue.title}</p>`,
-            `<p>This issue has been marked as <strong>blocked</strong> and may need your attention.</p>`,
-          ].join(""),
-          notifications,
-          { previewText: `Issue blocked: ${issue.identifier} — ${issue.title}` },
-        ),
+        html: await wrapHtml(bodyHtml, notifications, {
+          previewText: `Issue blocked: ${issue.identifier} — ${issue.title}`,
+          unsubscribeUrl,
+        }),
       });
     },
 
     async sendAssignedNotification(issue: {
       id: string;
+      companyId: string;
       identifier: string;
       title: string;
       assigneeUserId: string;
@@ -192,6 +228,19 @@ export function emailService(db: Db) {
 
       const { transporter } = await createTransporter();
       const from = notifications.smtpFrom || notifications.smtpUser || "paperclip@localhost";
+      const appUrl = normalizeAppUrl(notifications.emailAppUrl);
+      const companyPrefix = await getCompanyPrefix(issue.companyId);
+      const issueUrl = companyPrefix && appUrl
+        ? `${appUrl}/${companyPrefix}/issues/${issue.identifier}`
+        : appUrl;
+      const unsubscribeUrl = appUrl ? `${appUrl}/profile` : undefined;
+
+      const bodyHtml = [
+        `<h2>Issue assigned to you</h2>`,
+        `<p><strong>${issue.identifier}</strong>: ${issue.title}</p>`,
+        `<p>This issue has been assigned to you.</p>`,
+        issueUrl ? `<p><a href="${issueUrl}" class="btn">Open in Paperclip</a></p>` : "",
+      ].join("");
 
       await transporter.sendMail({
         from,
@@ -201,16 +250,12 @@ export function emailService(db: Db) {
           `An issue has been assigned to you.`,
           ``,
           `Issue: ${issue.identifier} — ${issue.title}`,
+          issueUrl ? `\nView issue: ${issueUrl}` : "",
         ].join("\n"),
-        html: wrapHtml(
-          [
-            `<h2>Issue assigned to you</h2>`,
-            `<p><strong>${issue.identifier}</strong>: ${issue.title}</p>`,
-            `<p>This issue has been assigned to you.</p>`,
-          ].join(""),
-          notifications,
-          { previewText: `You've been assigned: ${issue.identifier} — ${issue.title}` },
-        ),
+        html: await wrapHtml(bodyHtml, notifications, {
+          previewText: `You've been assigned: ${issue.identifier} — ${issue.title}`,
+          unsubscribeUrl,
+        }),
       });
     },
 
@@ -223,7 +268,7 @@ export function emailService(db: Db) {
         to,
         subject: "Paperclip email notification test",
         text: "This is a test email from Paperclip. Email notifications are working correctly.",
-        html: wrapHtml(
+        html: await wrapHtml(
           `<h2>Email test</h2><p>This is a test email from <strong>Paperclip</strong>. Email notifications are working correctly.</p>`,
           notifications,
           { previewText: "Email notifications are working correctly." },
@@ -259,7 +304,7 @@ export function emailService(db: Db) {
           ``,
           `This invitation expires in 72 hours.`,
         ].join("\n"),
-        html: wrapHtml(
+        html: await wrapHtml(
           [
             `<h2>You've been invited</h2>`,
             `<p>You've been invited to join <strong>${invite.companyName}</strong> on Paperclip as <strong>${roleLabel}</strong>.</p>`,
@@ -385,13 +430,17 @@ export function emailService(db: Db) {
         n.smtpUser ||
         "paperclip@localhost";
 
+      const appUrl = normalizeAppUrl(n.emailAppUrl);
+      const unsubscribeUrl = appUrl ? `${appUrl}/profile` : undefined;
+
       await transporter.sendMail({
         from,
         to: userRow.email,
         subject: `Paperclip ${digestType === "daily" ? "Daily" : "Weekly"} Digest`,
         text: lines.join("\n"),
-        html: wrapHtml(htmlLines.join(""), n, {
+        html: await wrapHtml(htmlLines.join(""), n, {
           previewText: `${digestType === "daily" ? "Daily" : "Weekly"} digest for ${companyLabel}`,
+          unsubscribeUrl,
         }),
       });
     },
@@ -419,7 +468,7 @@ export function emailService(db: Db) {
           ``,
           `This link expires in 1 hour. If you did not request this, you can safely ignore this email.`,
         ].join("\n"),
-        html: wrapHtml(
+        html: await wrapHtml(
           [
             `<h2>Reset your ${appName} password</h2>`,
             `<p>You requested a password reset for your <strong>${appName}</strong> account.</p>`,
