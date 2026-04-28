@@ -30,7 +30,7 @@ import { PageTabBar } from "../components/PageTabBar";
 import { adapterLabels, roleLabels, help } from "../components/agent-config-primitives";
 import { MarkdownEditor } from "../components/MarkdownEditor";
 import { assetsApi } from "../api/assets";
-import { getUIAdapter, buildTranscript } from "../adapters";
+import { getUIAdapter, buildTranscript, type TranscriptEntry } from "../adapters";
 import { StatusBadge } from "../components/StatusBadge";
 import { agentStatusDot, agentStatusDotDefault } from "../lib/status-colors";
 import { MarkdownBody } from "../components/MarkdownBody";
@@ -48,6 +48,14 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Popover,
   PopoverContent,
@@ -83,6 +91,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { AgentIcon, AgentIconPicker } from "../components/AgentIconPicker";
 import { AvatarGeneratorPanel } from "../components/AvatarGeneratorPanel";
+import { RunTimelineView } from "../components/RunTimelineView";
 import { RunTranscriptView, type TranscriptMode } from "../components/transcript/RunTranscriptView";
 import { useLiveRunTranscripts } from "../components/transcript/useLiveRunTranscripts";
 import { latestActivityPreview } from "../components/ActiveAgentsPanel";
@@ -176,6 +185,7 @@ const sourceLabels: Record<string, string> = {
   assignment: "Assignment",
   on_demand: "On-demand",
   automation: "Automation",
+  replay: "Replay",
 };
 
 const LIVE_SCROLL_BOTTOM_TOLERANCE_PX = 32;
@@ -1272,6 +1282,7 @@ function LatestRunCard({ runs, agentId }: { runs: HeartbeatRun[]; agentId: strin
             run.invocationSource === "timer" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
               : run.invocationSource === "assignment" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
               : run.invocationSource === "on_demand" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"
+              : run.invocationSource === "replay" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
               : "bg-muted text-muted-foreground"
           )}>
             {sourceLabels[run.invocationSource] ?? run.invocationSource}
@@ -2915,18 +2926,12 @@ function RunListItem({
   run,
   isSelected,
   agentId,
-  isExpanded,
-  onToggleExpand,
   transcript,
-  hasOutput,
 }: {
   run: HeartbeatRun;
   isSelected: boolean;
   agentId: string;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
   transcript: import("../adapters").TranscriptEntry[];
-  hasOutput: boolean;
 }) {
   const statusInfo = runStatusIcons[run.status] ?? { icon: Clock, color: "text-neutral-400" };
   const StatusIcon = statusInfo.icon;
@@ -2958,6 +2963,7 @@ function RunListItem({
             run.invocationSource === "timer" ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300"
               : run.invocationSource === "assignment" ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
               : run.invocationSource === "on_demand" ? "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300"
+              : run.invocationSource === "replay" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
               : "bg-muted text-muted-foreground"
           )}>
             {sourceLabels[run.invocationSource] ?? run.invocationSource}
@@ -2992,36 +2998,12 @@ function RunListItem({
           </div>
         )}
       </Link>
-      {/* Expand toggle + transcript */}
-      <div className="px-3 pb-2">
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggleExpand();
-          }}
-          className="flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-        >
-          {isExpanded ? (
-            <ChevronUp className="h-3 w-3" />
-          ) : (
-            <ChevronDown className="h-3 w-3" />
-          )}
-          {isExpanded ? "Hide stream" : "Show live stream"}
-        </button>
-        {isExpanded && (
-          <div className="mt-2 max-h-[240px] overflow-y-auto border border-border/60 rounded-md p-2 bg-background/50">
-            <RunTranscriptView
-              entries={transcript}
-              density="compact"
-              limit={6}
-              streaming={isLive}
-              collapseStdout
-              emptyMessage={hasOutput ? "Waiting for transcript parsing..." : "Waiting for run output..."}
-            />
-          </div>
-        )}
-      </div>
+      {transcript.length > 0 && (
+        <span className="px-3 pb-2 flex items-center gap-1 text-[11px] text-cyan-600 dark:text-cyan-400 truncate">
+          <Activity className={cn("h-2.5 w-2.5", isLive && "animate-pulse")} />
+          {latestActivityPreview(transcript) ?? (isLive ? "Working…" : "Recent activity")}
+        </span>
+      )}
     </div>
   );
 }
@@ -3042,20 +3024,13 @@ function RunsTab({
   adapterType: string;
 }) {
   const { isMobile } = useSidebar();
-  const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
-
-  // Auto-expand the most recent live run when runs change
-  useEffect(() => {
-    const firstLive = [...runs].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    ).find((r) => r.status === "running" || r.status === "queued");
-    if (firstLive) {
-      setExpandedRunId((current) => current ?? firstLive.id);
-    }
-  }, [runs]);
-
-  const liveRuns = useMemo(() =>
-    runs.map((run) => ({
+  // Only pass active runs + the 10 most recent runs to useLiveRunTranscripts.
+  // Passing all historical runs triggers a parallel log-fetch for every run on mount.
+  const liveRuns = useMemo(() => {
+    const sorted = [...runs].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const active = sorted.filter((r) => r.status === "running" || r.status === "queued");
+    const selected = [...new Map([...active, ...sorted.slice(0, 10)].map((r) => [r.id, r])).values()];
+    return selected.map((run) => ({
       id: run.id,
       status: run.status,
       invocationSource: run.invocationSource,
@@ -3067,9 +3042,8 @@ function RunsTab({
       agentName: "",
       adapterType,
       issueId: null,
-    })),
-    [runs, adapterType]
-  );
+    }));
+  }, [runs, adapterType]);
 
   const { transcriptByRun, hasOutputForRun } = useLiveRunTranscripts({
     runs: liveRuns,
@@ -3113,10 +3087,7 @@ function RunsTab({
             run={run}
             isSelected={false}
             agentId={agentRouteId}
-            isExpanded={expandedRunId === run.id}
-            onToggleExpand={() => setExpandedRunId(expandedRunId === run.id ? null : run.id)}
             transcript={transcriptByRun.get(run.id) ?? []}
-            hasOutput={hasOutputForRun(run.id)}
           />
         ))}
       </div>
@@ -3138,10 +3109,7 @@ function RunsTab({
             run={run}
             isSelected={run.id === effectiveRunId}
             agentId={agentRouteId}
-            isExpanded={expandedRunId === run.id}
-            onToggleExpand={() => setExpandedRunId(expandedRunId === run.id ? null : run.id)}
             transcript={transcriptByRun.get(run.id) ?? []}
-            hasOutput={hasOutputForRun(run.id)}
           />
         ))}
         </div>
@@ -3172,25 +3140,8 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
   const [sessionOpen, setSessionOpen] = useState(false);
   const [claudeLoginResult, setClaudeLoginResult] = useState<ClaudeLoginResult | null>(null);
 
-  const liveRunEntry = useMemo(() => ([{
-    id: run.id,
-    status: run.status,
-    invocationSource: run.invocationSource,
-    triggerDetail: run.triggerDetail,
-    startedAt: run.startedAt ? new Date(run.startedAt).toISOString() : null,
-    finishedAt: run.finishedAt ? new Date(run.finishedAt).toISOString() : null,
-    createdAt: new Date(run.createdAt).toISOString(),
-    agentId: run.agentId,
-    agentName: "",
-    adapterType,
-    issueId: null,
-  }]), [run.id, run.status, run.invocationSource, run.triggerDetail, run.startedAt, run.finishedAt, run.createdAt, run.agentId, adapterType]);
-
-  const { transcriptByRun } = useLiveRunTranscripts({
-    runs: liveRunEntry,
-    companyId: run.companyId,
-  });
-  const detailTranscript = transcriptByRun.get(run.id) ?? [];
+  // detailTranscript is fed by LogViewer via onTranscript — avoids a duplicate WebSocket.
+  const [detailTranscript, setDetailTranscript] = useState<TranscriptEntry[]>([]);
 
   useEffect(() => {
     setClaudeLoginResult(null);
@@ -3265,6 +3216,25 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
       return result;
     },
     onSuccess: (newRun) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.heartbeats(run.companyId, run.agentId) });
+      navigate(`/agents/${agentRouteId}/runs/${newRun.id}`);
+    },
+  });
+
+  const { data: timelineEvents } = useQuery({
+    queryKey: ["heartbeat-run-events", run.id],
+    queryFn: () => heartbeatsApi.events(run.id, 0, 500),
+    enabled: !!run.id,
+  });
+
+  const canReplayRun = (run.status === "failed" || run.status === "timed_out") && !!run.contextSnapshot;
+  const [replayDialogOpen, setReplayDialogOpen] = useState(false);
+  const [replayModel, setReplayModel] = useState("");
+  const replayRun = useMutation({
+    mutationFn: () => heartbeatsApi.replay(run.id, replayModel || undefined),
+    onSuccess: (newRun) => {
+      setReplayDialogOpen(false);
+      setReplayModel("");
       queryClient.invalidateQueries({ queryKey: queryKeys.heartbeats(run.companyId, run.agentId) });
       navigate(`/agents/${agentRouteId}/runs/${newRun.id}`);
     },
@@ -3374,22 +3344,25 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
                 </Link>
               </div>
             )}
-            {/* Live stream preview */}
-            {detailTranscript.length > 0 && (
-              <div className="px-4 pt-2 pb-1">
-                <div className="flex items-center gap-1.5 text-[11px] text-cyan-600 dark:text-cyan-400 truncate">
-                  <Activity className={cn("h-3 w-3 shrink-0", isRunning && "animate-pulse")} />
-                  <span className="truncate">
-                    {latestActivityPreview(detailTranscript) ?? (isRunning ? "Working…" : "Last activity")}
-                  </span>
-                </div>
-              </div>
-            )}
             <div className="flex flex-col sm:flex-row">
               {/* Left column: status + timing */}
               <div className="flex-1 p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <StatusBadge status={run.status} />
+                  {run.invocationSource === "replay" && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300">
+                      Replay
+                      {run.retryOfRunId && (
+                        <Link
+                          to={`/agents/${agentRouteId}/runs/${run.retryOfRunId}`}
+                          className="underline hover:no-underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          original
+                        </Link>
+                      )}
+                    </span>
+                  )}
                   {(run.status === "running" || run.status === "queued") && (
                     <Button
                       variant="ghost"
@@ -3423,6 +3396,17 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
                     >
                       <RotateCcw className="h-3.5 w-3.5 mr-1" />
                       {retryRun.isPending ? "Retrying…" : "Retry"}
+                    </Button>
+                  )}
+                  {canReplayRun && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-6 px-2"
+                      onClick={() => setReplayDialogOpen(true)}
+                      disabled={replayRun.isPending}
+                    >
+                      {replayRun.isPending ? "Replaying…" : "Replay"}
                     </Button>
                   )}
                 </div>
@@ -3637,8 +3621,75 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
         </div>
       )}
 
+      {/* Replay dialog */}
+      <Dialog open={replayDialogOpen} onOpenChange={(open) => !open && setReplayDialogOpen(false)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Replay Run</DialogTitle>
+            <DialogDescription>
+              Re-run with the same context but optionally a different model. Only available for failed or timed-out runs.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                Model override <span className="text-muted-foreground/60">(optional)</span>
+              </label>
+              <Input
+                placeholder="e.g. claude-sonnet-4-5, gpt-4o, openai/gpt-4o"
+                value={replayModel}
+                onChange={(e) => setReplayModel(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Leave empty to use the agent&apos;s currently configured model.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setReplayDialogOpen(false)} disabled={replayRun.isPending}>
+              Cancel
+            </Button>
+            <Button onClick={() => replayRun.mutate()} disabled={replayRun.isPending}>
+              {replayRun.isPending ? "Replaying…" : "Start Replay"}
+            </Button>
+          </DialogFooter>
+          {replayRun.isError && (
+            <div className="px-6 pb-4 text-xs text-destructive">
+              {replayRun.error instanceof Error ? replayRun.error.message : "Failed to replay run"}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Timeline waterfall */}
+      {timelineEvents && timelineEvents.length > 0 && (
+        <RunTimelineView run={run} events={timelineEvents} />
+      )}
+
+      {/* Live stream accordion — expanded when run is active */}
+      <Collapsible>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full px-4 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors border border-border rounded-lg">
+          <ChevronRight className="h-3 w-3 transition-transform ui-open:rotate-90" />
+          <Activity className={cn("h-3.5 w-3.5", isRunning && "animate-pulse text-cyan-400")} />
+          <span>Live stream</span>
+          {detailTranscript.length > 0 && (
+            <span className="text-[11px] text-muted-foreground ml-auto">
+              {latestActivityPreview(detailTranscript)}
+            </span>
+          )}
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-1">
+          <RunTranscriptView
+            entries={detailTranscript}
+            mode="nice"
+            streaming={isRunning}
+            emptyMessage="Waiting for output…"
+          />
+        </CollapsibleContent>
+      </Collapsible>
+
       {/* Log viewer */}
-      <LogViewer run={run} adapterType={adapterType} />
+      <LogViewer run={run} adapterType={adapterType} onTranscript={setDetailTranscript} />
       <ScrollToBottom />
     </div>
   );
@@ -3646,7 +3697,9 @@ function RunDetail({ run: initialRun, agentRouteId, adapterType }: { run: Heartb
 
 /* ---- Log Viewer ---- */
 
-function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: string }) {
+const MAX_LOG_LINES = 500;
+
+function LogViewer({ run, adapterType, onTranscript }: { run: HeartbeatRun; adapterType: string; onTranscript?: (t: TranscriptEntry[]) => void }) {
   const [events, setEvents] = useState<HeartbeatRunEvent[]>([]);
   const [logLines, setLogLines] = useState<Array<{ ts: string; stream: "stdout" | "stderr" | "system"; chunk: string }>>([]);
   const [loading, setLoading] = useState(true);
@@ -3669,6 +3722,13 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     queryKey: queryKeys.runWorkspaceOperations(run.id),
     queryFn: () => heartbeatsApi.workspaceOperations(run.id),
     refetchInterval: isLive ? 2000 : false,
+  });
+
+  const primaryIssueId = runIssueId(run);
+  const { data: primaryIssue } = useQuery({
+    queryKey: ["issue", primaryIssueId],
+    queryFn: () => issuesApi.get(primaryIssueId!),
+    enabled: !!primaryIssueId,
   });
 
   function isRunLogUnavailable(err: unknown): boolean {
@@ -3703,7 +3763,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
     }
 
     if (parsed.length > 0) {
-      setLogLines((prev) => [...prev, ...parsed]);
+      setLogLines((prev) => [...prev, ...parsed].slice(-MAX_LOG_LINES));
     }
   }
 
@@ -3939,7 +3999,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
           const streamRaw = asNonEmptyString(payload.stream);
           const stream = streamRaw === "stderr" || streamRaw === "system" ? streamRaw : "stdout";
           const ts = asNonEmptyString((payload as Record<string, unknown>).ts) ?? event.createdAt;
-          setLogLines((prev) => [...prev, { ts, stream, chunk }]);
+          setLogLines((prev) => ([...prev, { ts, stream, chunk }] as typeof prev).slice(-MAX_LOG_LINES));
           return;
         }
 
@@ -4025,6 +4085,10 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
   );
 
   useEffect(() => {
+    onTranscript?.(transcript);
+  }, [transcript, onTranscript]);
+
+  useEffect(() => {
     setTranscriptMode("nice");
   }, [run.id]);
 
@@ -4103,6 +4167,7 @@ function LogViewer({ run, adapterType }: { run: HeartbeatRun; adapterType: strin
           entries={transcript}
           mode={transcriptMode}
           streaming={isLive}
+          issueIdentifier={primaryIssue?.identifier ?? undefined}
           emptyMessage={run.logRef ? "Waiting for transcript..." : "No persisted transcript for this run."}
         />
         {logError && (
