@@ -28,6 +28,7 @@ import { promisify } from "node:util";
 import https from "node:https";
 import http from "node:http";
 import crypto from "node:crypto";
+import { assertBoard } from "./authz.js";
 
 const execFile = promisify(execFileCb);
 
@@ -745,6 +746,7 @@ export function mcpBuiltinRoutes() {
   const router = Router();
 
   router.post("/mcp/:toolset", async (req, res) => {
+    assertBoard(req);
     const { toolset } = req.params as { toolset: string };
     const ts = TOOLSETS[toolset];
     if (!ts) {
