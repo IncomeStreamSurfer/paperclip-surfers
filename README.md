@@ -1,5 +1,7 @@
 # Paperclip Surfers
 
+> **Free community:** the current version of this, plus my other Claude Code skills, prompts and courses, is in my free Skool community: https://www.skool.com/iss-ai-automation-school-6342/about
+
 > **Self-improving AI agent companies** — a V2 fork of [paperclipai/paperclip](https://github.com/paperclipai/paperclip) with persistent memory, MCP support, skills management, and a self-improvement loop.
 
 <p align="center">
